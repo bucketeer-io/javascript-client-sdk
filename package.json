@@ -1,0 +1,38 @@
+{
+  "name": "@bucketeer/js-client-sdk",
+  "license": "Apache-2.0",
+  "version": "2.0.0",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/bucketeer.umd.cjs",
+  "module": "./dist/bucketeer.js",
+  "types": "./dist/types/src/main.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/bucketeer.js",
+      "require": "./dist/bucketeer.umd.cjs"
+    }
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && tsc --emitDeclarationOnly --incremental false --composite false --project tsconfig.lib.json",
+    "preview": "vite preview",
+    "test": "vitest",
+    "lint": "eslint --ext .ts,.js,.cjs .",
+    "lint:fix": "eslint --ext .ts,.js,.cjs --fix ."
+  },
+  "devDependencies": {
+    "@types/jsdom": "20.0.1",
+    "@types/node": "18.11.18",
+    "@typescript-eslint/eslint-plugin": "5.48.1",
+    "@typescript-eslint/parser": "5.48.1",
+    "eslint": "8.31.0",
+    "jsdom": "21.0.0",
+    "typescript": "4.9.4",
+    "vite": "4.0.4",
+    "vitest": "0.27.1"
+  },
+  "packageManager": "pnpm@7.23.0"
+}
