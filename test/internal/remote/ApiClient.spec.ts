@@ -39,7 +39,7 @@ suite('internal/remote/ApiClient', () => {
               ctx.set('Content-Length', '10'),
               ctx.json({
                 evaluations: user1Evaluations,
-                user_evaluations_id: 'user_evaluations_id_value',
+                userEvaluationsId: 'user_evaluations_id_value',
               }),
             )
           })
@@ -56,7 +56,7 @@ suite('internal/remote/ApiClient', () => {
       expect(response.featureTag).toBe('feature_tag_value')
       expect(response.value).toStrictEqual({
         evaluations: user1Evaluations,
-        user_evaluations_id: 'user_evaluations_id_value'
+        userEvaluationsId: 'user_evaluations_id_value'
       })
     })
 
