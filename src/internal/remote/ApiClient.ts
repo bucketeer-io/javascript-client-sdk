@@ -50,6 +50,8 @@ export class ApiClientImpl implements ApiClient {
 
       const finish = Date.now()
 
+      // all non-ok status code is already converted to BKTException,
+      // so we can assume that the status code is 200 here.
       const contentLength = (() =>{
         const value = res.headers.get('Content-Length')
         if (value) {
@@ -68,7 +70,6 @@ export class ApiClientImpl implements ApiClient {
       } satisfies GetEvaluationsSuccess
 
     } catch (e) {
-      // network error
       return {
         type: 'failure',
         featureTag: this.featureTag,

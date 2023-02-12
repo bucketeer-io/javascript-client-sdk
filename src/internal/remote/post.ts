@@ -31,7 +31,7 @@ export const postInternal = async (
       }
     })
     .then((res) => {
-      // convert non-200 status to error
+      // convert non-200 status to BKTException
       if (!res.ok) {
         throw toBKTException(res)
       }
