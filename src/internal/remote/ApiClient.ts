@@ -33,8 +33,8 @@ export class ApiClientImpl implements ApiClient {
     const body: GetEvaluationsRequest = {
       tag: this.featureTag,
       user,
-      user_evaluations_id: userEvaluationsId,
-      source_id: SourceID.ANDROID
+      userEvaluationsId: userEvaluationsId,
+      sourceId: SourceID.JAVASCRIPT
     }
 
     try {
