@@ -1,13 +1,14 @@
 import { expect, suite, test, beforeEach, afterEach } from 'vitest'
 import fetch from 'cross-fetch'
 import { rest } from 'msw'
+import assert from 'assert'
 import { setupServer, SetupServerApi } from 'msw/node'
 import { GetEvaluationsRequest } from '../../../src/internal/model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../../../src/internal/model/response/GetEvaluationsResponse'
 import { user1Evaluations } from '../../mocks/evaluations'
 import { ApiClient, ApiClientImpl } from '../../../src/internal/remote/ApiClient'
 import { user1 } from '../../mocks/users'
-import assert from 'assert'
+import { SourceID } from '../../../src/internal/model/SourceID'
 
 suite('internal/remote/ApiClient', () => {
   let server: SetupServerApi
@@ -31,15 +32,23 @@ suite('internal/remote/ApiClient', () => {
       server = setupServer(
         rest.post<GetEvaluationsRequest, Record<string, never>, GetEvaluationsResponse>(
           'https://api.bucketeer.io/get_evaluations',
-          (req, res, ctx) => {
+          async (req, res, ctx) => {
             expect(req.headers.get('Authorization')).toBe('api_key_value')
+
+            const request = await req.json()
+            expect(request).toStrictEqual({
+              tag: 'feature_tag_value',
+              user: user1,
+              userEvaluationsId: 'user_evaluation_id',
+              sourceId: SourceID.JAVASCRIPT,
+            })
 
             return res(
               ctx.status(200),
               ctx.set('Content-Length', '10'),
               ctx.json({
                 evaluations: user1Evaluations,
-                userEvaluationsId: 'user_evaluations_id_value',
+                userEvaluationsId: 'user_evaluation_id',
               }),
             )
           })
@@ -56,7 +65,7 @@ suite('internal/remote/ApiClient', () => {
       expect(response.featureTag).toBe('feature_tag_value')
       expect(response.value).toStrictEqual({
         evaluations: user1Evaluations,
-        userEvaluationsId: 'user_evaluations_id_value'
+        userEvaluationsId: 'user_evaluation_id'
       })
     })
 
