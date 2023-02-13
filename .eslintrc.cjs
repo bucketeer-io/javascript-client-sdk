@@ -1,10 +1,16 @@
 // eslint-disable-next-line no-undef
 module.exports = {
   root: true,
-  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:import/typescript'
+  ],
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint'],
   rules: {
+    indent: ['error', 2],
+    'no-multiple-empty-lines': 'error',
     quotes: ['error', 'single', { 'allowTemplateLiterals': true }],
     semi: 'off',
     '@typescript-eslint/semi': ['error', 'never'],
@@ -20,6 +26,15 @@ module.exports = {
           'requireLast': false
         },
         'multilineDetection': 'brackets'
+      }
+    ],
+    '@typescript-eslint/no-unused-vars': [
+      'warn',
+      {
+        'argsIgnorePattern': '^_',
+        'varsIgnorePattern': '^_',
+        'caughtErrorsIgnorePattern': '^_',
+        'destructuredArrayIgnorePattern': '^_'
       }
     ]
   }
