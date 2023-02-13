@@ -5,7 +5,7 @@ specifiers:
   '@types/node': 18.13.0
   '@typescript-eslint/eslint-plugin': 5.51.0
   '@typescript-eslint/parser': 5.51.0
-  cross-fetch: ^3.1.5
+  cross-fetch: 3.1.5
   eslint: 8.34.0
   eslint-plugin-import: 2.27.5
   jsdom: 21.1.0
