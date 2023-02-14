@@ -1,10 +1,4 @@
-import {
-  GetEvaluationLatencyMetricsEvent,
-  GetEvaluationSizeMetricsEvent,
-  InternalErrorCountMetricsEvent,
-  TimeoutErrorCountMetricsEvent,
-} from './MetricsEventData'
-import { MetricsEventType } from './MetricsEventType'
+import { MetricsEventData } from './MetricsEventData'
 import { Reason } from './Reason'
 import { SourceID } from './SourceID'
 import { User } from './User'
@@ -43,35 +37,12 @@ export interface EvaluationEvent {
   metadata: Record<string, string>
 }
 
-export type MetricsEvent =
-  | {
-      timestamp: number
-      type: typeof MetricsEventType['GET_EVALUATION_LATENCY']
-      event: GetEvaluationLatencyMetricsEvent
-      sdkVersion: string
-      metadata: Record<string, string>
-    }
-  | {
-      timestamp: number
-      type: typeof MetricsEventType['GET_EVALUATION_SIZE']
-      event: GetEvaluationSizeMetricsEvent
-      sdkVersion: string
-      metadata: Record<string, string>
-    }
-  | {
-      timestamp: number
-      type: typeof MetricsEventType['TIMEOUT_ERROR_COUNT']
-      event: TimeoutErrorCountMetricsEvent
-      sdkVersion: string
-      metadata: Record<string, string>
-    }
-  | {
-      timestamp: number
-      type: typeof MetricsEventType['INTERNAL_ERROR_COUNT']
-      event: InternalErrorCountMetricsEvent
-      sdkVersion: string
-      metadata: Record<string, string>
-    }
+export type MetricsEvent = {
+  timestamp: number
+  event: MetricsEventData
+  sdkVersion: string
+  metadata: Record<string, string>
+}
 
 export type Event =
   | {

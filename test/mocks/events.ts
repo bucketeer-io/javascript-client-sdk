@@ -1,6 +1,13 @@
-import { EvaluationEvent, Event, EventType } from '../../src/internal/model/Event'
-import { GetEvaluationLatencyMetricsEvent } from '../../src/internal/model/MetricsEventData'
-import { MetricsEventType } from '../../src/internal/model/MetricsEventType'
+import {
+  EvaluationEvent,
+  Event,
+  EventType,
+} from '../../src/internal/model/Event'
+import {
+  ApiId,
+  LatencyMetricsEvent,
+  MetricsEventType,
+} from '../../src/internal/model/MetricsEventData'
 import { SourceID } from '../../src/internal/model/SourceID'
 import { user1 } from './users'
 
@@ -14,11 +21,11 @@ export const evaluationEvent1: Event = {
     userId: user1.id,
     user: user1,
     variationId: 'variation1',
-    reason:{type: 'DEFAULT'},
-    tag: '',
+    reason: { type: 'DEFAULT' },
+    tag: 'javascript',
     sourceId: SourceID.JAVASCRIPT,
     sdkVersion: '1.0.0',
-    metadata:{}
+    metadata: {},
   } satisfies EvaluationEvent,
 }
 
@@ -33,15 +40,15 @@ export const evaluationEvent2: Event = {
     user: user1,
     variationId: 'variation2',
     reason: { type: 'DEFAULT' },
-    tag: '',
+    tag: 'javascript',
     sourceId: SourceID.ANDROID,
     sdkVersion: '1.0.0',
     metadata: {
-      'appVersion': '1.2.3',
-      'osVersion': 'os_version_value',
-      'deviceModel': 'device_model_value',
+      appVersion: '1.2.3',
+      osVersion: 'os_version_value',
+      deviceModel: 'device_model_value',
     },
-  } satisfies EvaluationEvent
+  } satisfies EvaluationEvent,
 }
 
 export const goalEvent1: Event = {
@@ -53,15 +60,15 @@ export const goalEvent1: Event = {
     userId: user1.id,
     user: user1,
     value: 0.0,
-    tag: '',
+    tag: 'javascript',
     sourceId: SourceID.ANDROID,
     sdkVersion: '1.0.0',
     metadata: {
-      'app_version': '1.2.3',
-      'os_version': 'os_version_value',
-      'device_model': 'device_model_value',
+      app_version: '1.2.3',
+      os_version: 'os_version_value',
+      device_model: 'device_model_value',
     },
-  }
+  },
 }
 
 export const goalEvent2: Event = {
@@ -73,22 +80,24 @@ export const goalEvent2: Event = {
     userId: user1.id,
     user: user1,
     value: 0.0,
-    tag: '',
+    tag: 'javascript',
     sourceId: SourceID.ANDROID,
     sdkVersion: '1.0.0',
     metadata: {
-      'app_version': '1.2.3',
-      'os_version': 'os_version_value',
-      'device_model': 'device_model_value',
+      app_version: '1.2.3',
+      os_version: 'os_version_value',
+      device_model: 'device_model_value',
     },
   },
 }
 
-export const getEvaluationLatencyMetricsEvent1: GetEvaluationLatencyMetricsEvent = {
+export const latencyMetricsEvent1: LatencyMetricsEvent = {
+  apiId: ApiId.GET_EVALUATION,
   labels: {
-    tag: 'javascript'
+    tag: 'javascript',
   },
   duration: 2000,
+  '@type': MetricsEventType.LatencyMetrics,
 }
 
 export const metricsEvent1: Event = {
@@ -96,13 +105,12 @@ export const metricsEvent1: Event = {
   type: EventType.METRICS,
   event: {
     timestamp: 1661823274, // 2022-08-30 01:34:34
-    type: MetricsEventType.GET_EVALUATION_LATENCY,
-    event: getEvaluationLatencyMetricsEvent1,
+    event: latencyMetricsEvent1,
     sdkVersion: '1.0.0',
     metadata: {
-      'app_version': '1.2.3',
-      'os_version': 'os_version_value',
-      'device_model': 'device_model_value',
+      app_version: '1.2.3',
+      os_version: 'os_version_value',
+      device_model: 'device_model_value',
     },
   },
 }
