@@ -530,7 +530,7 @@ packages:
   /@vitest/spy/0.28.5:
     resolution: {integrity: sha512-7if6rsHQr9zbmvxN7h+gGh2L9eIIErgf8nSKYDlg07HHimCxp4H6I/X/DPXktVPPLQfiZ1Cw2cbDIx9fSqDjGw==}
     dependencies:
-      tinyspy: 1.1.0
+      tinyspy: 1.1.1
     dev: true
 
   /@vitest/utils/0.28.5:
@@ -927,7 +927,7 @@ packages:
       supports-color:
         optional: true
     dependencies:
-      ms: 2.1.2
+      ms: 2.1.3
     dev: true
 
   /debug/4.3.4:
@@ -1690,7 +1690,7 @@ packages:
     engines: {node: '>=12.0.0'}
     dependencies:
       ansi-escapes: 4.3.2
-      chalk: 4.1.2
+      chalk: 4.1.1
       cli-cursor: 3.1.0
       cli-width: 3.0.0
       external-editor: 3.1.0
@@ -1937,7 +1937,7 @@ packages:
       whatwg-encoding: 2.0.0
       whatwg-mimetype: 3.0.0
       whatwg-url: 11.0.0
-      ws: 8.12.0
+      ws: 8.12.1
       xml-name-validator: 4.0.0
     transitivePeerDependencies:
       - bufferutil
@@ -2004,7 +2004,7 @@ packages:
     resolution: {integrity: sha512-8XPvpAA8uyhfteu8pIvQxpJZ7SYYdpUivZpGy6sFsBuKRY/7rQGavedeB8aK+Zkyq6upMFVL/9AW6vOYzfRyLg==}
     engines: {node: '>=10'}
     dependencies:
-      chalk: 4.1.2
+      chalk: 4.1.1
       is-unicode-supported: 0.1.0
     dev: true
 
@@ -2072,6 +2072,10 @@ packages:
 
   /ms/2.1.2:
     resolution: {integrity: sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==}
+    dev: true
+
+  /ms/2.1.3:
+    resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
     dev: true
 
   /msw/1.0.1_typescript@4.9.5:
@@ -2231,7 +2235,7 @@ packages:
     engines: {node: '>=10'}
     dependencies:
       bl: 4.1.0
-      chalk: 4.1.2
+      chalk: 4.1.1
       cli-cursor: 3.1.0
       cli-spinners: 2.7.0
       is-interactive: 1.0.0
@@ -2459,8 +2463,8 @@ packages:
       glob: 7.2.3
     dev: true
 
-  /rollup/3.14.0:
-    resolution: {integrity: sha512-o23sdgCLcLSe3zIplT9nQ1+r97okuaiR+vmAPZPTDYB7/f3tgWIYNyiQveMsZwshBT0is4eGax/HH83Q7CG+/Q==}
+  /rollup/3.15.0:
+    resolution: {integrity: sha512-F9hrCAhnp5/zx/7HYmftvsNBkMfLfk/dXUh73hPSM2E3CRgap65orDNJbLetoiUFwSAk6iHPLvBrZ5iHYvzqsg==}
     engines: {node: '>=14.18.0', npm: '>=8.0.0'}
     hasBin: true
     optionalDependencies:
@@ -2703,8 +2707,8 @@ packages:
     engines: {node: '>=14.0.0'}
     dev: true
 
-  /tinyspy/1.1.0:
-    resolution: {integrity: sha512-xdHzOlnGb1hxNdgO/45hp9ngVKhyN9fD1LH/3059kmHyUT/qZ+ee2y8F/BuaIQpK2r6l/kLLXwezfMpedc5Ycw==}
+  /tinyspy/1.1.1:
+    resolution: {integrity: sha512-UVq5AXt/gQlti7oxoIg5oi/9r0WpF7DGEVwXgqWSMmyN16+e3tl5lIvTaOpJ3TAtu5xFzWccFRM4R5NaWHF+4g==}
     engines: {node: '>=14.0.0'}
     dev: true
 
@@ -2915,7 +2919,7 @@ packages:
       esbuild: 0.16.17
       postcss: 8.4.21
       resolve: 1.22.1
-      rollup: 3.14.0
+      rollup: 3.15.0
     optionalDependencies:
       fsevents: 2.3.2
     dev: true
@@ -2963,7 +2967,7 @@ packages:
       strip-literal: 1.0.1
       tinybench: 2.3.1
       tinypool: 0.3.1
-      tinyspy: 1.1.0
+      tinyspy: 1.1.1
       vite: 4.1.1_@types+node@18.13.0
       vite-node: 0.28.5_@types+node@18.13.0
       why-is-node-running: 2.2.2
@@ -3090,8 +3094,8 @@ packages:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
     dev: true
 
-  /ws/8.12.0:
-    resolution: {integrity: sha512-kU62emKIdKVeEIOIKVegvqpXMSTAMLJozpHZaJNDYqBjzlSYXQGviYwN1osDLJ9av68qHd4a2oSjd7yD4pacig==}
+  /ws/8.12.1:
+    resolution: {integrity: sha512-1qo+M9Ba+xNhPB+YTWUlK6M17brTut5EXbcBaMRN5pH5dFrXz7lzz1ChFSUq3bOUl8yEvSenhHmYUNJxFzdJew==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
