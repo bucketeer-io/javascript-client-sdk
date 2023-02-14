@@ -1,4 +1,4 @@
-import {describe, test,expect } from 'vitest'
+import { describe, test,expect } from 'vitest'
 import { defineBKTConfig } from '../src/BKTConfig'
 
 const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
@@ -11,7 +11,7 @@ const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
 
 describe('defineBKTConfig', () => {
 
-  test('all parameter is valid', () => {
+  test('all parameters are valid', () => {
     const result = defineBKTConfig({
       ...defaultConfig
     })
