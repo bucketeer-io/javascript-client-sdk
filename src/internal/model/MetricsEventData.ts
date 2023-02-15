@@ -91,12 +91,6 @@ export interface TimeoutErrorMetricsEvent {
   '@type': typeof MetricsEventType['TimeoutError']
 }
 
-export interface InternalErrorMetricsEvent {
-  apiId: ApiId
-  labels: Record<string, string>
-  '@type': typeof MetricsEventType['InternalSdkError']
-}
-
 export interface NetworkErrorMetricsEvent {
   apiId: ApiId
   labels: Record<string, string>
