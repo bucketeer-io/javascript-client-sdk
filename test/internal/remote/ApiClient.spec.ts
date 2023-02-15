@@ -143,7 +143,7 @@ suite('internal/remote/ApiClient', () => {
               ctx.json<RegisterEventsResponse>({
                 errors: {
                   [evaluationEvent1.id]: {
-                    retrieable: true,
+                    retriable: true,
                     message: 'error'
                   }
                 }
@@ -160,7 +160,7 @@ suite('internal/remote/ApiClient', () => {
       expect(response.value).toStrictEqual({
         errors: {
           [evaluationEvent1.id]: {
-            retrieable: true,
+            retriable: true,
             message: 'error'
           }
         }

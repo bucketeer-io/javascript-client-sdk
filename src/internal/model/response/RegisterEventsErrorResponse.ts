@@ -1,4 +1,4 @@
 export interface RegisterEventsErrorResponse {
-  retrieable: boolean
+  retriable: boolean
   message: string
 }

@@ -41,7 +41,7 @@ export const evaluationEvent2: Event = {
     variationId: 'variation2',
     reason: { type: 'DEFAULT' },
     tag: 'javascript',
-    sourceId: SourceID.ANDROID,
+    sourceId: SourceID.JAVASCRIPT,
     sdkVersion: '1.0.0',
     metadata: {
       appVersion: '1.2.3',
@@ -61,7 +61,7 @@ export const goalEvent1: Event = {
     user: user1,
     value: 0.0,
     tag: 'javascript',
-    sourceId: SourceID.ANDROID,
+    sourceId: SourceID.JAVASCRIPT,
     sdkVersion: '1.0.0',
     metadata: {
       app_version: '1.2.3',
@@ -81,7 +81,7 @@ export const goalEvent2: Event = {
     user: user1,
     value: 0.0,
     tag: 'javascript',
-    sourceId: SourceID.ANDROID,
+    sourceId: SourceID.JAVASCRIPT,
     sdkVersion: '1.0.0',
     metadata: {
       app_version: '1.2.3',
