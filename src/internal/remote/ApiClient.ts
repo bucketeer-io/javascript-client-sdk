@@ -6,9 +6,14 @@ import { User } from '../model/User'
 import { FetchLike, FetchRequestLike } from './fetch'
 import { postInternal } from './post'
 import { GetEvaluationsFailure, GetEvaluationsResult, GetEvaluationsSuccess } from './GetEvaluationsResult'
+import { Event } from '../model/Event'
+import { RegisterEventsResult } from './RegisterEventsResult'
+import { RegisterEventsRequest } from '../model/request/RegisterEventsRequest'
+import { RegisterEventsResponse } from '../model/response/RegisterEventsResponse'
 
 export interface ApiClient {
   getEvaluations(user: User, userEvaluationsId: string, timeoutMillis?: number): Promise<GetEvaluationsResult>
+  registerEvents(events: Event[]): Promise<RegisterEventsResult>
 }
 
 const DEFAULT_REQUEST_TIMEOUT_MILLIS = 30_000
@@ -75,6 +80,32 @@ export class ApiClientImpl implements ApiClient {
         featureTag: this.featureTag,
         error: e as BKTException,
       } satisfies GetEvaluationsFailure
+    }
+  }
+
+  async registerEvents(events: Event[]): Promise<RegisterEventsResult> {
+    const body: RegisterEventsRequest = { events }
+
+    try {
+      const res = await postInternal(
+        `${this.endpoint}/register_events`,
+        this.createHeaders(),
+        body,
+        this.fetch,
+        this.defaultRequestTimeoutMillis
+      )
+
+      // all non-ok status code is already converted to BKTException,
+      // so we can assume that the status code is 200 here.
+      return {
+        type: 'success',
+        value: await res.json() as RegisterEventsResponse
+      } satisfies RegisterEventsResult
+    } catch (e) {
+      return {
+        type: 'failure',
+        error: e as BKTException,
+      } satisfies RegisterEventsResult
     }
   }
 
