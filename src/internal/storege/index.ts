@@ -8,11 +8,10 @@ export interface BKTStorage<T> {
 }
 
 export class DefaultStorage<T> implements BKTStorage<T> {
-  private key: string
 
-  constructor(key: string) {
-    this.key = key
-  }
+  constructor(
+    private key: string
+  ) { }
 
   public set<T>(value: T | null) {
     localStorage.setItem(this.key, JSON.stringify(value))
