@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@types/jsdom": "21.1.0",
-    "@types/node": "18.13.0",
+    "@types/node": "18.14.0",
     "@typescript-eslint/eslint-plugin": "5.52.0",
     "@typescript-eslint/parser": "5.52.0",
     "cross-fetch": "3.1.5",
@@ -34,8 +34,8 @@
     "jsdom": "21.1.0",
     "msw": "1.0.1",
     "typescript": "4.9.5",
-    "vite": "4.1.1",
+    "vite": "4.1.2",
     "vitest": "0.28.5"
   },
-  "packageManager": "pnpm@7.27.0"
+  "packageManager": "pnpm@7.27.1"
 }
