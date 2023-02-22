@@ -3,10 +3,10 @@ import { UserEvaluations } from '../../src/internal/model/UserEvaluations'
 
 
 export const evaluation1: Evaluation ={
-  id: 'test-feature-1:9:user id 1',
+  id: 'test-feature-1:9:user_id_1',
   featureId: 'test-feature-1',
   featureVersion: 9,
-  userId: 'user id 1',
+  userId: 'user_id_1',
   variationId: 'test-feature-1-variation-A',
   variationValue: 'test variation value1',
   variation: {
@@ -19,10 +19,10 @@ export const evaluation1: Evaluation ={
 }
 
 export const evaluation2: Evaluation = {
-  id: 'test-feature-2:9:user id 1',
+  id: 'test-feature-2:9:user_id_1',
   featureId: 'test-feature-2',
   featureVersion: 9,
-  userId: 'user id 1',
+  userId: 'user_id_1',
   variationId: 'test-feature-2-variation-A',
   variationValue: 'test variation value2',
   variation: {
@@ -36,10 +36,10 @@ export const evaluation2: Evaluation = {
 }
 
 export const evaluation3: Evaluation = {
-  id:'test-feature-1:9:user id 2',
+  id:'test-feature-1:9:user_id_2',
   featureId: 'test-feature-3',
   featureVersion: 9,
-  userId: 'user id 2',
+  userId: 'user_id_2',
   variationId: 'test-feature-1-variation-A',
   variationValue: 'test variation value2',
   variation: {
