@@ -11,13 +11,14 @@ export interface EvaluationStorage {
   getByFeatureId(featureId: string): Evaluation | null
   deleteAllAndInsert(evaluationsId: string, evaluations: Evaluation[]): void
   getCurrentEvaluationsId(): string | null
+  clear(): void
 }
 
 export class EvaluationStorageImpl implements EvaluationStorage {
 
   constructor(
-    private userId: string,
-    private storage: BKTStorage<EvaluationEntity>
+    public userId: string,
+    public storage: BKTStorage<EvaluationEntity>
   ) { }
 
   getByFeatureId(featureId: string): Evaluation | null {
@@ -39,6 +40,10 @@ export class EvaluationStorageImpl implements EvaluationStorage {
 
   getCurrentEvaluationsId(): string | null {
     return this.getInternal(this.userId).currentEvaluationsId
+  }
+
+  clear(): void {
+    this.storage.clear()
   }
 
   private getInternal(userId: string): EvaluationEntity {
