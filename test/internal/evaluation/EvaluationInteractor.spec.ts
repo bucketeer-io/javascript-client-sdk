@@ -1,5 +1,5 @@
 import { rest } from 'msw'
-import { setupServer, SetupServerApi } from 'msw/node'
+import { SetupServer, setupServer } from 'msw/node'
 import { expect, suite, test, beforeEach, afterEach, vi } from 'vitest'
 import fetch from 'cross-fetch'
 import assert from 'assert'
@@ -15,7 +15,7 @@ import { evaluation1, evaluation2, evaluation3, user1Evaluations } from '../../m
 import { EvaluationStorageImpl } from '../../../src/internal/evaluation/EvaluationStorage'
 
 suite('internal/evaluations/EvaluationInteractor', () => {
-  let server: SetupServerApi
+  let server: SetupServer
   let component: DefaultComponent
   let interactor: EvaluationInteractor
   let evaluationStorage: EvaluationStorageImpl
