@@ -2,7 +2,7 @@ import { expect, suite, test, beforeEach, afterEach } from 'vitest'
 import fetch from 'cross-fetch'
 import { rest } from 'msw'
 import assert from 'assert'
-import { setupServer, SetupServerApi } from 'msw/node'
+import { setupServer, SetupServer } from 'msw/node'
 import { GetEvaluationsRequest } from '../../../src/internal/model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../../../src/internal/model/response/GetEvaluationsResponse'
 import { user1Evaluations } from '../../mocks/evaluations'
@@ -14,7 +14,7 @@ import { evaluationEvent1, metricsEvent1 } from '../../mocks/events'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
 
 suite('internal/remote/ApiClient', () => {
-  let server: SetupServerApi
+  let server: SetupServer
   let apiClient: ApiClient
 
   beforeEach(() => {
