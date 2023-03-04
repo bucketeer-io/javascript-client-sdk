@@ -2,7 +2,7 @@ import { expect, suite, test, beforeEach, afterEach } from 'vitest'
 import fetch from 'cross-fetch'
 import { rest } from 'msw'
 import assert from 'assert'
-import { setupServer, SetupServer } from 'msw/node'
+import { SetupServer } from 'msw/node'
 import { GetEvaluationsRequest } from '../../../src/internal/model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../../../src/internal/model/response/GetEvaluationsResponse'
 import { user1Evaluations } from '../../mocks/evaluations'
@@ -12,6 +12,7 @@ import { SourceID } from '../../../src/internal/model/SourceID'
 import { RegisterEventsRequest } from '../../../src/internal/model/request/RegisterEventsRequest'
 import { evaluationEvent1, metricsEvent1 } from '../../mocks/events'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
+import { setupServerAndListen } from '../../utils'
 
 suite('internal/remote/ApiClient', () => {
   let server: SetupServer
@@ -32,7 +33,7 @@ suite('internal/remote/ApiClient', () => {
 
   suite('getEvaluations', () => {
     test('success', async () => {
-      server = setupServer(
+      server = setupServerAndListen(
         rest.post<GetEvaluationsRequest, Record<string, never>, GetEvaluationsResponse>(
           'https://api.bucketeer.io/get_evaluations',
           async (req, res, ctx) => {
@@ -56,7 +57,6 @@ suite('internal/remote/ApiClient', () => {
             )
           })
       )
-      server.listen({ onUnhandledRequest: 'error' })
 
       const response = await apiClient.getEvaluations(user1, 'user_evaluation_id')
 
@@ -73,7 +73,7 @@ suite('internal/remote/ApiClient', () => {
     })
 
     test('network error', async () => {
-      server = setupServer(
+      server = setupServerAndListen(
         rest.post(
           'https://api.bucketeer.io/get_evaluations',
           (_req, res, _ctx) => {
@@ -81,7 +81,6 @@ suite('internal/remote/ApiClient', () => {
           }
         )
       )
-      server.listen({ onUnhandledRequest: 'error' })
 
       const response = await apiClient.getEvaluations(user1, 'user_evaluation_id')
 
@@ -100,7 +99,7 @@ suite('internal/remote/ApiClient', () => {
         fetch,
         200
       )
-      server = setupServer(
+      server = setupServerAndListen(
         rest.post(
           'https://api.bucketeer.io/get_evaluations',
           async (_req, res, ctx) => {
@@ -112,7 +111,6 @@ suite('internal/remote/ApiClient', () => {
           }
         )
       )
-      server.listen({ onUnhandledRequest: 'error' })
 
       const response = await apiClient.getEvaluations(user1, 'user_evaluation_id')
 
@@ -126,7 +124,7 @@ suite('internal/remote/ApiClient', () => {
 
   suite('registerEvents', () => {
     test('success', async () => {
-      server = setupServer(
+      server = setupServerAndListen(
         rest.post<RegisterEventsRequest, Record<string, never>, RegisterEventsResponse>(
           'https://api.bucketeer.io/register_events',
           async (req, res, ctx) => {
@@ -151,7 +149,6 @@ suite('internal/remote/ApiClient', () => {
             )
           })
       )
-      server.listen({ onUnhandledRequest: 'error' })
 
       const response = await apiClient.registerEvents([evaluationEvent1, metricsEvent1])
 
@@ -168,7 +165,7 @@ suite('internal/remote/ApiClient', () => {
     })
 
     test('network error', async () => {
-      server = setupServer(
+      server = setupServerAndListen(
         rest.post(
           'https://api.bucketeer.io/register_events',
           (_req, res, _ctx) => {
@@ -176,7 +173,6 @@ suite('internal/remote/ApiClient', () => {
           }
         )
       )
-      server.listen({ onUnhandledRequest: 'error' })
 
       const response = await apiClient.registerEvents([evaluationEvent1, metricsEvent1])
 
@@ -194,7 +190,7 @@ suite('internal/remote/ApiClient', () => {
         fetch,
         200
       )
-      server = setupServer(
+      server = setupServerAndListen(
         rest.post(
           'https://api.bucketeer.io/register_events',
           async (_req, res, ctx) => {
@@ -206,7 +202,6 @@ suite('internal/remote/ApiClient', () => {
           }
         )
       )
-      server.listen({ onUnhandledRequest: 'error' })
 
       const response = await apiClient.registerEvents([evaluationEvent1, metricsEvent1])
 
