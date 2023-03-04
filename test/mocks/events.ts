@@ -112,5 +112,6 @@ export const metricsEvent1: Event = {
       os_version: 'os_version_value',
       device_model: 'device_model_value',
     },
+    sourceId: SourceID.JAVASCRIPT,
   },
 }
