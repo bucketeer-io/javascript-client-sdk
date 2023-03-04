@@ -1,5 +1,6 @@
 import { BKTConfig } from '../../BKTConfig'
 import { EvaluationInteractor } from '../evaluation/EvaluationInteractor'
+import { EventInteractor } from '../event/EventInteractor'
 import { UserHolder } from '../UserHolder'
 import { DataModule } from './DataModule'
 import { InteractorModule } from './InteractorModule'
@@ -12,6 +13,7 @@ export interface Component {
 
 export class DefaultComponent implements Component {
   private _evaluationInteractor?: EvaluationInteractor
+  private _eventInteractor?: EventInteractor
 
   constructor(
     public dataModule: DataModule,
@@ -35,5 +37,19 @@ export class DefaultComponent implements Component {
       )
     }
     return this._evaluationInteractor
+  }
+
+  eventInteractor(): EventInteractor {
+    if (!this._eventInteractor) {
+      this._eventInteractor = this.interactorModule.eventInteractor(
+        this.dataModule.config().eventsMaxBatchQueueCount,
+        this.dataModule.apiClient(),
+        this.dataModule.eventStorage(),
+        this.dataModule.idGenerator(),
+        this.dataModule.clock(),
+        this.dataModule.config().appVersion,
+      )
+    }
+    return this._eventInteractor
   }
 }

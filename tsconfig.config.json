@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
-    "composite": true
-  }
+    "composite": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+  },
+  "include": ["vite.config.ts", "package.json"]
 }
