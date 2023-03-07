@@ -14,7 +14,7 @@ export const evaluation1: Evaluation ={
     value: 'test variation value1',
   },
   reason: {
-    type: 'DEFAULT',
+    type: 'CLIENT',
   },
 }
 
@@ -30,7 +30,7 @@ export const evaluation2: Evaluation = {
     value: 'test variation value2',
   },
   reason:{
-    type: 'DEFAULT',
+    type: 'CLIENT',
   },
 
 }
@@ -47,7 +47,7 @@ export const evaluation3: Evaluation = {
     value: 'test variation value2',
   },
   reason: {
-    type: 'DEFAULT',
+    type: 'CLIENT',
   },
 }
 

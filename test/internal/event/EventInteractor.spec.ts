@@ -98,7 +98,7 @@ suite('internal/event/EventInteractor', () => {
             osVersion: '',
           },
           reason: {
-            type: 'DEFAULT',
+            type: 'CLIENT',
           },
           sdkVersion: '2.0.0',
           tag: 'feature_tag_value',
@@ -140,7 +140,7 @@ suite('internal/event/EventInteractor', () => {
             osVersion: '',
           },
           reason: {
-            type: 'DEFAULT',
+            type: 'CLIENT',
           },
           sdkVersion: '2.0.0',
           tag: 'feature_tag_value',

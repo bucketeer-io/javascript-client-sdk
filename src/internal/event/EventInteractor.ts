@@ -60,7 +60,7 @@ export class EventInteractor {
           userId: user.id,
           user,
           reason: {
-            type: 'DEFAULT'
+            type: 'CLIENT'
           },
           tag: featureTag,
         }
