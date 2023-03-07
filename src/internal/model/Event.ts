@@ -11,37 +11,33 @@ export const EventType = {
 } as const
 export type EventType = typeof EventType[keyof typeof EventType]
 
-export interface GoalEvent {
+export interface BaseEvent {
   timestamp: number
-  goalId: string
-  userId: string
-  value: number
-  user: User
-  tag: string
   sourceId: SourceID
   sdkVersion: string
   metadata: Record<string, string>
 }
 
-export interface EvaluationEvent {
-  timestamp: number
+export interface GoalEvent extends BaseEvent {
+  goalId: string
+  value: number
+  userId: string
+  user: User
+  tag: string
+}
+
+export interface EvaluationEvent extends BaseEvent {
   featureId: string
   featureVersion: number
-  userId: string
   variationId: string
+  userId: string
   user: User
   reason: Reason
   tag: string
-  sourceId: SourceID
-  sdkVersion: string
-  metadata: Record<string, string>
 }
 
-export type MetricsEvent = {
-  timestamp: number
+export interface MetricsEvent extends BaseEvent {
   event: MetricsEventData
-  sdkVersion: string
-  metadata: Record<string, string>
 }
 
 export type Event =

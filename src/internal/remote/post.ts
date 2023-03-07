@@ -30,10 +30,11 @@ export const postInternal = async (
         throw new NetworkException(`Network Error: ${e.message}`)
       }
     })
-    .then((res) => {
+    .then(async (res) => {
       // convert non-200 status to BKTException
       if (!res.ok) {
-        throw toBKTException(res)
+        const error = await toBKTException(res)
+        throw error
       }
       return res
     })

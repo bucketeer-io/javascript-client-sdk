@@ -21,6 +21,9 @@ export const MetricsEventType = {
   NetworkError: 'type.googleapis.com/bucketeer.event.client.NetworkErrorMetricsEvent',
   UnknownError: 'type.googleapis.com/bucketeer.event.client.UnknownErrorMetricsEvent',
 } as const
+export type MetricsEventType = typeof MetricsEventType[keyof typeof MetricsEventType]
+
+export type ErrorMetricsEventType = Exclude<MetricsEventType, typeof MetricsEventType['LatencyMetrics'] | typeof MetricsEventType['SizeMetrics']>
 
 export interface LatencyMetricsEvent {
   apiId: ApiId
@@ -32,7 +35,7 @@ export interface LatencyMetricsEvent {
 export interface SizeMetricsEvent {
   apiId: ApiId
   labels: Record<string, string>
-  size_byte: number
+  sizeByte: number
   '@type': typeof MetricsEventType['SizeMetrics']
 }
 

@@ -1,5 +1,5 @@
 import { rest } from 'msw'
-import { SetupServer, setupServer } from 'msw/node'
+import { SetupServer } from 'msw/node'
 import { expect, suite, test, beforeEach, afterEach, vi } from 'vitest'
 import fetch from 'cross-fetch'
 import assert from 'assert'
@@ -13,8 +13,9 @@ import { GetEvaluationsRequest } from '../../../src/internal/model/request/GetEv
 import { GetEvaluationsResponse } from '../../../src/internal/model/response/GetEvaluationsResponse'
 import { evaluation1, evaluation2, evaluation3, user1Evaluations } from '../../mocks/evaluations'
 import { EvaluationStorageImpl } from '../../../src/internal/evaluation/EvaluationStorage'
+import { setupServerAndListen } from '../../utils'
 
-suite('internal/evaluations/EvaluationInteractor', () => {
+suite('internal/evaluation/EvaluationInteractor', () => {
   let server: SetupServer
   let component: DefaultComponent
   let interactor: EvaluationInteractor
@@ -46,7 +47,7 @@ suite('internal/evaluations/EvaluationInteractor', () => {
 
   suite('fetch', () => {
     test('initial load', async () => {
-      server = setupServer(
+      server = setupServerAndListen(
         rest.post<GetEvaluationsRequest, Record<string, never>, GetEvaluationsResponse>(
           'https://api.bucketeer.io/get_evaluations',
           async (_req, res, ctx) => {
@@ -59,7 +60,6 @@ suite('internal/evaluations/EvaluationInteractor', () => {
             )
           })
       )
-      server.listen({ onUnhandledRequest: 'error' })
 
       expect(component.dataModule.evaluationStorage().getCurrentEvaluationsId()).toBeNull()
 
@@ -90,7 +90,7 @@ suite('internal/evaluations/EvaluationInteractor', () => {
         ...evaluation1,
         variationValue: 'new_variation_value'
       }
-      server = setupServer(
+      server = setupServerAndListen(
         // initial request
         rest.post<GetEvaluationsRequest, Record<string, never>, GetEvaluationsResponse>(
           'https://api.bucketeer.io/get_evaluations',
@@ -119,7 +119,6 @@ suite('internal/evaluations/EvaluationInteractor', () => {
             )
           })
       )
-      server.listen({ onUnhandledRequest: 'error' })
 
       const mockListener = vi.fn<[], void>()
       interactor.addUpdateListener(mockListener)
@@ -148,7 +147,7 @@ suite('internal/evaluations/EvaluationInteractor', () => {
     })
 
     test('update with no change', async () => {
-      server = setupServer(
+      server = setupServerAndListen(
         rest.post<GetEvaluationsRequest, Record<string, never>, GetEvaluationsResponse>(
           'https://api.bucketeer.io/get_evaluations',
           async (_req, res, ctx) => {
@@ -161,7 +160,6 @@ suite('internal/evaluations/EvaluationInteractor', () => {
             )
           })
       )
-      server.listen({ onUnhandledRequest: 'error' })
 
       const mockListener = vi.fn<[], void>()
       interactor.addUpdateListener(mockListener)
