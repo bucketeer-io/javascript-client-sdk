@@ -10,15 +10,23 @@ export class EvaluationInteractor {
     private apiClient: ApiClient,
     private evaluationStorage: EvaluationStorage,
     private idGenerator: IdGenerator,
-  ) { }
+  ) {}
 
   // visible for testing. should only be accessed from test code
   updateListeners: Record<string, () => void> = {}
 
-  async fetch(user: User, timeoutMillis?: number): Promise<GetEvaluationsResult> {
-    const currentEvaluationsId = this.evaluationStorage.getCurrentEvaluationsId() ?? ''
+  async fetch(
+    user: User,
+    timeoutMillis?: number,
+  ): Promise<GetEvaluationsResult> {
+    const currentEvaluationsId =
+      this.evaluationStorage.getCurrentEvaluationsId() ?? ''
 
-    const result = await this.apiClient.getEvaluations(user, currentEvaluationsId, timeoutMillis)
+    const result = await this.apiClient.getEvaluations(
+      user,
+      currentEvaluationsId,
+      timeoutMillis,
+    )
 
     if (result.type === 'success') {
       const response = result.value
@@ -31,10 +39,10 @@ export class EvaluationInteractor {
 
       this.evaluationStorage.deleteAllAndInsert(
         response.userEvaluationsId,
-        response.evaluations.evaluations ?? []
+        response.evaluations.evaluations ?? [],
       )
 
-      Object.values(this.updateListeners).forEach(listener => listener())
+      Object.values(this.updateListeners).forEach((listener) => listener())
     }
 
     return result

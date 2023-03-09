@@ -1,4 +1,7 @@
-import { ErrorMetricsEventType, MetricsEventType } from './internal/model/MetricsEventData'
+import {
+  ErrorMetricsEventType,
+  MetricsEventType,
+} from './internal/model/MetricsEventData'
 
 abstract class BKTBaseException extends Error {
   type?: ErrorMetricsEventType = undefined
@@ -39,7 +42,6 @@ export class ServiceUnavailableException extends BKTBaseException {
   type?: ErrorMetricsEventType = MetricsEventType.ServiceUnavailableError
 }
 
-
 // network errors
 export class TimeoutException extends BKTBaseException {
   type?: ErrorMetricsEventType = MetricsEventType.TimeoutError
@@ -55,4 +57,16 @@ export class IllegalStateException extends BKTBaseException {}
 // unknown errors
 export class UnknownException extends BKTBaseException {}
 
-export type BKTException = BadRequestException | UnauthorizedException | ForbiddenException | NotFoundException | ClientClosedRequestException | InternalServerErrorException | ServiceUnavailableException | TimeoutException | NetworkException | IllegalArgumentException | IllegalStateException | UnknownException
+export type BKTException =
+  | BadRequestException
+  | UnauthorizedException
+  | ForbiddenException
+  | NotFoundException
+  | ClientClosedRequestException
+  | InternalServerErrorException
+  | ServiceUnavailableException
+  | TimeoutException
+  | NetworkException
+  | IllegalArgumentException
+  | IllegalStateException
+  | UnknownException

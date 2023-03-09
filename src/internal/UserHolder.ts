@@ -5,9 +5,7 @@ export class UserHolder {
   private user: User
   userId: string
 
-  constructor(
-    user: User,
-  ) {
+  constructor(user: User) {
     this.user = user
     this.userId = this.user.id
   }
@@ -16,7 +14,9 @@ export class UserHolder {
     return this.user
   }
 
-  updateAttributes(updater: (previous: Record<string, string>) => Record<string, string>): void {
+  updateAttributes(
+    updater: (previous: Record<string, string>) => Record<string, string>,
+  ): void {
     this.user = {
       ...this.user,
       data: updater(this.user.data ?? {}),

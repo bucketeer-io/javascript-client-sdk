@@ -1,4 +1,4 @@
-import { describe, test,expect } from 'vitest'
+import { describe, test, expect } from 'vitest'
 import { defineBKTConfig } from '../src/BKTConfig'
 
 const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
@@ -10,10 +10,9 @@ const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
 }
 
 describe('defineBKTConfig', () => {
-
   test('all parameters are valid', () => {
     const result = defineBKTConfig({
-      ...defaultConfig
+      ...defaultConfig,
     })
 
     expect(result).toStrictEqual({
@@ -38,7 +37,7 @@ describe('defineBKTConfig', () => {
     expect(() => {
       defineBKTConfig({
         ...defaultConfig,
-        apiEndpoint: ''
+        apiEndpoint: '',
       })
     }).toThrowError('apiEndpoint is required')
   })
@@ -47,7 +46,7 @@ describe('defineBKTConfig', () => {
     expect(() => {
       defineBKTConfig({
         ...defaultConfig,
-        apiEndpoint: 'not a valid url'
+        apiEndpoint: 'not a valid url',
       })
     }).toThrowError('apiEndpoint is invalid')
   })
@@ -65,7 +64,7 @@ describe('defineBKTConfig', () => {
     expect(() => {
       defineBKTConfig({
         ...defaultConfig,
-        appVersion: ''
+        appVersion: '',
       })
     }).toThrowError('appVersion is required')
   })
@@ -73,7 +72,7 @@ describe('defineBKTConfig', () => {
   test('sooner eventFlushInterval should be replaced with default value', () => {
     const result = defineBKTConfig({
       ...defaultConfig,
-      eventsFlushInterval: 10
+      eventsFlushInterval: 10,
     })
 
     expect(result.eventsFlushInterval).toBe(60_000)
@@ -82,7 +81,7 @@ describe('defineBKTConfig', () => {
   test('sooner pollingInterval should be replaced with default value', () => {
     const result = defineBKTConfig({
       ...defaultConfig,
-      pollingInterval: 10
+      pollingInterval: 10,
     })
 
     expect(result.pollingInterval).toBe(600_000)

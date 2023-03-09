@@ -9,4 +9,4 @@ export const SourceID = {
   JAVASCRIPT: 7,
 } as const
 
-export type SourceID = typeof SourceID[keyof typeof SourceID]
+export type SourceID = (typeof SourceID)[keyof typeof SourceID]

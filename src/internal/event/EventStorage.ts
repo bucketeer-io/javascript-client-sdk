@@ -11,14 +11,11 @@ export interface EventStorage {
   add(event: Event): void
   addAll(events: Event[]): void
   deleteByIds(ids: string[]): void
-  clear():void
+  clear(): void
 }
 
 export class EventStorageImpl implements EventStorage {
-  constructor(
-    public userId: string,
-    public storage: BKTStorage<EventEntity>
-  ) { }
+  constructor(public userId: string, public storage: BKTStorage<EventEntity>) {}
 
   add(event: Event): void {
     const entity = this.getInternal(this.userId)
@@ -38,7 +35,7 @@ export class EventStorageImpl implements EventStorage {
 
   deleteByIds(ids: string[]): void {
     const entity = this.getInternal(this.userId)
-    entity.events = entity.events.filter(e => !ids.includes(e.id))
+    entity.events = entity.events.filter((e) => !ids.includes(e.id))
     this.storage.set(entity)
   }
 
@@ -52,7 +49,7 @@ export class EventStorageImpl implements EventStorage {
       // entity doesn't exist or userId is different
       return {
         userId,
-        events: []
+        events: [],
       }
     }
     return entity

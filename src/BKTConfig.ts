@@ -44,8 +44,7 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
 
   if (!result.apiKey) throw new Error('apiKey is required')
   if (!result.apiEndpoint) throw new Error('apiEndpoint is required')
-  if (!isValidUrl(result.apiEndpoint))
-    throw new Error('apiEndpoint is invalid')
+  if (!isValidUrl(result.apiEndpoint)) throw new Error('apiEndpoint is invalid')
   if (!result.featureTag) throw new Error('featureTag is required')
   if (!result.appVersion) throw new Error('appVersion is required')
 

@@ -6,9 +6,23 @@ import { EventType, Event } from '../model/Event'
 import { ApiId, MetricsEventType } from '../model/MetricsEventData'
 import { User } from '../model/User'
 import { ApiClient } from '../remote/ApiClient'
-import { newBaseEvent, newDefaultEvaluationEvent, newErrorMetricsData, newEvaluationEvent, newGoalEvent, newLatencyMetricsData, newMetadata, newMetricsEvent, newSizeMetricsData } from './EventCreators'
+import {
+  newBaseEvent,
+  newDefaultEvaluationEvent,
+  newErrorMetricsData,
+  newEvaluationEvent,
+  newGoalEvent,
+  newLatencyMetricsData,
+  newMetadata,
+  newMetricsEvent,
+  newSizeMetricsData,
+} from './EventCreators'
 import { EventStorage } from './EventStorage'
-import { SendEventsFailure, SendEventsResult, SendEventsSuccess } from './SendEventResult'
+import {
+  SendEventsFailure,
+  SendEventsResult,
+  SendEventsSuccess,
+} from './SendEventResult'
 
 export class EventInteractor {
   constructor(
@@ -17,8 +31,8 @@ export class EventInteractor {
     private eventStorage: EventStorage,
     private clock: Clock,
     private idGenerator: IdGenerator,
-    private appVersion: string
-  ) { }
+    private appVersion: string,
+  ) {}
 
   eventUpdateListener: ((events: Event[]) => void) | null = null
 
@@ -26,12 +40,19 @@ export class EventInteractor {
     this.eventUpdateListener = listener
   }
 
-  trackEvaluationEvent(featureTag: string, user: User, evaluation: Evaluation): void {
+  trackEvaluationEvent(
+    featureTag: string,
+    user: User,
+    evaluation: Evaluation,
+  ): void {
     this.eventStorage.add({
       id: this.idGenerator.newId(),
       type: EventType.EVALUATION,
       event: newEvaluationEvent(
-        newBaseEvent(this.clock.currentTimeSeconds(), newMetadata(this.appVersion, '', '')),
+        newBaseEvent(
+          this.clock.currentTimeSeconds(),
+          newMetadata(this.appVersion, '', ''),
+        ),
         {
           featureId: evaluation.featureId,
           featureVersion: evaluation.featureVersion,
@@ -40,19 +61,26 @@ export class EventInteractor {
           user,
           reason: evaluation.reason,
           tag: featureTag,
-        }
+        },
       ),
     })
 
     this.notifyEventsUpdated()
   }
 
-  trackDefaultEvaluationEvent(featureTag: string, user: User, featureId: string): void {
+  trackDefaultEvaluationEvent(
+    featureTag: string,
+    user: User,
+    featureId: string,
+  ): void {
     this.eventStorage.add({
       id: this.idGenerator.newId(),
       type: EventType.EVALUATION,
       event: newDefaultEvaluationEvent(
-        newBaseEvent(this.clock.currentTimeSeconds(), newMetadata(this.appVersion, '', '')),
+        newBaseEvent(
+          this.clock.currentTimeSeconds(),
+          newMetadata(this.appVersion, '', ''),
+        ),
         {
           featureId,
           featureVersion: 0,
@@ -60,57 +88,76 @@ export class EventInteractor {
           userId: user.id,
           user,
           reason: {
-            type: 'CLIENT'
+            type: 'CLIENT',
           },
           tag: featureTag,
-        }
+        },
       ),
     })
 
     this.notifyEventsUpdated()
   }
 
-  trackGoalEvent(featureTag: string, user: User, goalId: string, value: number): void {
+  trackGoalEvent(
+    featureTag: string,
+    user: User,
+    goalId: string,
+    value: number,
+  ): void {
     this.eventStorage.add({
       id: this.idGenerator.newId(),
       type: EventType.GOAL,
       event: newGoalEvent(
-        newBaseEvent(this.clock.currentTimeSeconds(), newMetadata(this.appVersion, '', '')),
+        newBaseEvent(
+          this.clock.currentTimeSeconds(),
+          newMetadata(this.appVersion, '', ''),
+        ),
         {
           goalId,
           value,
           userId: user.id,
           user,
           tag: featureTag,
-        }
-      )
+        },
+      ),
     })
 
     this.notifyEventsUpdated()
   }
 
-  trackSuccess(apiId: ApiId, featureTag: string, seconds: number, sizeByte: number): void {
+  trackSuccess(
+    apiId: ApiId,
+    featureTag: string,
+    seconds: number,
+    sizeByte: number,
+  ): void {
     this.eventStorage.addAll([
       {
         id: this.idGenerator.newId(),
         type: EventType.METRICS,
         event: newMetricsEvent(
-          newBaseEvent(this.clock.currentTimeSeconds(), newMetadata(this.appVersion, '', '')),
+          newBaseEvent(
+            this.clock.currentTimeSeconds(),
+            newMetadata(this.appVersion, '', ''),
+          ),
           {
-            event: newLatencyMetricsData(apiId, seconds, featureTag)
-          }
-        )
+            event: newLatencyMetricsData(apiId, seconds, featureTag),
+          },
+        ),
       },
       {
         id: this.idGenerator.newId(),
         type: EventType.METRICS,
         event: newMetricsEvent(
-          newBaseEvent(this.clock.currentTimeSeconds(), newMetadata(this.appVersion, '', '')),
+          newBaseEvent(
+            this.clock.currentTimeSeconds(),
+            newMetadata(this.appVersion, '', ''),
+          ),
           {
-            event: newSizeMetricsData(apiId, sizeByte, featureTag)
-          }
-        )
-      }
+            event: newSizeMetricsData(apiId, sizeByte, featureTag),
+          },
+        ),
+      },
     ])
 
     this.notifyEventsUpdated()
@@ -121,11 +168,18 @@ export class EventInteractor {
       id: this.idGenerator.newId(),
       type: EventType.METRICS,
       event: newMetricsEvent(
-        newBaseEvent(this.clock.currentTimeSeconds(), newMetadata(this.appVersion, '', '')),
+        newBaseEvent(
+          this.clock.currentTimeSeconds(),
+          newMetadata(this.appVersion, '', ''),
+        ),
         {
-          event: newErrorMetricsData(apiId, error.type ?? MetricsEventType.UnknownError, featureTag)
-        }
-      )
+          event: newErrorMetricsData(
+            apiId,
+            error.type ?? MetricsEventType.UnknownError,
+            featureTag,
+          ),
+        },
+      ),
     })
 
     this.notifyEventsUpdated()
@@ -137,14 +191,14 @@ export class EventInteractor {
     if (current.length === 0) {
       return {
         type: 'success',
-        sent: false
+        sent: false,
       } satisfies SendEventsSuccess
     }
 
     if (!force && current.length < this.eventsMaxBatchQueueCount) {
       return {
         type: 'success',
-        sent: false
+        sent: false,
       } satisfies SendEventsSuccess
     }
 
@@ -154,7 +208,8 @@ export class EventInteractor {
 
     if (result.type === 'success') {
       const errors = result.value.errors ?? {}
-      const deleteIds = sendingEvents.map((v) => v.id)
+      const deleteIds = sendingEvents
+        .map((v) => v.id)
         .filter((id) => {
           const error = errors[id]
           if (!error) return true
@@ -164,12 +219,12 @@ export class EventInteractor {
       this.eventStorage.deleteByIds(deleteIds)
       return {
         type: 'success',
-        sent: true
+        sent: true,
       } satisfies SendEventsSuccess
     } else {
       return {
         type: 'failure',
-        error: result.error
+        error: result.error,
       } satisfies SendEventsFailure
     }
   }

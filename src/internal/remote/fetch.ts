@@ -20,5 +20,5 @@ export type FetchResponseLike = {
 
 export type FetchLike = (
   url: string,
-  request: FetchRequestLike
+  request: FetchRequestLike,
 ) => Promise<FetchResponseLike>

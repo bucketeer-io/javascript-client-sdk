@@ -12,11 +12,7 @@ export class InteractorModule {
     evaluationStorage: EvaluationStorage,
     idGenerator: IdGenerator,
   ): EvaluationInteractor {
-    return new EvaluationInteractor(
-      apiClient,
-      evaluationStorage,
-      idGenerator,
-    )
+    return new EvaluationInteractor(apiClient, evaluationStorage, idGenerator)
   }
 
   eventInteractor(

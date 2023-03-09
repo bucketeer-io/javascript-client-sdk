@@ -11,7 +11,12 @@ import { user1 } from '../../mocks/users'
 import { EvaluationInteractor } from '../../../src/internal/evaluation/EvaluationInteractor'
 import { GetEvaluationsRequest } from '../../../src/internal/model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../../../src/internal/model/response/GetEvaluationsResponse'
-import { evaluation1, evaluation2, evaluation3, user1Evaluations } from '../../mocks/evaluations'
+import {
+  evaluation1,
+  evaluation2,
+  evaluation3,
+  user1Evaluations,
+} from '../../mocks/evaluations'
 import { EvaluationStorageImpl } from '../../../src/internal/evaluation/EvaluationStorage'
 import { setupServerAndListen } from '../../utils'
 
@@ -31,13 +36,14 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           featureTag: 'feature_tag_value',
           appVersion: '1.2.3',
           fetch,
-        })
+        }),
       ),
-      new InteractorModule()
+      new InteractorModule(),
     )
 
     interactor = component.evaluationInteractor()
-    evaluationStorage = component.dataModule.evaluationStorage() as EvaluationStorageImpl
+    evaluationStorage =
+      component.dataModule.evaluationStorage() as EvaluationStorageImpl
   })
 
   afterEach(() => {
@@ -48,7 +54,11 @@ suite('internal/evaluation/EvaluationInteractor', () => {
   suite('fetch', () => {
     test('initial load', async () => {
       server = setupServerAndListen(
-        rest.post<GetEvaluationsRequest, Record<string, never>, GetEvaluationsResponse>(
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(
           'https://api.bucketeer.io/get_evaluations',
           async (_req, res, ctx) => {
             return res(
@@ -56,12 +66,15 @@ suite('internal/evaluation/EvaluationInteractor', () => {
               ctx.json({
                 evaluations: user1Evaluations,
                 userEvaluationsId: 'user_evaluation_id_value',
-              })
+              }),
             )
-          })
+          },
+        ),
       )
 
-      expect(component.dataModule.evaluationStorage().getCurrentEvaluationsId()).toBeNull()
+      expect(
+        component.dataModule.evaluationStorage().getCurrentEvaluationsId(),
+      ).toBeNull()
 
       const mockListener = vi.fn<[], void>()
       interactor.addUpdateListener(mockListener)
@@ -77,22 +90,25 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         currentEvaluationsId: 'user_evaluation_id_value',
         evaluations: {
           [evaluation1.featureId]: evaluation1,
-          [evaluation2.featureId]: evaluation2
-        }
+          [evaluation2.featureId]: evaluation2,
+        },
       })
 
       expect(mockListener).toBeCalledTimes(1)
     })
 
     test('update', async () => {
-
       const newEvaluation = {
         ...evaluation1,
-        variationValue: 'new_variation_value'
+        variationValue: 'new_variation_value',
       }
       server = setupServerAndListen(
         // initial request
-        rest.post<GetEvaluationsRequest, Record<string, never>, GetEvaluationsResponse>(
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(
           'https://api.bucketeer.io/get_evaluations',
           async (_req, res, ctx) => {
             return res.once(
@@ -100,11 +116,16 @@ suite('internal/evaluation/EvaluationInteractor', () => {
               ctx.json({
                 evaluations: user1Evaluations,
                 userEvaluationsId: 'user_evaluation_id_value',
-              })
+              }),
             )
-          }),
+          },
+        ),
         // second request
-        rest.post<GetEvaluationsRequest, Record<string, never>, GetEvaluationsResponse>(
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(
           'https://api.bucketeer.io/get_evaluations',
           async (_req, res, ctx) => {
             return res.once(
@@ -112,12 +133,13 @@ suite('internal/evaluation/EvaluationInteractor', () => {
               ctx.json({
                 evaluations: {
                   ...user1Evaluations,
-                  evaluations: [newEvaluation]
+                  evaluations: [newEvaluation],
                 },
                 userEvaluationsId: 'user_evaluation_id_value_updated',
-              })
+              }),
             )
-          })
+          },
+        ),
       )
 
       const mockListener = vi.fn<[], void>()
@@ -127,7 +149,9 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       const result1 = await interactor.fetch(user1)
 
       assert(result1.type === 'success')
-      expect(evaluationStorage.getCurrentEvaluationsId()).toBe('user_evaluation_id_value')
+      expect(evaluationStorage.getCurrentEvaluationsId()).toBe(
+        'user_evaluation_id_value',
+      )
 
       // second request
       const result2 = await interactor.fetch(user1)
@@ -140,7 +164,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         currentEvaluationsId: 'user_evaluation_id_value_updated',
         evaluations: {
           [newEvaluation.featureId]: newEvaluation,
-        }
+        },
       })
 
       expect(mockListener).toBeCalledTimes(2)
@@ -148,7 +172,11 @@ suite('internal/evaluation/EvaluationInteractor', () => {
 
     test('update with no change', async () => {
       server = setupServerAndListen(
-        rest.post<GetEvaluationsRequest, Record<string, never>, GetEvaluationsResponse>(
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(
           'https://api.bucketeer.io/get_evaluations',
           async (_req, res, ctx) => {
             return res(
@@ -156,9 +184,10 @@ suite('internal/evaluation/EvaluationInteractor', () => {
               ctx.json({
                 evaluations: user1Evaluations,
                 userEvaluationsId: 'user_evaluation_id_value',
-              })
+              }),
             )
-          })
+          },
+        ),
       )
 
       const mockListener = vi.fn<[], void>()
@@ -176,8 +205,8 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         currentEvaluationsId: 'user_evaluation_id_value',
         evaluations: {
           [evaluation1.featureId]: evaluation1,
-          [evaluation2.featureId]: evaluation2
-        }
+          [evaluation2.featureId]: evaluation2,
+        },
       })
 
       expect(mockListener).toBeCalledTimes(1)
@@ -191,8 +220,8 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         currentEvaluationsId: 'user_evaluation_id_value',
         evaluations: {
           [evaluation1.featureId]: evaluation1,
-          [evaluation2.featureId]: evaluation2
-        }
+          [evaluation2.featureId]: evaluation2,
+        },
       })
 
       const result = interactor.getLatest(evaluation1.featureId)
@@ -206,8 +235,8 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         currentEvaluationsId: 'user_evaluation_id_value',
         evaluations: {
           [evaluation1.featureId]: evaluation1,
-          [evaluation2.featureId]: evaluation2
-        }
+          [evaluation2.featureId]: evaluation2,
+        },
       })
 
       const result = interactor.getLatest(evaluation3.featureId)
@@ -217,15 +246,23 @@ suite('internal/evaluation/EvaluationInteractor', () => {
   })
 
   test('addUpdateListener', () => {
-    const key1 = interactor.addUpdateListener(() => { /* empty */ })
-    const key2 = interactor.addUpdateListener(() => { /* empty */ })
+    const key1 = interactor.addUpdateListener(() => {
+      /* empty */
+    })
+    const key2 = interactor.addUpdateListener(() => {
+      /* empty */
+    })
 
     expect(Object.keys(interactor.updateListeners)).toEqual([key1, key2])
   })
 
   test('removeUpdateListener', () => {
-    const key1 = interactor.addUpdateListener(() => { /* empty */ })
-    const key2 = interactor.addUpdateListener(() => { /* empty */ })
+    const key1 = interactor.addUpdateListener(() => {
+      /* empty */
+    })
+    const key2 = interactor.addUpdateListener(() => {
+      /* empty */
+    })
 
     expect(Object.keys(interactor.updateListeners)).toEqual([key1, key2])
 
@@ -235,8 +272,12 @@ suite('internal/evaluation/EvaluationInteractor', () => {
   })
 
   test('clearUpdateListeners', () => {
-    interactor.addUpdateListener(() => { /* empty */ })
-    interactor.addUpdateListener(() => { /* empty */ })
+    interactor.addUpdateListener(() => {
+      /* empty */
+    })
+    interactor.addUpdateListener(() => {
+      /* empty */
+    })
 
     expect(Object.keys(interactor.updateListeners)).toHaveLength(2)
 
