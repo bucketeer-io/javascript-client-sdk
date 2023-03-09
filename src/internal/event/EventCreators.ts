@@ -1,11 +1,23 @@
-import { EvaluationEvent, GoalEvent, MetricsEvent, BaseEvent } from '../model/Event'
-import { ApiId, ErrorMetricsEventType, LatencyMetricsEvent, MetricsEventData, MetricsEventType, SizeMetricsEvent } from '../model/MetricsEventData'
+import {
+  EvaluationEvent,
+  GoalEvent,
+  MetricsEvent,
+  BaseEvent,
+} from '../model/Event'
+import {
+  ApiId,
+  ErrorMetricsEventType,
+  LatencyMetricsEvent,
+  MetricsEventData,
+  MetricsEventType,
+  SizeMetricsEvent,
+} from '../model/MetricsEventData'
 import { SourceID } from '../model/SourceID'
 
 export const newMetadata = (
   appVersion: string,
   osVersion: string,
-  deviceModel: string
+  deviceModel: string,
 ): Record<string, string> => {
   return {
     appVersion,
@@ -16,47 +28,51 @@ export const newMetadata = (
 
 export const newBaseEvent = (
   timestamp: number,
-  metadata: Record<string, string>
+  metadata: Record<string, string>,
 ): BaseEvent => {
   return {
     timestamp,
     sourceId: SourceID.JAVASCRIPT,
     sdkVersion: __BKT_SDK_VERSION__,
-    metadata
+    metadata,
   }
 }
 
 export const newEvaluationEvent = (
   base: BaseEvent,
-  fields: Omit<EvaluationEvent, keyof BaseEvent>
+  fields: Omit<EvaluationEvent, keyof BaseEvent>,
 ): EvaluationEvent => {
   return {
     ...base,
-    ...fields
+    ...fields,
   }
 }
 
 export const newDefaultEvaluationEvent = (
   base: BaseEvent,
-  fields: Omit<EvaluationEvent, keyof BaseEvent>
+  fields: Omit<EvaluationEvent, keyof BaseEvent>,
 ): EvaluationEvent => {
   return {
     ...base,
-    ...fields
+    ...fields,
   }
 }
 
 export const newGoalEvent = (
   base: BaseEvent,
-  fields: Omit<GoalEvent, keyof BaseEvent>
+  fields: Omit<GoalEvent, keyof BaseEvent>,
 ): GoalEvent => {
   return {
     ...base,
-    ...fields
+    ...fields,
   }
 }
 
-export const newLatencyMetricsData = (apiId: ApiId, duration: number, featureTag: string): LatencyMetricsEvent => {
+export const newLatencyMetricsData = (
+  apiId: ApiId,
+  duration: number,
+  featureTag: string,
+): LatencyMetricsEvent => {
   return {
     apiId,
     labels: { tag: featureTag },
@@ -65,7 +81,11 @@ export const newLatencyMetricsData = (apiId: ApiId, duration: number, featureTag
   }
 }
 
-export const newSizeMetricsData = (apiId: ApiId, sizeByte: number, featureTag: string): SizeMetricsEvent => {
+export const newSizeMetricsData = (
+  apiId: ApiId,
+  sizeByte: number,
+  featureTag: string,
+): SizeMetricsEvent => {
   return {
     apiId,
     labels: { tag: featureTag },
@@ -74,7 +94,11 @@ export const newSizeMetricsData = (apiId: ApiId, sizeByte: number, featureTag: s
   }
 }
 
-export const newErrorMetricsData = (apiId: ApiId, type: ErrorMetricsEventType, featureTag: string): MetricsEventData => {
+export const newErrorMetricsData = (
+  apiId: ApiId,
+  type: ErrorMetricsEventType,
+  featureTag: string,
+): MetricsEventData => {
   return {
     apiId,
     labels: { tag: featureTag },
@@ -83,11 +107,11 @@ export const newErrorMetricsData = (apiId: ApiId, type: ErrorMetricsEventType, f
 }
 
 export const newMetricsEvent = (
-  base:BaseEvent,
-  fields: Omit<MetricsEvent, keyof BaseEvent>
+  base: BaseEvent,
+  fields: Omit<MetricsEvent, keyof BaseEvent>,
 ): MetricsEvent => {
   return {
     ...base,
-    ...fields
+    ...fields,
   }
 }

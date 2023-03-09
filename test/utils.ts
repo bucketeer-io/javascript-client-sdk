@@ -3,7 +3,9 @@ import { SetupServer, setupServer } from 'msw/node'
 import { Clock, DefaultClock } from '../src/internal/Clock'
 import { DefaultIdGenerator, IdGenerator } from '../src/internal/IdGenerator'
 
-export function setupServerAndListen(...handlers: Array<RequestHandler>): SetupServer {
+export function setupServerAndListen(
+  ...handlers: Array<RequestHandler>
+): SetupServer {
   const server = setupServer(...handlers)
   server.listen({ onUnhandledRequest: 'error' })
   return server

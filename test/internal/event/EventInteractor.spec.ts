@@ -4,14 +4,20 @@ import { SetupServer } from 'msw/node'
 import fetch from 'cross-fetch'
 import { expect, suite, test, beforeEach, afterEach, vi } from 'vitest'
 import { defineBKTConfig } from '../../../src/BKTConfig'
-import { BadRequestException, UnknownException } from '../../../src/BKTExceptions'
+import {
+  BadRequestException,
+  UnknownException,
+} from '../../../src/BKTExceptions'
 import { DefaultComponent } from '../../../src/internal/di/Component'
 import { DataModule } from '../../../src/internal/di/DataModule'
 import { InteractorModule } from '../../../src/internal/di/InteractorModule'
 import { EventInteractor } from '../../../src/internal/event/EventInteractor'
 import { EventStorageImpl } from '../../../src/internal/event/EventStorage'
 import { Event, EventType } from '../../../src/internal/model/Event'
-import { ApiId, MetricsEventType } from '../../../src/internal/model/MetricsEventData'
+import {
+  ApiId,
+  MetricsEventType,
+} from '../../../src/internal/model/MetricsEventData'
 import { RegisterEventsRequest } from '../../../src/internal/model/request/RegisterEventsRequest'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
 import { SourceID } from '../../../src/internal/model/SourceID'
@@ -59,7 +65,7 @@ suite('internal/event/EventInteractor', () => {
           fetch,
         }),
       ),
-      new InteractorModule()
+      new InteractorModule(),
     )
 
     interactor = component.eventInteractor()
@@ -119,7 +125,7 @@ suite('internal/event/EventInteractor', () => {
     interactor.trackDefaultEvaluationEvent(
       'feature_tag_value',
       user1,
-      'feature_id_value'
+      'feature_id_value',
     )
 
     const expected: Event[] = [
@@ -212,8 +218,8 @@ suite('internal/event/EventInteractor', () => {
             labels: { tag: 'feature_tag_value' },
             duration: 1,
             '@type': MetricsEventType.LatencyMetrics,
-          }
-        }
+          },
+        },
       },
       {
         id: idGenerator.calls[1],
@@ -232,9 +238,9 @@ suite('internal/event/EventInteractor', () => {
             labels: { tag: 'feature_tag_value' },
             sizeByte: 723,
             '@type': MetricsEventType.SizeMetrics,
-          }
-        }
-      }
+          },
+        },
+      },
     ]
 
     expect(eventStorage.getAll()).toEqual(expected)
@@ -244,7 +250,10 @@ suite('internal/event/EventInteractor', () => {
   })
 
   test.each([
-    { error: new BadRequestException(), type: MetricsEventType.BadRequestError },
+    {
+      error: new BadRequestException(),
+      type: MetricsEventType.BadRequestError,
+    },
     { error: new UnknownException(), type: MetricsEventType.UnknownError },
   ])('trackFailure: $errr -> type: $type', ({ error, type }) => {
     const mockListener = vi.fn<[Event[]], void>()
@@ -269,8 +278,8 @@ suite('internal/event/EventInteractor', () => {
             apiId: ApiId.GET_EVALUATION,
             labels: { tag: 'feature_tag_value' },
             '@type': type,
-          }
-        }
+          },
+        },
       },
     ]
 
@@ -283,24 +292,36 @@ suite('internal/event/EventInteractor', () => {
   suite('sendEvents', () => {
     test('success', async () => {
       server = setupServerAndListen(
-        rest.post<RegisterEventsRequest, Record<string, never>, RegisterEventsResponse>(
-          'https://api.bucketeer.io/register_events',
-          async (req, res, ctx) => {
-            const body = await req.json() as RegisterEventsRequest
-            expect(body.events).toHaveLength(3)
+        rest.post<
+          RegisterEventsRequest,
+          Record<string, never>,
+          RegisterEventsResponse
+        >('https://api.bucketeer.io/register_events', async (req, res, ctx) => {
+          const body = (await req.json()) as RegisterEventsRequest
+          expect(body.events).toHaveLength(3)
 
-            return res(
-              ctx.status(200),
-              ctx.json({
-                errors: {}
-              })
-            )
-          })
+          return res(
+            ctx.status(200),
+            ctx.json({
+              errors: {},
+            }),
+          )
+        }),
       )
 
       interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
-      interactor.trackGoalEvent('feature_tag_value', user1, 'goal_id_value', 0.5)
-      interactor.trackGoalEvent('feature_tag_value', user1, 'goal_id_value2', 0.4)
+      interactor.trackGoalEvent(
+        'feature_tag_value',
+        user1,
+        'goal_id_value',
+        0.5,
+      )
+      interactor.trackGoalEvent(
+        'feature_tag_value',
+        user1,
+        'goal_id_value2',
+        0.4,
+      )
 
       expect(eventStorage.getAll()).toHaveLength(4)
 
@@ -318,32 +339,39 @@ suite('internal/event/EventInteractor', () => {
 
     test('success - some events are failed', async () => {
       server = setupServerAndListen(
-        rest.post<RegisterEventsRequest, Record<string, never>, RegisterEventsResponse>(
-          'https://api.bucketeer.io/register_events',
-          async (req, res, ctx) => {
-            const body = await req.json() as RegisterEventsRequest
-            expect(body.events).toHaveLength(3)
+        rest.post<
+          RegisterEventsRequest,
+          Record<string, never>,
+          RegisterEventsResponse
+        >('https://api.bucketeer.io/register_events', async (req, res, ctx) => {
+          const body = (await req.json()) as RegisterEventsRequest
+          expect(body.events).toHaveLength(3)
 
-            return res(
-              ctx.status(200),
-              ctx.json({
-                errors: {
-                  [idGenerator.calls[0]]: {
-                    retriable: true,
-                    message: 'error'
-                  },
-                  [idGenerator.calls[2]]: {
-                    retriable: false,
-                    message: 'error'
-                  }
-                }
-              })
-            )
-          })
+          return res(
+            ctx.status(200),
+            ctx.json({
+              errors: {
+                [idGenerator.calls[0]]: {
+                  retriable: true,
+                  message: 'error',
+                },
+                [idGenerator.calls[2]]: {
+                  retriable: false,
+                  message: 'error',
+                },
+              },
+            }),
+          )
+        }),
       )
 
       interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
-      interactor.trackGoalEvent('feature_tag_value', user1, 'goal_id_value', 0.5)
+      interactor.trackGoalEvent(
+        'feature_tag_value',
+        user1,
+        'goal_id_value',
+        0.5,
+      )
 
       expect(eventStorage.getAll()).toHaveLength(3)
 
@@ -365,21 +393,26 @@ suite('internal/event/EventInteractor', () => {
         rest.post<RegisterEventsRequest, Record<string, never>, ErrorResponse>(
           'https://api.bucketeer.io/register_events',
           async (_req, res, ctx) => {
-
             return res(
               ctx.status(400),
               ctx.json<ErrorResponse>({
                 error: {
                   code: 400,
-                  message: '400 error'
-                }
-              })
+                  message: '400 error',
+                },
+              }),
             )
-          })
+          },
+        ),
       )
 
       interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
-      interactor.trackGoalEvent('feature_tag_value', user1, 'goal_id_value', 0.5)
+      interactor.trackGoalEvent(
+        'feature_tag_value',
+        user1,
+        'goal_id_value',
+        0.5,
+      )
 
       expect(eventStorage.getAll()).toHaveLength(3)
 
@@ -393,7 +426,7 @@ suite('internal/event/EventInteractor', () => {
       expect(eventStorage.getAll()).toHaveLength(3)
     })
 
-    test('current cache is less than `eventsMaxBatchQueueCount`',async () => {
+    test('current cache is less than `eventsMaxBatchQueueCount`', async () => {
       interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
 
       expect(eventStorage.getAll()).toHaveLength(2)
@@ -407,22 +440,24 @@ suite('internal/event/EventInteractor', () => {
       expect(eventStorage.getAll()).toHaveLength(2)
     })
 
-    test('force=true',async () => {
+    test('force=true', async () => {
       server = setupServerAndListen(
-        rest.post<RegisterEventsRequest, Record<string, never>, RegisterEventsResponse>(
-          'https://api.bucketeer.io/register_events',
-          async (req, res, ctx) => {
-            const body = await req.json() as RegisterEventsRequest
-            expect(body.events).toHaveLength(2)
+        rest.post<
+          RegisterEventsRequest,
+          Record<string, never>,
+          RegisterEventsResponse
+        >('https://api.bucketeer.io/register_events', async (req, res, ctx) => {
+          const body = (await req.json()) as RegisterEventsRequest
+          expect(body.events).toHaveLength(2)
 
-            return res(
-              ctx.status(200),
-              ctx.json({
-                errors: {}
-              })
-            )
-          }
-        ))
+          return res(
+            ctx.status(200),
+            ctx.json({
+              errors: {},
+            }),
+          )
+        }),
+      )
 
       interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
 

@@ -6,7 +6,10 @@ import { SetupServer } from 'msw/node'
 import { GetEvaluationsRequest } from '../../../src/internal/model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../../../src/internal/model/response/GetEvaluationsResponse'
 import { user1Evaluations } from '../../mocks/evaluations'
-import { ApiClient, ApiClientImpl } from '../../../src/internal/remote/ApiClient'
+import {
+  ApiClient,
+  ApiClientImpl,
+} from '../../../src/internal/remote/ApiClient'
 import { user1 } from '../../mocks/users'
 import { SourceID } from '../../../src/internal/model/SourceID'
 import { RegisterEventsRequest } from '../../../src/internal/model/request/RegisterEventsRequest'
@@ -23,7 +26,7 @@ suite('internal/remote/ApiClient', () => {
       'https://api.bucketeer.io',
       'api_key_value',
       'feature_tag_value',
-      fetch
+      fetch,
     )
   })
 
@@ -34,31 +37,36 @@ suite('internal/remote/ApiClient', () => {
   suite('getEvaluations', () => {
     test('success', async () => {
       server = setupServerAndListen(
-        rest.post<GetEvaluationsRequest, Record<string, never>, GetEvaluationsResponse>(
-          'https://api.bucketeer.io/get_evaluations',
-          async (req, res, ctx) => {
-            expect(req.headers.get('Authorization')).toBe('api_key_value')
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >('https://api.bucketeer.io/get_evaluations', async (req, res, ctx) => {
+          expect(req.headers.get('Authorization')).toBe('api_key_value')
 
-            const request = await req.json()
-            expect(request).toStrictEqual<GetEvaluationsRequest>({
-              tag: 'feature_tag_value',
-              user: user1,
-              userEvaluationsId: 'user_evaluation_id',
-              sourceId: SourceID.JAVASCRIPT,
-            })
-
-            return res(
-              ctx.status(200),
-              ctx.set('Content-Length', '10'),
-              ctx.json({
-                evaluations: user1Evaluations,
-                userEvaluationsId: 'user_evaluation_id',
-              }),
-            )
+          const request = await req.json()
+          expect(request).toStrictEqual<GetEvaluationsRequest>({
+            tag: 'feature_tag_value',
+            user: user1,
+            userEvaluationsId: 'user_evaluation_id',
+            sourceId: SourceID.JAVASCRIPT,
           })
+
+          return res(
+            ctx.status(200),
+            ctx.set('Content-Length', '10'),
+            ctx.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id',
+            }),
+          )
+        }),
       )
 
-      const response = await apiClient.getEvaluations(user1, 'user_evaluation_id')
+      const response = await apiClient.getEvaluations(
+        user1,
+        'user_evaluation_id',
+      )
 
       assert(response.type === 'success')
 
@@ -68,7 +76,7 @@ suite('internal/remote/ApiClient', () => {
       expect(response.featureTag).toBe('feature_tag_value')
       expect(response.value).toStrictEqual({
         evaluations: user1Evaluations,
-        userEvaluationsId: 'user_evaluation_id'
+        userEvaluationsId: 'user_evaluation_id',
       })
     })
 
@@ -78,11 +86,14 @@ suite('internal/remote/ApiClient', () => {
           'https://api.bucketeer.io/get_evaluations',
           (_req, res, _ctx) => {
             return res.networkError('network error')
-          }
-        )
+          },
+        ),
       )
 
-      const response = await apiClient.getEvaluations(user1, 'user_evaluation_id')
+      const response = await apiClient.getEvaluations(
+        user1,
+        'user_evaluation_id',
+      )
 
       assert(response.type === 'failure')
 
@@ -97,7 +108,7 @@ suite('internal/remote/ApiClient', () => {
         'api_key_value',
         'feature_tag_value',
         fetch,
-        200
+        200,
       )
       server = setupServerAndListen(
         rest.post(
@@ -106,13 +117,16 @@ suite('internal/remote/ApiClient', () => {
             return res(
               ctx.delay(1000),
               ctx.status(500),
-              ctx.body('{ "error": "super slow response"}')
+              ctx.body('{ "error": "super slow response"}'),
             )
-          }
-        )
+          },
+        ),
       )
 
-      const response = await apiClient.getEvaluations(user1, 'user_evaluation_id')
+      const response = await apiClient.getEvaluations(
+        user1,
+        'user_evaluation_id',
+      )
 
       assert(response.type === 'failure')
 
@@ -125,32 +139,37 @@ suite('internal/remote/ApiClient', () => {
   suite('registerEvents', () => {
     test('success', async () => {
       server = setupServerAndListen(
-        rest.post<RegisterEventsRequest, Record<string, never>, RegisterEventsResponse>(
-          'https://api.bucketeer.io/register_events',
-          async (req, res, ctx) => {
-            expect(req.headers.get('Authorization')).toBe('api_key_value')
+        rest.post<
+          RegisterEventsRequest,
+          Record<string, never>,
+          RegisterEventsResponse
+        >('https://api.bucketeer.io/register_events', async (req, res, ctx) => {
+          expect(req.headers.get('Authorization')).toBe('api_key_value')
 
-            const request = await req.json()
-            expect(request).toStrictEqual<RegisterEventsRequest>({
-              events: [evaluationEvent1, metricsEvent1]
-            })
-
-            return res(
-              ctx.status(200),
-              ctx.set('Content-Length', '10'),
-              ctx.json<RegisterEventsResponse>({
-                errors: {
-                  [evaluationEvent1.id]: {
-                    retriable: true,
-                    message: 'error'
-                  }
-                }
-              }),
-            )
+          const request = await req.json()
+          expect(request).toStrictEqual<RegisterEventsRequest>({
+            events: [evaluationEvent1, metricsEvent1],
           })
+
+          return res(
+            ctx.status(200),
+            ctx.set('Content-Length', '10'),
+            ctx.json<RegisterEventsResponse>({
+              errors: {
+                [evaluationEvent1.id]: {
+                  retriable: true,
+                  message: 'error',
+                },
+              },
+            }),
+          )
+        }),
       )
 
-      const response = await apiClient.registerEvents([evaluationEvent1, metricsEvent1])
+      const response = await apiClient.registerEvents([
+        evaluationEvent1,
+        metricsEvent1,
+      ])
 
       assert(response.type === 'success')
 
@@ -158,9 +177,9 @@ suite('internal/remote/ApiClient', () => {
         errors: {
           [evaluationEvent1.id]: {
             retriable: true,
-            message: 'error'
-          }
-        }
+            message: 'error',
+          },
+        },
       })
     })
 
@@ -170,11 +189,14 @@ suite('internal/remote/ApiClient', () => {
           'https://api.bucketeer.io/register_events',
           (_req, res, _ctx) => {
             return res.networkError('network error')
-          }
-        )
+          },
+        ),
       )
 
-      const response = await apiClient.registerEvents([evaluationEvent1, metricsEvent1])
+      const response = await apiClient.registerEvents([
+        evaluationEvent1,
+        metricsEvent1,
+      ])
 
       assert(response.type === 'failure')
 
@@ -188,7 +210,7 @@ suite('internal/remote/ApiClient', () => {
         'api_key_value',
         'feature_tag_value',
         fetch,
-        200
+        200,
       )
       server = setupServerAndListen(
         rest.post(
@@ -197,13 +219,16 @@ suite('internal/remote/ApiClient', () => {
             return res(
               ctx.delay(1000),
               ctx.status(500),
-              ctx.body('{ "error": "super slow response"}')
+              ctx.body('{ "error": "super slow response"}'),
             )
-          }
-        )
+          },
+        ),
       )
 
-      const response = await apiClient.registerEvents([evaluationEvent1, metricsEvent1])
+      const response = await apiClient.registerEvents([
+        evaluationEvent1,
+        metricsEvent1,
+      ])
 
       assert(response.type === 'failure')
 

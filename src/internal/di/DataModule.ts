@@ -1,6 +1,9 @@
 import { BKTConfig } from '../../BKTConfig'
 import { Clock, DefaultClock } from '../Clock'
-import { EvaluationStorage, EvaluationStorageImpl } from '../evaluation/EvaluationStorage'
+import {
+  EvaluationStorage,
+  EvaluationStorageImpl,
+} from '../evaluation/EvaluationStorage'
 import { EventStorage, EventStorageImpl } from '../event/EventStorage'
 import { DefaultIdGenerator, IdGenerator } from '../IdGenerator'
 import { User } from '../model/User'
@@ -17,10 +20,7 @@ export class DataModule {
   private _evaluationStorage?: EvaluationStorage
   private _eventStorage?: EventStorage
 
-  constructor(
-    user: User,
-    config: BKTConfig,
-  ) {
+  constructor(user: User, config: BKTConfig) {
     this._config = config
     this._userHolder = new UserHolder(user)
   }
@@ -64,7 +64,7 @@ export class DataModule {
     if (!this._evaluationStorage) {
       this._evaluationStorage = new EvaluationStorageImpl(
         this.userHolder().userId,
-        new DefaultStorage(`${this.config().storageKeyPrefix}_bkt_evaluations`)
+        new DefaultStorage(`${this.config().storageKeyPrefix}_bkt_evaluations`),
       )
     }
     return this._evaluationStorage
@@ -74,7 +74,7 @@ export class DataModule {
     if (!this._eventStorage) {
       this._eventStorage = new EventStorageImpl(
         this.userHolder().userId,
-        new DefaultStorage(`${this.config().storageKeyPrefix}_bkt_events`)
+        new DefaultStorage(`${this.config().storageKeyPrefix}_bkt_events`),
       )
     }
     return this._eventStorage

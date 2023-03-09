@@ -7,14 +7,14 @@ describe('defineBKTUser', () => {
       id: 'user-id',
       customAttributes: {
         'key-1': 'value-1',
-      }
+      },
     })
 
     expect(result).toStrictEqual({
       id: 'user-id',
       attributes: {
         'key-1': 'value-1',
-      }
+      },
     })
   })
 
@@ -28,7 +28,8 @@ describe('defineBKTUser', () => {
 
   test('calling without customAttributes results in empty attributes', () => {
     const result = defineBKTUser({
-      id: 'user-id',})
+      id: 'user-id',
+    })
 
     expect(result).toStrictEqual({
       id: 'user-id',

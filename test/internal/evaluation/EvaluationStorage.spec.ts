@@ -1,10 +1,13 @@
 import { expect, suite, test, beforeEach, afterEach } from 'vitest'
-import { EvaluationEntity, EvaluationStorage, EvaluationStorageImpl } from '../../../src/internal/evaluation/EvaluationStorage'
+import {
+  EvaluationEntity,
+  EvaluationStorage,
+  EvaluationStorageImpl,
+} from '../../../src/internal/evaluation/EvaluationStorage'
 import { BKTStorage, DefaultStorage } from '../../../src/internal/storege'
 import { evaluation1, evaluation2, evaluation3 } from '../../mocks/evaluations'
 
 suite('internal/evaluation/EvaluationStorage', () => {
-
   let storage: BKTStorage<EvaluationEntity>
   let evaluationStorage: EvaluationStorage
 
@@ -25,7 +28,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluations: {
           [evaluation1.featureId]: evaluation1,
           [evaluation2.featureId]: evaluation2,
-        }
+        },
       })
 
       const result = evaluationStorage.getByFeatureId(evaluation1.featureId)
@@ -40,7 +43,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluations: {
           [evaluation1.featureId]: evaluation1,
           [evaluation2.featureId]: evaluation2,
-        }
+        },
       })
 
       const result = evaluationStorage.getByFeatureId('feature_id_3')
@@ -56,7 +59,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
       evaluations: {
         [evaluation1.featureId]: evaluation1,
         [evaluation2.featureId]: evaluation2,
-      }
+      },
     })
 
     evaluationStorage.deleteAllAndInsert('evaluatIons_id_2', [evaluation3])
@@ -66,7 +69,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
       currentEvaluationsId: 'evaluatIons_id_2',
       evaluations: {
         [evaluation3.featureId]: evaluation3,
-      }
+      },
     })
   })
 
@@ -78,7 +81,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluations: {
           [evaluation1.featureId]: evaluation1,
           [evaluation2.featureId]: evaluation2,
-        }
+        },
       })
 
       const result = evaluationStorage.getCurrentEvaluationsId()
@@ -96,7 +99,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
       storage.set({
         userId: 'user_id_1',
         currentEvaluationsId: null,
-        evaluations: {}
+        evaluations: {},
       })
 
       const result = evaluationStorage.getCurrentEvaluationsId()
@@ -108,7 +111,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
       storage.set({
         userId: 'user_id_2',
         currentEvaluationsId: 'evaluations_id_1',
-        evaluations: {}
+        evaluations: {},
       })
 
       const result = evaluationStorage.getCurrentEvaluationsId()

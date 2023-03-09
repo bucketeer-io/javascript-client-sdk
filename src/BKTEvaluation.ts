@@ -5,5 +5,11 @@ export interface BKTEvaluation {
   readonly userId: string
   readonly variationId: string
   readonly variationValue: string
-  readonly reason: 'TARGET' | 'RULE' | 'DEFAULT' | 'CLIENT' | 'OFF_VARIATION' | 'PREREQUISITE'
+  readonly reason:
+    | 'TARGET'
+    | 'RULE'
+    | 'DEFAULT'
+    | 'CLIENT'
+    | 'OFF_VARIATION'
+    | 'PREREQUISITE'
 }

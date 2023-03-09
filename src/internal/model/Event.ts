@@ -9,7 +9,7 @@ export const EventType = {
   EVALUATION: 3,
   METRICS: 4,
 } as const
-export type EventType = typeof EventType[keyof typeof EventType]
+export type EventType = (typeof EventType)[keyof typeof EventType]
 
 export interface BaseEvent {
   timestamp: number
@@ -43,17 +43,17 @@ export interface MetricsEvent extends BaseEvent {
 export type Event =
   | {
       id: string
-      type: typeof EventType['GOAL']
+      type: (typeof EventType)['GOAL']
       event: GoalEvent
     }
   // type: 2 is not for client
   | {
       id: string
-      type: typeof EventType['EVALUATION']
+      type: (typeof EventType)['EVALUATION']
       event: EvaluationEvent
     }
   | {
       id: string
-      type: typeof EventType['METRICS']
+      type: (typeof EventType)['METRICS']
       event: MetricsEvent
     }

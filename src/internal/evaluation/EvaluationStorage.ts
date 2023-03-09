@@ -4,7 +4,7 @@ import { BKTStorage } from '../storege'
 export interface EvaluationEntity {
   userId: string
   currentEvaluationsId: string | null
-  evaluations: Record<string/* featureId */, Evaluation>
+  evaluations: Record<string /* featureId */, Evaluation>
 }
 
 export interface EvaluationStorage {
@@ -15,11 +15,10 @@ export interface EvaluationStorage {
 }
 
 export class EvaluationStorageImpl implements EvaluationStorage {
-
   constructor(
     public userId: string,
-    public storage: BKTStorage<EvaluationEntity>
-  ) { }
+    public storage: BKTStorage<EvaluationEntity>,
+  ) {}
 
   getByFeatureId(featureId: string): Evaluation | null {
     const entity = this.getInternal(this.userId)
@@ -30,9 +29,12 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     const entity: EvaluationEntity = {
       userId: this.userId,
       currentEvaluationsId: evaluationsId,
-      evaluations: evaluations.reduce<EvaluationEntity['evaluations']>((acc, cur) => {
-        return {...acc, [cur.featureId]: cur}
-      }, {})
+      evaluations: evaluations.reduce<EvaluationEntity['evaluations']>(
+        (acc, cur) => {
+          return { ...acc, [cur.featureId]: cur }
+        },
+        {},
+      ),
     }
 
     this.storage.set(entity)
@@ -53,7 +55,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
       return {
         userId,
         currentEvaluationsId: null,
-        evaluations: {}
+        evaluations: {},
       }
     }
     return entity

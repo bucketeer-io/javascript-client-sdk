@@ -33,7 +33,7 @@ export class DefaultComponent implements Component {
       this._evaluationInteractor = this.interactorModule.evaluationInteractor(
         this.dataModule.apiClient(),
         this.dataModule.evaluationStorage(),
-        this.dataModule.idGenerator()
+        this.dataModule.idGenerator(),
       )
     }
     return this._evaluationInteractor

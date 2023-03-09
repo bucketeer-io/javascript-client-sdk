@@ -8,7 +8,6 @@ export interface BKTUser extends RawBKTUser {
   readonly attributes: Record<string, string>
 }
 
-
 export const defineBKTUser = (user: RawBKTUser): BKTUser => {
   if (!user.id) {
     throw new Error('user id is required')
@@ -17,7 +16,7 @@ export const defineBKTUser = (user: RawBKTUser): BKTUser => {
   return {
     id: user.id,
     attributes: {
-      ...user.customAttributes
-    }
+      ...user.customAttributes,
+    },
   }
 }
