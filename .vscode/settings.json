@@ -1,0 +1,17 @@
+{
+  "editor.wordWrap": "on",
+  "files.insertFinalNewline": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "eslint.packageManager": "pnpm",
+  "eslint.format.enable": true,
+  "yaml.schemas": {
+    "https://json.schemastore.org/github-workflow.json": [
+      "/.github/worflows/pullrequest.yml"
+    ]
+  },
+  "editor.formatOnSave": false,
+  "editor.formatOnType": true,
+  "eslint.codeActionsOnSave.rules": null
+}
