@@ -11,6 +11,7 @@ export interface EvaluationStorage {
   getByFeatureId(featureId: string): Evaluation | null
   deleteAllAndInsert(evaluationsId: string, evaluations: Evaluation[]): void
   getCurrentEvaluationsId(): string | null
+  clearCurrentEvaluationsId(): void
   clear(): void
 }
 
@@ -42,6 +43,14 @@ export class EvaluationStorageImpl implements EvaluationStorage {
 
   getCurrentEvaluationsId(): string | null {
     return this.getInternal(this.userId).currentEvaluationsId
+  }
+
+  clearCurrentEvaluationsId(): void {
+    const entity = this.getInternal(this.userId)
+    this.storage.set({
+      ...entity,
+      currentEvaluationsId: null,
+    })
   }
 
   clear(): void {

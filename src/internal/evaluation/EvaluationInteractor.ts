@@ -52,6 +52,10 @@ export class EvaluationInteractor {
     return this.evaluationStorage.getByFeatureId(featureId)
   }
 
+  clearCurrentEvaluationsId(): void {
+    this.evaluationStorage.clearCurrentEvaluationsId()
+  }
+
   addUpdateListener(listener: () => void): string {
     const id = this.idGenerator.newId()
     this.updateListeners[id] = listener

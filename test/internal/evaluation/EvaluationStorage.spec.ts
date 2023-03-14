@@ -119,4 +119,38 @@ suite('internal/evaluation/EvaluationStorage', () => {
       expect(result).toBeNull()
     })
   })
+
+  suite('clearCurrentEvaluationsId', () => {
+    test('has cache', () => {
+      storage.set({
+        userId: 'user_id_1',
+        currentEvaluationsId: 'evaluations_id_1',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+          [evaluation2.featureId]: evaluation2,
+        },
+      })
+
+      evaluationStorage.clearCurrentEvaluationsId()
+
+      expect(storage.get()).toStrictEqual({
+        userId: 'user_id_1',
+        currentEvaluationsId: null,
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+          [evaluation2.featureId]: evaluation2,
+        },
+      })
+    })
+
+    test('no cache', () => {
+      evaluationStorage.clearCurrentEvaluationsId()
+
+      expect(storage.get()).toStrictEqual({
+        userId: 'user_id_1',
+        currentEvaluationsId: null,
+        evaluations: {},
+      })
+    })
+  })
 })

@@ -1,7 +1,7 @@
 import { Evaluation } from '../../src/internal/model/Evaluation'
 import { UserEvaluations } from '../../src/internal/model/UserEvaluations'
 
-export const evaluation1: Evaluation = {
+export const evaluation1 = {
   id: 'test-feature-1:9:user_id_1',
   featureId: 'test-feature-1',
   featureVersion: 9,
@@ -15,9 +15,9 @@ export const evaluation1: Evaluation = {
   reason: {
     type: 'CLIENT',
   },
-}
+} satisfies Evaluation
 
-export const evaluation2: Evaluation = {
+export const evaluation2 = {
   id: 'test-feature-2:9:user_id_1',
   featureId: 'test-feature-2',
   featureVersion: 9,
@@ -31,9 +31,9 @@ export const evaluation2: Evaluation = {
   reason: {
     type: 'CLIENT',
   },
-}
+} satisfies Evaluation
 
-export const evaluation3: Evaluation = {
+export const evaluation3 = {
   id: 'test-feature-1:9:user_id_2',
   featureId: 'test-feature-3',
   featureVersion: 9,
@@ -47,9 +47,9 @@ export const evaluation3: Evaluation = {
   reason: {
     type: 'CLIENT',
   },
-}
+} satisfies Evaluation
 
-export const user1Evaluations: UserEvaluations = {
+export const user1Evaluations = {
   id: '17388826713971171773',
   evaluations: [evaluation1, evaluation2],
-}
+} satisfies UserEvaluations

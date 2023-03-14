@@ -9,6 +9,7 @@ export interface Component {
   config(): BKTConfig
   userHolder(): UserHolder
   evaluationInteractor(): EvaluationInteractor
+  eventInteractor(): EventInteractor
 }
 
 export class DefaultComponent implements Component {
