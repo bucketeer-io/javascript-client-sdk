@@ -24,6 +24,7 @@ interface RawBKTConfig {
   pollingInterval?: number
   appVersion: string
   storageKeyPrefix?: string
+  userAgent?: string
   fetch: FetchLike
 }
 
@@ -31,6 +32,7 @@ export interface BKTConfig extends RawBKTConfig {
   eventsFlushInterval: number
   eventsMaxBatchQueueCount: number
   pollingInterval: number
+  userAgent: string
 }
 
 export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
@@ -39,6 +41,7 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     eventsMaxBatchQueueCount: DEFAULT_MAX_QUEUE_SIZE,
     pollingInterval: DEFAULT_POLLING_INTERVAL_MILLIS,
     storageKeyPrefix: '',
+    userAgent: window.navigator.userAgent,
     ...config,
   }
 
@@ -54,6 +57,10 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
 
   if (result.eventsFlushInterval < MINIMUM_FLUSH_INTERVAL_MILLIS) {
     result.eventsFlushInterval = DEFAULT_FLUSH_INTERVAL_MILLIS
+  }
+
+  if (!result.userAgent) {
+    result.userAgent = window.navigator.userAgent
   }
 
   return {

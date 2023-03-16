@@ -62,6 +62,7 @@ suite('internal/event/EventInteractor', () => {
           featureTag: 'feature_tag_value',
           appVersion: '1.2.3',
           eventsMaxBatchQueueCount: 3,
+          userAgent: 'user_agent_value',
           fetch,
         }),
       ),
@@ -100,8 +101,7 @@ suite('internal/event/EventInteractor', () => {
           user: user1,
           metadata: {
             appVersion: '1.2.3',
-            deviceModel: '',
-            osVersion: '',
+            deviceModel: 'user_agent_value',
           },
           reason: {
             type: 'CLIENT',
@@ -142,8 +142,7 @@ suite('internal/event/EventInteractor', () => {
           user: user1,
           metadata: {
             appVersion: '1.2.3',
-            deviceModel: '',
-            osVersion: '',
+            deviceModel: 'user_agent_value',
           },
           reason: {
             type: 'CLIENT',
@@ -179,8 +178,7 @@ suite('internal/event/EventInteractor', () => {
           user: user1,
           metadata: {
             appVersion: '1.2.3',
-            deviceModel: '',
-            osVersion: '',
+            deviceModel: 'user_agent_value',
           },
           sdkVersion: '2.0.0',
           tag: 'feature_tag_value',
@@ -209,8 +207,7 @@ suite('internal/event/EventInteractor', () => {
           sourceId: SourceID.JAVASCRIPT,
           metadata: {
             appVersion: '1.2.3',
-            deviceModel: '',
-            osVersion: '',
+            deviceModel: 'user_agent_value',
           },
           sdkVersion: '2.0.0',
           event: {
@@ -229,8 +226,7 @@ suite('internal/event/EventInteractor', () => {
           sourceId: SourceID.JAVASCRIPT,
           metadata: {
             appVersion: '1.2.3',
-            deviceModel: '',
-            osVersion: '',
+            deviceModel: 'user_agent_value',
           },
           sdkVersion: '2.0.0',
           event: {
@@ -270,8 +266,7 @@ suite('internal/event/EventInteractor', () => {
           sourceId: SourceID.JAVASCRIPT,
           metadata: {
             appVersion: '1.2.3',
-            deviceModel: '',
-            osVersion: '',
+            deviceModel: 'user_agent_value',
           },
           sdkVersion: '2.0.0',
           event: {
