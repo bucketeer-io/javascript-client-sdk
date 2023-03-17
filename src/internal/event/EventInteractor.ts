@@ -32,6 +32,7 @@ export class EventInteractor {
     private clock: Clock,
     private idGenerator: IdGenerator,
     private appVersion: string,
+    private userAgent: string,
   ) {}
 
   eventUpdateListener: ((events: Event[]) => void) | null = null
@@ -51,7 +52,7 @@ export class EventInteractor {
       event: newEvaluationEvent(
         newBaseEvent(
           this.clock.currentTimeSeconds(),
-          newMetadata(this.appVersion, '', ''),
+          newMetadata(this.appVersion, this.userAgent),
         ),
         {
           featureId: evaluation.featureId,
@@ -79,7 +80,7 @@ export class EventInteractor {
       event: newDefaultEvaluationEvent(
         newBaseEvent(
           this.clock.currentTimeSeconds(),
-          newMetadata(this.appVersion, '', ''),
+          newMetadata(this.appVersion, this.userAgent),
         ),
         {
           featureId,
@@ -110,7 +111,7 @@ export class EventInteractor {
       event: newGoalEvent(
         newBaseEvent(
           this.clock.currentTimeSeconds(),
-          newMetadata(this.appVersion, '', ''),
+          newMetadata(this.appVersion, this.userAgent),
         ),
         {
           goalId,
@@ -138,7 +139,7 @@ export class EventInteractor {
         event: newMetricsEvent(
           newBaseEvent(
             this.clock.currentTimeSeconds(),
-            newMetadata(this.appVersion, '', ''),
+            newMetadata(this.appVersion, this.userAgent),
           ),
           {
             event: newLatencyMetricsData(apiId, seconds, featureTag),
@@ -151,7 +152,7 @@ export class EventInteractor {
         event: newMetricsEvent(
           newBaseEvent(
             this.clock.currentTimeSeconds(),
-            newMetadata(this.appVersion, '', ''),
+            newMetadata(this.appVersion, this.userAgent),
           ),
           {
             event: newSizeMetricsData(apiId, sizeByte, featureTag),
@@ -170,7 +171,7 @@ export class EventInteractor {
       event: newMetricsEvent(
         newBaseEvent(
           this.clock.currentTimeSeconds(),
-          newMetadata(this.appVersion, '', ''),
+          newMetadata(this.appVersion, this.userAgent),
         ),
         {
           event: newErrorMetricsData(

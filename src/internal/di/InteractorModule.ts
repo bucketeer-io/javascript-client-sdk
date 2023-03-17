@@ -22,6 +22,7 @@ export class InteractorModule {
     idGenerator: IdGenerator,
     clock: Clock,
     appVersion: string,
+    userAgent: string,
   ): EventInteractor {
     return new EventInteractor(
       eventsMaxBatchQueueCount,
@@ -30,6 +31,7 @@ export class InteractorModule {
       clock,
       idGenerator,
       appVersion,
+      userAgent,
     )
   }
 }

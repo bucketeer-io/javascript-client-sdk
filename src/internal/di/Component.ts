@@ -49,6 +49,7 @@ export class DefaultComponent implements Component {
         this.dataModule.idGenerator(),
         this.dataModule.clock(),
         this.dataModule.config().appVersion,
+        this.dataModule.config().userAgent,
       )
     }
     return this._eventInteractor

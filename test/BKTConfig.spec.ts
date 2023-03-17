@@ -6,6 +6,7 @@ const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
   apiEndpoint: 'https://example.com',
   featureTag: 'feature-tag',
   appVersion: '1.2.3',
+  userAgent: 'user-agent-value',
   fetch,
 }
 
@@ -85,5 +86,14 @@ describe('defineBKTConfig', () => {
     })
 
     expect(result.pollingInterval).toBe(600_000)
+  })
+
+  test('empty userAgent should be replaced with a browser value', () => {
+    const result = defineBKTConfig({
+      ...defaultConfig,
+      userAgent: '',
+    })
+
+    expect(result.userAgent).toBe(window.navigator.userAgent)
   })
 })

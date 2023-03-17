@@ -16,12 +16,12 @@ import { SourceID } from '../model/SourceID'
 
 export const newMetadata = (
   appVersion: string,
-  osVersion: string,
+  // osVersion: string,
   deviceModel: string,
 ): Record<string, string> => {
   return {
     appVersion,
-    osVersion,
+    // osVersion, osVersion is not available in javascript-client-sdk
     deviceModel,
   }
 }
