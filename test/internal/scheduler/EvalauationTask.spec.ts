@@ -1,0 +1,246 @@
+import { rest } from 'msw'
+import { SetupServer } from 'msw/node'
+import { beforeEach, afterEach, expect, suite, test, vi } from 'vitest'
+import fetch from 'cross-fetch'
+import { destroyBKTClient } from '../../../src/BKTClient'
+import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
+import { DefaultComponent } from '../../../src/internal/di/Component'
+import { DataModule } from '../../../src/internal/di/DataModule'
+import { setupServerAndListen } from '../../utils'
+import { InteractorModule } from '../../../src/internal/di/InteractorModule'
+import { user1 } from '../../mocks/users'
+import { user1Evaluations } from '../../mocks/evaluations'
+import { EvaluationTask } from '../../../src/internal/scheduler/EvaluationTask'
+import { GetEvaluationsRequest } from '../../../src/internal/model/request/GetEvaluationsRequest'
+import { GetEvaluationsResponse } from '../../../src/internal/model/response/GetEvaluationsResponse'
+
+suite('internal/scheduler/EventTask', () => {
+  let server: SetupServer
+  let config: BKTConfig
+  let component: DefaultComponent
+  let task: EvaluationTask
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+
+    config = defineBKTConfig({
+      apiKey: 'api_key_value',
+      apiEndpoint: 'https://api.bucketeer.io',
+      featureTag: 'feature_tag_value',
+      appVersion: '1.2.3',
+      eventsMaxBatchQueueCount: 3,
+      pollingInterval: 1_000 * 120, // 2 minutes
+      fetch,
+    })
+
+    component = new DefaultComponent(
+      new DataModule(user1, config),
+      new InteractorModule(),
+    )
+  })
+
+  afterEach(() => {
+    destroyBKTClient()
+    server?.close()
+    localStorage.clear()
+    task.stop()
+
+    vi.useRealTimers()
+  })
+
+  test('start', async () => {
+    let requestCount = 0
+    server = setupServerAndListen(
+      rest.post<
+        GetEvaluationsRequest,
+        Record<string, never>,
+        GetEvaluationsResponse
+      >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+        requestCount++
+        return res(
+          ctx.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          }),
+        )
+      }),
+    )
+
+    task = new EvaluationTask(component)
+    task.start()
+
+    await vi.runOnlyPendingTimersAsync()
+
+    expect(requestCount).toBe(1)
+  })
+
+  test('stop should cancel timer', async () => {
+    let requestCount = 0
+    server = setupServerAndListen(
+      rest.post<
+        GetEvaluationsRequest,
+        Record<string, never>,
+        GetEvaluationsResponse
+      >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+        requestCount++
+        return res(
+          ctx.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          }),
+        )
+      }),
+    )
+
+    task = new EvaluationTask(component, 1_000 * 60, 5)
+    task.start()
+
+    expect(task.isRunning()).toBe(true)
+
+    task.stop()
+
+    await vi.advanceTimersToNextTimerAsync()
+    await vi.advanceTimersToNextTimerAsync()
+
+    expect(requestCount).toBe(0)
+    expect(task.isRunning()).toBe(false)
+  })
+
+  suite('retry', () => {
+    test('should back to normal interval after maxRetryCount', async () => {
+      let requestCount = 0
+      server = setupServerAndListen(
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+          requestCount++
+          return res(ctx.status(500))
+        }),
+      )
+
+      task = new EvaluationTask(component)
+      task.start()
+
+      const d0 = Date.now()
+
+      await vi.runOnlyPendingTimersAsync()
+
+      const d1 = Date.now()
+
+      // initial fetch
+      expect(d1 - d0).toBe(1_000 * 120)
+
+      await vi.runOnlyPendingTimersAsync()
+
+      const d2 = Date.now()
+
+      // 1st retry
+      expect(d2 - d1).toBe(1_000 * 60)
+
+      await vi.runOnlyPendingTimersAsync()
+
+      const d3 = Date.now()
+
+      // 2nd retry
+      expect(d3 - d2).toBe(1_000 * 60)
+
+      await vi.runOnlyPendingTimersAsync()
+
+      const d4 = Date.now()
+
+      // 3rd retry
+      expect(d4 - d3).toBe(1_000 * 60)
+
+      await vi.runOnlyPendingTimersAsync()
+      const d5 = Date.now()
+
+      // 4th retry
+      expect(d5 - d4).toBe(1_000 * 60)
+
+      await vi.runOnlyPendingTimersAsync()
+      const d6 = Date.now()
+
+      // 5th retry
+      expect(d6 - d5).toBe(1_000 * 60)
+
+      await vi.runOnlyPendingTimersAsync()
+      const d7 = Date.now()
+
+      // back to normal
+      expect(d7 - d6).toBe(1_000 * 120)
+
+      expect(requestCount).toBe(7)
+    })
+
+    test('should back to normal interval after successful request', async () => {
+      let requestCount = 0
+      server = setupServerAndListen(
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+          requestCount++
+          return res.once(ctx.status(500))
+        }),
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+          requestCount++
+          return res.once(ctx.status(500))
+        }),
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+          requestCount++
+          return res(
+            ctx.status(200),
+            ctx.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            }),
+          )
+        }),
+      )
+
+      task = new EvaluationTask(component)
+      task.start()
+
+      const d0 = Date.now()
+
+      await vi.runOnlyPendingTimersAsync()
+
+      const d1 = Date.now()
+
+      // initial fetch
+      expect(d1 - d0).toBe(1_000 * 120)
+
+      await vi.runOnlyPendingTimersAsync()
+
+      const d2 = Date.now()
+
+      // 1st retry
+      expect(d2 - d1).toBe(1_000 * 60)
+
+      await vi.runOnlyPendingTimersAsync()
+
+      const d3 = Date.now()
+
+      // 2nd retry(should be success)
+      expect(d3 - d2).toBe(1_000 * 60)
+
+      await vi.runOnlyPendingTimersAsync()
+
+      const d4 = Date.now()
+
+      // back to normal
+      expect(d4 - d3).toBe(1_000 * 120)
+    })
+  })
+})
