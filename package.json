@@ -34,11 +34,11 @@
     "eslint-plugin-import": "2.27.5",
     "eslint-plugin-prettier": "4.2.1",
     "happy-dom": "8.9.0",
-    "msw": "1.1.0",
+    "msw": "1.1.1",
     "prettier": "2.8.5",
     "typescript": "4.9.5",
-    "vite": "4.2.0",
-    "vitest": "0.29.3"
+    "vite": "4.2.1",
+    "vitest": "0.29.5"
   },
   "packageManager": "pnpm@7.30.0"
 }
