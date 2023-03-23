@@ -4,7 +4,7 @@ import {
   EvaluationStorage,
   EvaluationStorageImpl,
 } from '../../../src/internal/evaluation/EvaluationStorage'
-import { BKTStorage, DefaultStorage } from '../../../src/internal/storege'
+import { BKTStorage, DefaultStorage } from '../../../src/internal/storage'
 import { evaluation1, evaluation2, evaluation3 } from '../../mocks/evaluations'
 
 suite('internal/evaluation/EvaluationStorage', () => {

@@ -8,7 +8,7 @@ import { EventStorage, EventStorageImpl } from '../event/EventStorage'
 import { DefaultIdGenerator, IdGenerator } from '../IdGenerator'
 import { User } from '../model/User'
 import { ApiClient, ApiClientImpl } from '../remote/ApiClient'
-import { DefaultStorage } from '../storege'
+import { DefaultStorage } from '../storage'
 import { UserHolder } from '../UserHolder'
 
 export class DataModule {
