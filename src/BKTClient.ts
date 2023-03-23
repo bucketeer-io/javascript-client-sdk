@@ -6,6 +6,7 @@ import { DataModule } from './internal/di/DataModule'
 import { InteractorModule } from './internal/di/InteractorModule'
 import { clearInstance, getInstance, setInstance } from './internal/instance'
 import { ApiId } from './internal/model/MetricsEventData'
+import { TaskScheduler } from './internal/scheduler/TaskScheduler'
 import { toBKTUser } from './internal/UserHolder'
 
 export interface BKTClient {
@@ -23,6 +24,7 @@ export interface BKTClient {
 
 export class BKTClientImpl implements BKTClient {
   component: Component
+  taskScheduler: TaskScheduler | null = null
 
   constructor(
     config: BKTConfig,
@@ -36,7 +38,7 @@ export class BKTClientImpl implements BKTClient {
   }
 
   initializeInternal(timeoutMillis: number): Promise<void> {
-    // TODO: schedule polling task
+    this.scheduleTasks()
     return this.fetchEvaluations(timeoutMillis)
   }
 
@@ -105,29 +107,7 @@ export class BKTClientImpl implements BKTClient {
   }
 
   async fetchEvaluations(timeoutMillis?: number): Promise<void> {
-    const result = await this.component
-      .evaluationInteractor()
-      .fetch(this.component.userHolder().get(), timeoutMillis)
-
-    if (result.type === 'failure') {
-      this.component
-        .eventInteractor()
-        .trackFailure(
-          ApiId.GET_EVALUATIONS,
-          this.component.config().featureTag,
-          result.error,
-        )
-      throw result.error
-    } else {
-      this.component
-        .eventInteractor()
-        .trackSuccess(
-          ApiId.GET_EVALUATIONS,
-          this.component.config().featureTag,
-          result.seconds,
-          result.sizeByte,
-        )
-    }
+    return BKTClientImpl.fetchEvaluationsInternal(this.component, timeoutMillis)
   }
 
   async flush(): Promise<void> {
@@ -174,6 +154,47 @@ export class BKTClientImpl implements BKTClient {
 
     return raw?.variationValue ?? null
   }
+
+  private scheduleTasks(): void {
+    this.taskScheduler = new TaskScheduler(this.component)
+    this.taskScheduler.start()
+  }
+
+  resetTasks(): void {
+    if (this.taskScheduler) {
+      this.taskScheduler.stop()
+      this.taskScheduler = null
+    }
+  }
+
+  static async fetchEvaluationsInternal(
+    component: Component,
+    timeoutMillis?: number,
+  ): Promise<void> {
+    const result = await component
+      .evaluationInteractor()
+      .fetch(component.userHolder().get(), timeoutMillis)
+
+    if (result.type === 'failure') {
+      component
+        .eventInteractor()
+        .trackFailure(
+          ApiId.GET_EVALUATIONS,
+          component.config().featureTag,
+          result.error,
+        )
+      throw result.error
+    } else {
+      component
+        .eventInteractor()
+        .trackSuccess(
+          ApiId.GET_EVALUATIONS,
+          component.config().featureTag,
+          result.seconds,
+          result.sizeByte,
+        )
+    }
+  }
 }
 
 export const getBKTClient = (): BKTClient | null => {
@@ -196,5 +217,9 @@ export const initializeBKTClient = (
 }
 
 export const destroyBKTClient = (): void => {
+  const client = getInstance()
+  if (client) {
+    ;(client as BKTClientImpl).resetTasks()
+  }
   clearInstance()
 }

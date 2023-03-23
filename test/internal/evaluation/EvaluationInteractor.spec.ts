@@ -3,7 +3,7 @@ import { SetupServer } from 'msw/node'
 import { expect, suite, test, beforeEach, afterEach, vi } from 'vitest'
 import fetch from 'cross-fetch'
 import assert from 'assert'
-import { defineBKTConfig } from '../../../src/BKTConfig'
+import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
 import { DefaultComponent } from '../../../src/internal/di/Component'
 import { DataModule } from '../../../src/internal/di/DataModule'
 import { InteractorModule } from '../../../src/internal/di/InteractorModule'
@@ -22,22 +22,21 @@ import { setupServerAndListen } from '../../utils'
 
 suite('internal/evaluation/EvaluationInteractor', () => {
   let server: SetupServer
+  let config: BKTConfig
   let component: DefaultComponent
   let interactor: EvaluationInteractor
   let evaluationStorage: EvaluationStorageImpl
 
   beforeEach(() => {
+    config = defineBKTConfig({
+      apiKey: 'api_key_value',
+      apiEndpoint: 'https://api.bucketeer.io',
+      featureTag: 'feature_tag_value',
+      appVersion: '1.2.3',
+      fetch,
+    })
     component = new DefaultComponent(
-      new DataModule(
-        user1,
-        defineBKTConfig({
-          apiKey: 'api_key_value',
-          apiEndpoint: 'https://api.bucketeer.io',
-          featureTag: 'feature_tag_value',
-          appVersion: '1.2.3',
-          fetch,
-        }),
-      ),
+      new DataModule(user1, config),
       new InteractorModule(),
     )
 
@@ -58,18 +57,15 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >(
-          'https://api.bucketeer.io/get_evaluations',
-          async (_req, res, ctx) => {
-            return res(
-              ctx.status(200),
-              ctx.json({
-                evaluations: user1Evaluations,
-                userEvaluationsId: 'user_evaluation_id_value',
-              }),
-            )
-          },
-        ),
+        >(`${config.apiEndpoint}/get_evaluations`, async (_req, res, ctx) => {
+          return res(
+            ctx.status(200),
+            ctx.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            }),
+          )
+        }),
       )
 
       expect(
@@ -108,38 +104,32 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >(
-          'https://api.bucketeer.io/get_evaluations',
-          async (_req, res, ctx) => {
-            return res.once(
-              ctx.status(200),
-              ctx.json({
-                evaluations: user1Evaluations,
-                userEvaluationsId: 'user_evaluation_id_value',
-              }),
-            )
-          },
-        ),
+        >(`${config.apiEndpoint}/get_evaluations`, async (_req, res, ctx) => {
+          return res.once(
+            ctx.status(200),
+            ctx.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            }),
+          )
+        }),
         // second request
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >(
-          'https://api.bucketeer.io/get_evaluations',
-          async (_req, res, ctx) => {
-            return res.once(
-              ctx.status(200),
-              ctx.json({
-                evaluations: {
-                  ...user1Evaluations,
-                  evaluations: [newEvaluation],
-                },
-                userEvaluationsId: 'user_evaluation_id_value_updated',
-              }),
-            )
-          },
-        ),
+        >(`${config.apiEndpoint}/get_evaluations`, async (_req, res, ctx) => {
+          return res.once(
+            ctx.status(200),
+            ctx.json({
+              evaluations: {
+                ...user1Evaluations,
+                evaluations: [newEvaluation],
+              },
+              userEvaluationsId: 'user_evaluation_id_value_updated',
+            }),
+          )
+        }),
       )
 
       const mockListener = vi.fn<[], void>()
@@ -176,18 +166,15 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >(
-          'https://api.bucketeer.io/get_evaluations',
-          async (_req, res, ctx) => {
-            return res(
-              ctx.status(200),
-              ctx.json({
-                evaluations: user1Evaluations,
-                userEvaluationsId: 'user_evaluation_id_value',
-              }),
-            )
-          },
-        ),
+        >(`${config.apiEndpoint}/get_evaluations`, async (_req, res, ctx) => {
+          return res(
+            ctx.status(200),
+            ctx.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            }),
+          )
+        }),
       )
 
       const mockListener = vi.fn<[], void>()
