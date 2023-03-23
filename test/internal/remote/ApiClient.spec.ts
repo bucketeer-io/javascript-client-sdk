@@ -18,12 +18,13 @@ import { RegisterEventsResponse } from '../../../src/internal/model/response/Reg
 import { setupServerAndListen } from '../../utils'
 
 suite('internal/remote/ApiClient', () => {
+  const endpoint = 'https://api.bucketeer.io'
   let server: SetupServer
   let apiClient: ApiClient
 
   beforeEach(() => {
     apiClient = new ApiClientImpl(
-      'https://api.bucketeer.io',
+      endpoint,
       'api_key_value',
       'feature_tag_value',
       fetch,
@@ -41,7 +42,7 @@ suite('internal/remote/ApiClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', async (req, res, ctx) => {
+        >(`${endpoint}/get_evaluations`, async (req, res, ctx) => {
           expect(req.headers.get('Authorization')).toBe('api_key_value')
 
           const request = await req.json()
@@ -82,12 +83,9 @@ suite('internal/remote/ApiClient', () => {
 
     test('network error', async () => {
       server = setupServerAndListen(
-        rest.post(
-          'https://api.bucketeer.io/get_evaluations',
-          (_req, res, _ctx) => {
-            return res.networkError('network error')
-          },
-        ),
+        rest.post(`${endpoint}/get_evaluations`, (_req, res, _ctx) => {
+          return res.networkError('network error')
+        }),
       )
 
       const response = await apiClient.getEvaluations(
@@ -104,23 +102,20 @@ suite('internal/remote/ApiClient', () => {
 
     test('timeout error', async () => {
       apiClient = new ApiClientImpl(
-        'https://api.bucketeer.io',
+        endpoint,
         'api_key_value',
         'feature_tag_value',
         fetch,
         200,
       )
       server = setupServerAndListen(
-        rest.post(
-          'https://api.bucketeer.io/get_evaluations',
-          async (_req, res, ctx) => {
-            return res(
-              ctx.delay(1000),
-              ctx.status(500),
-              ctx.body('{ "error": "super slow response"}'),
-            )
-          },
-        ),
+        rest.post(`${endpoint}/get_evaluations`, async (_req, res, ctx) => {
+          return res(
+            ctx.delay(1000),
+            ctx.status(500),
+            ctx.body('{ "error": "super slow response"}'),
+          )
+        }),
       )
 
       const response = await apiClient.getEvaluations(
@@ -143,7 +138,7 @@ suite('internal/remote/ApiClient', () => {
           RegisterEventsRequest,
           Record<string, never>,
           RegisterEventsResponse
-        >('https://api.bucketeer.io/register_events', async (req, res, ctx) => {
+        >(`${endpoint}/register_events`, async (req, res, ctx) => {
           expect(req.headers.get('Authorization')).toBe('api_key_value')
 
           const request = await req.json()
@@ -185,12 +180,9 @@ suite('internal/remote/ApiClient', () => {
 
     test('network error', async () => {
       server = setupServerAndListen(
-        rest.post(
-          'https://api.bucketeer.io/register_events',
-          (_req, res, _ctx) => {
-            return res.networkError('network error')
-          },
-        ),
+        rest.post(`${endpoint}/register_events`, (_req, res, _ctx) => {
+          return res.networkError('network error')
+        }),
       )
 
       const response = await apiClient.registerEvents([
@@ -206,23 +198,20 @@ suite('internal/remote/ApiClient', () => {
 
     test('timeout error', async () => {
       apiClient = new ApiClientImpl(
-        'https://api.bucketeer.io',
+        endpoint,
         'api_key_value',
         'feature_tag_value',
         fetch,
         200,
       )
       server = setupServerAndListen(
-        rest.post(
-          'https://api.bucketeer.io/register_events',
-          async (_req, res, ctx) => {
-            return res(
-              ctx.delay(1000),
-              ctx.status(500),
-              ctx.body('{ "error": "super slow response"}'),
-            )
-          },
-        ),
+        rest.post(`${endpoint}/register_events`, async (_req, res, ctx) => {
+          return res(
+            ctx.delay(1000),
+            ctx.status(500),
+            ctx.body('{ "error": "super slow response"}'),
+          )
+        }),
       )
 
       const response = await apiClient.registerEvents([

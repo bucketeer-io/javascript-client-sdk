@@ -3,7 +3,7 @@ import { rest } from 'msw'
 import { SetupServer } from 'msw/node'
 import fetch from 'cross-fetch'
 import { expect, suite, test, beforeEach, afterEach, vi } from 'vitest'
-import { defineBKTConfig } from '../../../src/BKTConfig'
+import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
 import {
   BadRequestException,
   UnknownException,
@@ -46,6 +46,7 @@ class TestDataModule extends DataModule {
 
 suite('internal/event/EventInteractor', () => {
   let server: SetupServer
+  let config: BKTConfig
   let component: DefaultComponent
   let interactor: EventInteractor
   let eventStorage: EventStorageImpl
@@ -53,19 +54,17 @@ suite('internal/event/EventInteractor', () => {
   let idGenerator: FakeIdGenerator
 
   beforeEach(() => {
+    config = defineBKTConfig({
+      apiKey: 'api_key_value',
+      apiEndpoint: 'https://api.bucketeer.io',
+      featureTag: 'feature_tag_value',
+      appVersion: '1.2.3',
+      eventsMaxBatchQueueCount: 3,
+      userAgent: 'user_agent_value',
+      fetch,
+    })
     component = new DefaultComponent(
-      new TestDataModule(
-        user1,
-        defineBKTConfig({
-          apiKey: 'api_key_value',
-          apiEndpoint: 'https://api.bucketeer.io',
-          featureTag: 'feature_tag_value',
-          appVersion: '1.2.3',
-          eventsMaxBatchQueueCount: 3,
-          userAgent: 'user_agent_value',
-          fetch,
-        }),
-      ),
+      new TestDataModule(user1, config),
       new InteractorModule(),
     )
 
@@ -291,7 +290,7 @@ suite('internal/event/EventInteractor', () => {
           RegisterEventsRequest,
           Record<string, never>,
           RegisterEventsResponse
-        >('https://api.bucketeer.io/register_events', async (req, res, ctx) => {
+        >(`${config.apiEndpoint}/register_events`, async (req, res, ctx) => {
           const body = (await req.json()) as RegisterEventsRequest
           expect(body.events).toHaveLength(3)
 
@@ -338,7 +337,7 @@ suite('internal/event/EventInteractor', () => {
           RegisterEventsRequest,
           Record<string, never>,
           RegisterEventsResponse
-        >('https://api.bucketeer.io/register_events', async (req, res, ctx) => {
+        >(`${config.apiEndpoint}/register_events`, async (req, res, ctx) => {
           const body = (await req.json()) as RegisterEventsRequest
           expect(body.events).toHaveLength(3)
 
@@ -386,7 +385,7 @@ suite('internal/event/EventInteractor', () => {
     test('failure', async () => {
       server = setupServerAndListen(
         rest.post<RegisterEventsRequest, Record<string, never>, ErrorResponse>(
-          'https://api.bucketeer.io/register_events',
+          `${config.apiEndpoint}/register_events`,
           async (_req, res, ctx) => {
             return res(
               ctx.status(400),
@@ -441,7 +440,7 @@ suite('internal/event/EventInteractor', () => {
           RegisterEventsRequest,
           Record<string, never>,
           RegisterEventsResponse
-        >('https://api.bucketeer.io/register_events', async (req, res, ctx) => {
+        >(`${config.apiEndpoint}/register_events`, async (req, res, ctx) => {
           const body = (await req.json()) as RegisterEventsRequest
           expect(body.events).toHaveLength(2)
 

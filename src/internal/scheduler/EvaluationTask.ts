@@ -45,12 +45,10 @@ export class EvaluationTask implements ScheduledTask {
       const canRetry = this.retryCount < this.maxRetryCount
 
       if (canRetry) {
-        console.log('failed, retrying...', this.retryCount)
         this.retryCount++
         this.reschedule(this.retryPollingInterval)
       } else {
         // we already retried enough, let's get back to daily job
-        console.log('failed, retried enough')
         this.retryCount = 0
         this.reschedule(pollingInterval)
       }
