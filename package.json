@@ -24,21 +24,21 @@
     "lint:fix": "eslint --ext .ts,.js,.cjs --fix ."
   },
   "devDependencies": {
-    "@types/jsdom": "21.1.0",
-    "@types/node": "18.15.3",
-    "@typescript-eslint/eslint-plugin": "5.55.0",
-    "@typescript-eslint/parser": "5.55.0",
+    "@types/jsdom": "21.1.1",
+    "@types/node": "18.15.5",
+    "@typescript-eslint/eslint-plugin": "5.56.0",
+    "@typescript-eslint/parser": "5.56.0",
     "cross-fetch": "3.1.5",
     "eslint": "8.36.0",
-    "eslint-config-prettier": "8.7.0",
+    "eslint-config-prettier": "8.8.0",
     "eslint-plugin-import": "2.27.5",
     "eslint-plugin-prettier": "4.2.1",
     "happy-dom": "8.9.0",
-    "msw": "1.1.1",
-    "prettier": "2.8.5",
+    "msw": "1.2.0",
+    "prettier": "2.8.6",
     "typescript": "4.9.5",
     "vite": "4.2.1",
-    "vitest": "0.29.5"
+    "vitest": "0.29.7"
   },
   "packageManager": "pnpm@7.30.0"
 }
