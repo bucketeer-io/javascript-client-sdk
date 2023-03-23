@@ -57,7 +57,7 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
             ctx.json({
@@ -90,7 +90,7 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
             ctx.delay(1000),
@@ -126,7 +126,7 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
             ctx.json({
@@ -140,7 +140,7 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', (_req, res, _ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, _ctx) => {
           return res.networkError('network error')
         }),
       )
@@ -163,7 +163,7 @@ suite('BKTClient', () => {
         GetEvaluationsRequest,
         Record<string, never>,
         GetEvaluationsResponse
-      >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+      >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
         return res.once(
           ctx.status(200),
           ctx.json({
@@ -200,7 +200,7 @@ suite('BKTClient', () => {
             GetEvaluationsRequest,
             Record<string, never>,
             GetEvaluationsResponse
-          >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+          >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
             return res.once(
               ctx.status(200),
               ctx.json({
@@ -211,6 +211,13 @@ suite('BKTClient', () => {
                 userEvaluationsId: 'user_evaluation_id_value',
               }),
             )
+          }),
+          rest.post<
+            RegisterEventsRequest,
+            Record<string, never>,
+            RegisterEventsResponse
+          >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+            return res(ctx.status(200), ctx.json({}))
           }),
         )
 
@@ -232,7 +239,7 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
             ctx.json({
@@ -240,6 +247,13 @@ suite('BKTClient', () => {
               userEvaluationsId: 'user_evaluation_id_value',
             }),
           )
+        }),
+        rest.post<
+          RegisterEventsRequest,
+          Record<string, never>,
+          RegisterEventsResponse
+        >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+          return res(ctx.status(200), ctx.json({}))
         }),
       )
 
@@ -270,7 +284,7 @@ suite('BKTClient', () => {
             GetEvaluationsRequest,
             Record<string, never>,
             GetEvaluationsResponse
-          >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+          >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
             return res.once(
               ctx.status(200),
               ctx.json({
@@ -281,6 +295,13 @@ suite('BKTClient', () => {
                 userEvaluationsId: 'user_evaluation_id_value',
               }),
             )
+          }),
+          rest.post<
+            RegisterEventsRequest,
+            Record<string, never>,
+            RegisterEventsResponse
+          >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+            return res(ctx.status(200), ctx.json({}))
           }),
         )
 
@@ -302,7 +323,7 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
             ctx.json({
@@ -310,6 +331,13 @@ suite('BKTClient', () => {
               userEvaluationsId: 'user_evaluation_id_value',
             }),
           )
+        }),
+        rest.post<
+          RegisterEventsRequest,
+          Record<string, never>,
+          RegisterEventsResponse
+        >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+          return res(ctx.status(200), ctx.json({}))
         }),
       )
 
@@ -342,7 +370,7 @@ suite('BKTClient', () => {
             GetEvaluationsRequest,
             Record<string, never>,
             GetEvaluationsResponse
-          >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+          >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
             return res.once(
               ctx.status(200),
               ctx.json({
@@ -353,6 +381,13 @@ suite('BKTClient', () => {
                 userEvaluationsId: 'user_evaluation_id_value',
               }),
             )
+          }),
+          rest.post<
+            RegisterEventsRequest,
+            Record<string, never>,
+            RegisterEventsResponse
+          >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+            return res(ctx.status(200), ctx.json({}))
           }),
         )
 
@@ -389,7 +424,7 @@ suite('BKTClient', () => {
             GetEvaluationsRequest,
             Record<string, never>,
             GetEvaluationsResponse
-          >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+          >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
             return res.once(
               ctx.status(200),
               ctx.json({
@@ -400,6 +435,13 @@ suite('BKTClient', () => {
                 userEvaluationsId: 'user_evaluation_id_value',
               }),
             )
+          }),
+          rest.post<
+            RegisterEventsRequest,
+            Record<string, never>,
+            RegisterEventsResponse
+          >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+            return res(ctx.status(200), ctx.json({}))
           }),
         )
 
@@ -425,7 +467,7 @@ suite('BKTClient', () => {
         GetEvaluationsRequest,
         Record<string, never>,
         GetEvaluationsResponse
-      >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+      >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
         return res.once(
           ctx.status(200),
           ctx.json({
@@ -433,6 +475,13 @@ suite('BKTClient', () => {
             userEvaluationsId: 'user_evaluation_id_value',
           }),
         )
+      }),
+      rest.post<
+        RegisterEventsRequest,
+        Record<string, never>,
+        RegisterEventsResponse
+      >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+        return res(ctx.status(200), ctx.json({}))
       }),
     )
 
@@ -460,7 +509,7 @@ suite('BKTClient', () => {
         GetEvaluationsRequest,
         Record<string, never>,
         GetEvaluationsResponse
-      >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+      >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
         return res.once(
           ctx.status(200),
           ctx.json({
@@ -489,7 +538,7 @@ suite('BKTClient', () => {
         GetEvaluationsRequest,
         Record<string, never>,
         GetEvaluationsResponse
-      >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+      >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
         return res.once(
           ctx.status(200),
           ctx.json({
@@ -497,6 +546,13 @@ suite('BKTClient', () => {
             userEvaluationsId: 'user_evaluation_id_value',
           }),
         )
+      }),
+      rest.post<
+        RegisterEventsRequest,
+        Record<string, never>,
+        RegisterEventsResponse
+      >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+        return res(ctx.status(200), ctx.json({}))
       }),
     )
 
@@ -536,7 +592,7 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
             ctx.json({
@@ -552,7 +608,7 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
             ctx.json({
@@ -563,6 +619,13 @@ suite('BKTClient', () => {
               userEvaluationsId: 'user_evaluation_id_value_updated',
             }),
           )
+        }),
+        rest.post<
+          RegisterEventsRequest,
+          Record<string, never>,
+          RegisterEventsResponse
+        >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+          return res(ctx.status(200), ctx.json({}))
         }),
       )
 
@@ -589,7 +652,7 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
             ctx.json({
@@ -602,7 +665,7 @@ suite('BKTClient', () => {
           )
         }),
         rest.post<GetEvaluationsRequest, Record<string, never>, ErrorResponse>(
-          'https://api.bucketeer.io/get_evaluations',
+          `${config.apiEndpoint}/get_evaluations`,
           (_req, res, ctx) => {
             return res.once(
               ctx.status(500),
@@ -615,6 +678,13 @@ suite('BKTClient', () => {
             )
           },
         ),
+        rest.post<
+          RegisterEventsRequest,
+          Record<string, never>,
+          RegisterEventsResponse
+        >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+          return res(ctx.status(200), ctx.json({}))
+        }),
       )
 
       await initializeBKTClient(config, toBKTUser(user1), 1000)
@@ -645,7 +715,7 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
             ctx.json({
@@ -658,7 +728,7 @@ suite('BKTClient', () => {
           RegisterEventsRequest,
           Record<string, never>,
           RegisterEventsResponse
-        >('https://api.bucketeer.io/register_events', (req, res, ctx) => {
+        >(`${config.apiEndpoint}/register_events`, (req, res, ctx) => {
           return res.once(ctx.status(200), ctx.json({}))
         }),
       )
@@ -685,7 +755,7 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
             ctx.json({
@@ -695,7 +765,7 @@ suite('BKTClient', () => {
           )
         }),
         rest.post<RegisterEventsRequest, Record<string, never>, ErrorResponse>(
-          'https://api.bucketeer.io/register_events',
+          `${config.apiEndpoint}/register_events`,
           (_req, res, ctx) => {
             return res.once(
               ctx.status(500),
@@ -736,7 +806,7 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
             ctx.json({
@@ -772,7 +842,7 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >('https://api.bucketeer.io/get_evaluations', (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
             ctx.json({
