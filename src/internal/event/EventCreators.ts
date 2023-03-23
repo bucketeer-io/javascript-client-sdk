@@ -3,6 +3,7 @@ import {
   GoalEvent,
   MetricsEvent,
   BaseEvent,
+  RootEventType,
 } from '../model/Event'
 import {
   ApiId,
@@ -40,31 +41,34 @@ export const newBaseEvent = (
 
 export const newEvaluationEvent = (
   base: BaseEvent,
-  fields: Omit<EvaluationEvent, keyof BaseEvent>,
+  fields: Omit<EvaluationEvent, keyof BaseEvent | '@type'>,
 ): EvaluationEvent => {
   return {
     ...base,
     ...fields,
+    '@type': RootEventType.EvaluationEvent,
   }
 }
 
 export const newDefaultEvaluationEvent = (
   base: BaseEvent,
-  fields: Omit<EvaluationEvent, keyof BaseEvent>,
+  fields: Omit<EvaluationEvent, keyof BaseEvent | '@type'>,
 ): EvaluationEvent => {
   return {
     ...base,
     ...fields,
+    '@type': RootEventType.EvaluationEvent,
   }
 }
 
 export const newGoalEvent = (
   base: BaseEvent,
-  fields: Omit<GoalEvent, keyof BaseEvent>,
+  fields: Omit<GoalEvent, keyof BaseEvent | '@type'>,
 ): GoalEvent => {
   return {
     ...base,
     ...fields,
+    '@type': RootEventType.GoalEvent,
   }
 }
 
@@ -76,7 +80,7 @@ export const newLatencyMetricsData = (
   return {
     apiId,
     labels: { tag: featureTag },
-    duration: duration,
+    duration: { value: duration },
     '@type': MetricsEventType.LatencyMetrics,
   }
 }
@@ -108,10 +112,11 @@ export const newErrorMetricsData = (
 
 export const newMetricsEvent = (
   base: BaseEvent,
-  fields: Omit<MetricsEvent, keyof BaseEvent>,
+  fields: Omit<MetricsEvent, keyof BaseEvent | '@type'>,
 ): MetricsEvent => {
   return {
     ...base,
     ...fields,
+    '@type': RootEventType.MetricsEvent,
   }
 }

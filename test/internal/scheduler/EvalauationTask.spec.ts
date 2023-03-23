@@ -175,14 +175,12 @@ suite('internal/scheduler/EventTask', () => {
     })
 
     test('should back to normal interval after successful request', async () => {
-      let requestCount = 0
       server = setupServerAndListen(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
         >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
-          requestCount++
           return res.once(ctx.status(500))
         }),
         rest.post<
@@ -190,7 +188,6 @@ suite('internal/scheduler/EventTask', () => {
           Record<string, never>,
           GetEvaluationsResponse
         >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
-          requestCount++
           return res.once(ctx.status(500))
         }),
         rest.post<
@@ -198,7 +195,6 @@ suite('internal/scheduler/EventTask', () => {
           Record<string, never>,
           GetEvaluationsResponse
         >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
-          requestCount++
           return res(
             ctx.status(200),
             ctx.json({

@@ -15,30 +15,35 @@ import { FetchResponseLike } from './fetch'
 export const toBKTException = async (
   response: FetchResponseLike,
 ): Promise<BKTException> => {
-  const errorBody: ErrorResponse | null = await response.json()
-  const error = errorBody?.error
+  const responseText: string = await response.text()
+  const errorBody: ErrorResponse | null = (() => {
+    try {
+      return JSON.parse(responseText)
+    } catch (e) {
+      return null
+    }
+  })()
+  const { message = responseText } = errorBody?.error ?? {}
 
   switch (response.status) {
     case 400:
-      return new BadRequestException(error?.message ?? 'Bad Request')
+      return new BadRequestException(message ?? 'Bad Request')
     case 401:
-      return new UnauthorizedException(error?.message ?? 'Unauthorized')
+      return new UnauthorizedException(message ?? 'Unauthorized')
     case 403:
-      return new ForbiddenException(error?.message ?? 'Forbidden')
+      return new ForbiddenException(message ?? 'Forbidden')
     case 404:
-      return new NotFoundException(error?.message ?? 'Feature Not Found')
+      return new NotFoundException(message ?? 'Feature Not Found')
     case 499:
       return new ClientClosedRequestException(
-        error?.message ?? 'Client Closed Request',
+        message ?? 'Client Closed Request',
       )
     case 500:
       return new InternalServerErrorException(
-        error?.message ?? 'Internal Server Error',
+        message ?? 'Internal Server Error',
       )
     case 503:
-      return new ServiceUnavailableException(
-        error?.message ?? 'Service Unavailable',
-      )
+      return new ServiceUnavailableException(message ?? 'Service Unavailable')
     default:
       return new UnknownException(
         `Unknown Error: ${response.status} ${
