@@ -19,7 +19,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build && tsc --emitDeclarationOnly --incremental false --composite false --project tsconfig.lib.json",
     "preview": "vite preview",
-    "test": "vitest",
+    "test": "vitest --config ./vitest.config.ts --dir test",
+    "test:e2e": "vitest --config ./vitest-e2e.config.ts --dir e2e",
     "lint": "eslint --ext .ts,.js,.cjs .",
     "lint:fix": "eslint --ext .ts,.js,.cjs --fix ."
   },
@@ -28,6 +29,7 @@
     "@types/node": "18.15.5",
     "@typescript-eslint/eslint-plugin": "5.56.0",
     "@typescript-eslint/parser": "5.56.0",
+    "@vitest/browser": "0.29.7",
     "cross-fetch": "3.1.5",
     "eslint": "8.36.0",
     "eslint-config-prettier": "8.8.0",
@@ -38,7 +40,8 @@
     "prettier": "2.8.6",
     "typescript": "4.9.5",
     "vite": "4.2.1",
-    "vitest": "0.29.7"
+    "vitest": "0.29.7",
+    "webdriverio": "8.6.7"
   },
   "packageManager": "pnpm@7.30.0"
 }

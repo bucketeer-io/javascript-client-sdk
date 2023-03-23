@@ -13,3 +13,6 @@ TBD
   - enable it via `corepack enable`
 - Node.js
   - check `./.node-version`
+
+You need `.env` file to provide api secrets.
+Just copy `env.template` and rename it to `.env`, then update it with your secrets.
