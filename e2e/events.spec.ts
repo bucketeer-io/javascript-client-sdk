@@ -9,8 +9,9 @@ import {
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { BKTUser, defineBKTUser } from '../src/BKTUser'
 import { DefaultComponent } from '../src/internal/di/Component'
-import { GOAL_ID, GOAL_VALUE, USER_ID } from './constants'
-import './helpers'
+import { FEATURE_ID_STRING, GOAL_ID, GOAL_VALUE, USER_ID } from './constants'
+import './assertions'
+import { EventType } from '../src/internal/model/Event'
 
 function getDefaultComponent(client: BKTClient): DefaultComponent {
   return (client as BKTClientImpl).component as DefaultComponent
@@ -41,7 +42,7 @@ suite('e2e/events', () => {
     localStorage.clear()
   })
 
-  test('track', async () => {
+  test('goal event', async () => {
     const client = getBKTClient()
 
     assert(client != null)
@@ -50,7 +51,27 @@ suite('e2e/events', () => {
 
     const component = getDefaultComponent(client)
 
-    expect(component.dataModule.eventStorage().getAll()).toHaveLength(3)
+    const events = component.dataModule.eventStorage().getAll()
+    expect(events).toHaveLength(3)
+    expect(events.some((e) => e.type === EventType.GOAL)).toBe(true)
+    await client.flush()
+
+    expect(component.dataModule.eventStorage().getAll()).toHaveLength(0)
+  })
+
+  test('evaluation event', async () => {
+    const client = getBKTClient()
+
+    assert(client != null)
+
+    expect(client.stringVariation(FEATURE_ID_STRING, '')).toBe('value-1')
+
+    const component = getDefaultComponent(client)
+
+    const events = component.dataModule.eventStorage().getAll()
+    expect(events).toHaveLength(3)
+    expect(events.some((e) => e.type === EventType.EVALUATION)).toBe(true)
+
     await client.flush()
 
     expect(component.dataModule.eventStorage().getAll()).toHaveLength(0)

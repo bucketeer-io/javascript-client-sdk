@@ -14,7 +14,7 @@ import {
   FEATURE_ID_STRING,
   USER_ID,
 } from './constants'
-import './helpers'
+import './assertions'
 
 suite('e2e/evaluations', () => {
   let config: BKTConfig

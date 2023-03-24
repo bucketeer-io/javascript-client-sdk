@@ -7,7 +7,7 @@ import {
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { BKTUser, defineBKTUser } from '../src/BKTUser'
 import { FEATURE_ID_STRING, USER_ID } from './constants'
-import './helpers'
+import './assertions'
 
 suite('e2e/BKTClientTest', () => {
   let config: BKTConfig
