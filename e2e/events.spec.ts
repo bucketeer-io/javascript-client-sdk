@@ -70,7 +70,37 @@ suite('e2e/events', () => {
 
     const events = component.dataModule.eventStorage().getAll()
     expect(events).toHaveLength(3)
-    expect(events.some((e) => e.type === EventType.EVALUATION)).toBe(true)
+    expect(
+      events.some(
+        (e) =>
+          e.type === EventType.EVALUATION && e.event.reason.type === 'DEFAULT',
+      ),
+    ).toBe(true)
+
+    await client.flush()
+
+    expect(component.dataModule.eventStorage().getAll()).toHaveLength(0)
+  })
+
+  test('default evaluation event', async () => {
+    const client = getBKTClient()
+
+    assert(client != null)
+
+    // clear event storage to mimic no-cache state
+    const component = getDefaultComponent(client)
+    component.dataModule.evaluationStorage().clear()
+
+    expect(client.stringVariation(FEATURE_ID_STRING, '')).toBe('')
+
+    const events = component.dataModule.eventStorage().getAll()
+    expect(events).toHaveLength(3)
+    expect(
+      events.some(
+        (e) =>
+          e.type === EventType.EVALUATION && e.event.reason.type === 'CLIENT',
+      ),
+    ).toBe(true)
 
     await client.flush()
 
