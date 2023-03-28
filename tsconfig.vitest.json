@@ -19,5 +19,5 @@
     "noEmit": true,
     "emitDeclarationOnly": false
   },
-  "include": ["src", "test"]
+  "include": ["src", "test", "e2e"]
 }

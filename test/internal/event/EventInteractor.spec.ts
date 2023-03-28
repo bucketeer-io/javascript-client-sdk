@@ -13,7 +13,11 @@ import { DataModule } from '../../../src/internal/di/DataModule'
 import { InteractorModule } from '../../../src/internal/di/InteractorModule'
 import { EventInteractor } from '../../../src/internal/event/EventInteractor'
 import { EventStorageImpl } from '../../../src/internal/event/EventStorage'
-import { Event, EventType } from '../../../src/internal/model/Event'
+import {
+  Event,
+  EventType,
+  RootEventType,
+} from '../../../src/internal/model/Event'
 import {
   ApiId,
   MetricsEventType,
@@ -91,6 +95,7 @@ suite('internal/event/EventInteractor', () => {
         id: idGenerator.calls[0],
         type: EventType.EVALUATION,
         event: {
+          '@type': RootEventType.EvaluationEvent,
           timestamp: clock.currentTimeSecondsCalls[0],
           sourceId: SourceID.JAVASCRIPT,
           featureId: 'test-feature-1',
@@ -132,6 +137,7 @@ suite('internal/event/EventInteractor', () => {
         id: idGenerator.calls[0],
         type: EventType.EVALUATION,
         event: {
+          '@type': RootEventType.EvaluationEvent,
           timestamp: clock.currentTimeSecondsCalls[0],
           sourceId: SourceID.JAVASCRIPT,
           featureId: 'feature_id_value',
@@ -169,6 +175,7 @@ suite('internal/event/EventInteractor', () => {
         id: idGenerator.calls[0],
         type: EventType.GOAL,
         event: {
+          '@type': RootEventType.GoalEvent,
           timestamp: clock.currentTimeSecondsCalls[0],
           sourceId: SourceID.JAVASCRIPT,
           goalId: 'goal_id_value',
@@ -202,6 +209,7 @@ suite('internal/event/EventInteractor', () => {
         id: idGenerator.calls[0],
         type: EventType.METRICS,
         event: {
+          '@type': RootEventType.MetricsEvent,
           timestamp: clock.currentTimeSecondsCalls[0],
           sourceId: SourceID.JAVASCRIPT,
           metadata: {
@@ -212,7 +220,7 @@ suite('internal/event/EventInteractor', () => {
           event: {
             apiId: ApiId.GET_EVALUATION,
             labels: { tag: 'feature_tag_value' },
-            duration: 1,
+            duration: { value: 1 },
             '@type': MetricsEventType.LatencyMetrics,
           },
         },
@@ -221,6 +229,7 @@ suite('internal/event/EventInteractor', () => {
         id: idGenerator.calls[1],
         type: EventType.METRICS,
         event: {
+          '@type': RootEventType.MetricsEvent,
           timestamp: clock.currentTimeSecondsCalls[1],
           sourceId: SourceID.JAVASCRIPT,
           metadata: {
@@ -261,6 +270,7 @@ suite('internal/event/EventInteractor', () => {
         id: idGenerator.calls[0],
         type: EventType.METRICS,
         event: {
+          '@type': RootEventType.MetricsEvent,
           timestamp: clock.currentTimeSecondsCalls[0],
           sourceId: SourceID.JAVASCRIPT,
           metadata: {

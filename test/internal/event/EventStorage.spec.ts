@@ -4,7 +4,7 @@ import {
   EventStorage,
   EventStorageImpl,
 } from '../../../src/internal/event/EventStorage'
-import { BKTStorage, DefaultStorage } from '../../../src/internal/storege'
+import { BKTStorage, DefaultStorage } from '../../../src/internal/storage'
 import {
   evaluationEvent1,
   evaluationEvent2,

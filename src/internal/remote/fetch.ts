@@ -16,6 +16,7 @@ export type FetchResponseLike = {
   statusText: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   json: () => Promise<any>
+  text: () => Promise<string>
 }
 
 export type FetchLike = (

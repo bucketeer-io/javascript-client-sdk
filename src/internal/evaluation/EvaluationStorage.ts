@@ -1,5 +1,5 @@
 import { Evaluation } from '../model/Evaluation'
-import { BKTStorage } from '../storege'
+import { BKTStorage } from '../storage'
 
 export interface EvaluationEntity {
   userId: string
