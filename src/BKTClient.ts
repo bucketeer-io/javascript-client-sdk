@@ -20,6 +20,9 @@ export interface BKTClient {
   fetchEvaluations: (timeoutMillis?: number) => Promise<void>
   flush: () => Promise<void>
   evaluationDetails: (featureId: string) => BKTEvaluation | null
+  addEvaluationUpdateListener: (listener: () => void) => string
+  removeEvaluationUpdateListener: (listenerId: string) => void
+  clearEvaluationUpdateListeners: () => void
 }
 
 export class BKTClientImpl implements BKTClient {
@@ -134,6 +137,18 @@ export class BKTClientImpl implements BKTClient {
     }
 
     return null
+  }
+
+  addEvaluationUpdateListener(listener: () => void): string {
+    return this.component.evaluationInteractor().addUpdateListener(listener)
+  }
+
+  removeEvaluationUpdateListener(listenerId: string) {
+    this.component.evaluationInteractor().removeUpdateListener(listenerId)
+  }
+
+  clearEvaluationUpdateListeners() {
+    this.component.evaluationInteractor().clearUpdateListeners()
   }
 
   private getVariationValue(featureId: string): string | null {
