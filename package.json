@@ -8,7 +8,7 @@
   ],
   "main": "./dist/bucketeer.umd.cjs",
   "module": "./dist/bucketeer.js",
-  "types": "./dist/types/src/main.d.ts",
+  "types": "./dist/types/main.d.ts",
   "exports": {
     ".": {
       "import": "./dist/bucketeer.js",
@@ -22,7 +22,8 @@
     "test": "vitest --config ./vitest.config.ts --dir test",
     "test:e2e": "vitest --config ./vitest-e2e.config.ts --dir e2e",
     "lint": "eslint --ext .ts,.js,.cjs .",
-    "lint:fix": "eslint --ext .ts,.js,.cjs --fix ."
+    "lint:fix": "eslint --ext .ts,.js,.cjs --fix .",
+    "example:serve": "pnpm build && pnpm --filter example serve"
   },
   "devDependencies": {
     "@types/jsdom": "21.1.1",
