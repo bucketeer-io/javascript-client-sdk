@@ -45,7 +45,7 @@ export type ErrorMetricsEventType = Exclude<
 export interface LatencyMetricsEvent {
   apiId: ApiId
   labels: Record<string, string>
-  latencySecond: { value: number }
+  latencySecond: number
   '@type': (typeof MetricsEventType)['LatencyMetrics']
 }
 

@@ -101,7 +101,7 @@ export const latencyMetricsEvent1: LatencyMetricsEvent = {
   labels: {
     tag: 'javascript',
   },
-  latencySecond: { value: 2000 },
+  latencySecond: 2000,
   '@type': MetricsEventType.LatencyMetrics,
 }
 

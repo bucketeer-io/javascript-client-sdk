@@ -80,7 +80,7 @@ export const newLatencyMetricsData = (
   return {
     apiId,
     labels: { tag: featureTag },
-    latencySecond: { value: latencySecond },
+    latencySecond,
     '@type': MetricsEventType.LatencyMetrics,
   }
 }
