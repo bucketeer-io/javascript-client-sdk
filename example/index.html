@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div id="app">
+    <button id="track_goal" type="button" disabled>track goal event</button>
+    <button id="flush" type="button" disabled>flush events</button>
+    <div id="logs" style="border: 1px solid black; margin-top: 8px;"></div>
+
+  </div>
+  <script type="module">
+    import start from './index.ts'
+    start(document.getElementById('app'))
+  </script>
+</body>
+</html>

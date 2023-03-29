@@ -2,6 +2,7 @@ import {
   EvaluationEvent,
   Event,
   EventType,
+  RootEventType,
 } from '../../src/internal/model/Event'
 import {
   ApiId,
@@ -26,6 +27,7 @@ export const evaluationEvent1: Event = {
     sourceId: SourceID.JAVASCRIPT,
     sdkVersion: '1.0.0',
     metadata: {},
+    '@type': RootEventType.EvaluationEvent,
   } satisfies EvaluationEvent,
 }
 
@@ -48,6 +50,7 @@ export const evaluationEvent2: Event = {
       osVersion: 'os_version_value',
       deviceModel: 'device_model_value',
     },
+    '@type': RootEventType.EvaluationEvent,
   } satisfies EvaluationEvent,
 }
 
@@ -68,6 +71,7 @@ export const goalEvent1: Event = {
       os_version: 'os_version_value',
       device_model: 'device_model_value',
     },
+    '@type': RootEventType.GoalEvent,
   },
 }
 
@@ -88,6 +92,7 @@ export const goalEvent2: Event = {
       os_version: 'os_version_value',
       device_model: 'device_model_value',
     },
+    '@type': RootEventType.GoalEvent,
   },
 }
 
@@ -96,7 +101,7 @@ export const latencyMetricsEvent1: LatencyMetricsEvent = {
   labels: {
     tag: 'javascript',
   },
-  duration: 2000,
+  latencySecond: 2000,
   '@type': MetricsEventType.LatencyMetrics,
 }
 
@@ -113,5 +118,6 @@ export const metricsEvent1: Event = {
       device_model: 'device_model_value',
     },
     sourceId: SourceID.JAVASCRIPT,
+    '@type': RootEventType.MetricsEvent,
   },
 }

@@ -1,0 +1,13 @@
+{
+  "name": "example",
+  "scripts": {
+    "serve": "vite serve"
+  },
+  "dependencies": {
+    "@bucketeer/js-client-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "4.2.1",
+    "typescript": "4.9.5"
+  }
+}

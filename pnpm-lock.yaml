@@ -1,42 +1,55 @@
 lockfileVersion: 5.4
 
-specifiers:
-  '@types/jsdom': 21.1.1
-  '@types/node': 18.15.5
-  '@typescript-eslint/eslint-plugin': 5.56.0
-  '@typescript-eslint/parser': 5.56.0
-  '@vitest/browser': 0.29.7
-  cross-fetch: 3.1.5
-  eslint: 8.36.0
-  eslint-config-prettier: 8.8.0
-  eslint-plugin-import: 2.27.5
-  eslint-plugin-prettier: 4.2.1
-  happy-dom: 8.9.0
-  msw: 1.2.0
-  prettier: 2.8.6
-  typescript: 4.9.5
-  vite: 4.2.1
-  vitest: 0.29.7
-  webdriverio: 8.6.7
+importers:
 
-devDependencies:
-  '@types/jsdom': 21.1.1
-  '@types/node': 18.15.5
-  '@typescript-eslint/eslint-plugin': 5.56.0_iskin7c6dxqunwflhstekcjqmq
-  '@typescript-eslint/parser': 5.56.0_vgl77cfdswitgr47lm5swmv43m
-  '@vitest/browser': 0.29.7_vitest@0.29.7
-  cross-fetch: 3.1.5
-  eslint: 8.36.0
-  eslint-config-prettier: 8.8.0_eslint@8.36.0
-  eslint-plugin-import: 2.27.5_cnkxirszkzb4o6ts7gbclno24e
-  eslint-plugin-prettier: 4.2.1_ose2zoovovx4ulolhifz3tfzx4
-  happy-dom: 8.9.0
-  msw: 1.2.0_typescript@4.9.5
-  prettier: 2.8.6
-  typescript: 4.9.5
-  vite: 4.2.1_@types+node@18.15.5
-  vitest: 0.29.7_5uqtpclv46q4s4vwxjehfl3s34
-  webdriverio: 8.6.7_typescript@4.9.5
+  .:
+    specifiers:
+      '@types/jsdom': 21.1.1
+      '@types/node': 18.15.5
+      '@typescript-eslint/eslint-plugin': 5.56.0
+      '@typescript-eslint/parser': 5.56.0
+      '@vitest/browser': 0.29.7
+      cross-fetch: 3.1.5
+      eslint: 8.36.0
+      eslint-config-prettier: 8.8.0
+      eslint-plugin-import: 2.27.5
+      eslint-plugin-prettier: 4.2.1
+      happy-dom: 8.9.0
+      msw: 1.2.0
+      prettier: 2.8.6
+      typescript: 4.9.5
+      vite: 4.2.1
+      vitest: 0.29.7
+      webdriverio: 8.6.7
+    devDependencies:
+      '@types/jsdom': 21.1.1
+      '@types/node': 18.15.5
+      '@typescript-eslint/eslint-plugin': 5.56.0_iskin7c6dxqunwflhstekcjqmq
+      '@typescript-eslint/parser': 5.56.0_vgl77cfdswitgr47lm5swmv43m
+      '@vitest/browser': 0.29.7_vitest@0.29.7
+      cross-fetch: 3.1.5
+      eslint: 8.36.0
+      eslint-config-prettier: 8.8.0_eslint@8.36.0
+      eslint-plugin-import: 2.27.5_cnkxirszkzb4o6ts7gbclno24e
+      eslint-plugin-prettier: 4.2.1_ose2zoovovx4ulolhifz3tfzx4
+      happy-dom: 8.9.0
+      msw: 1.2.0_typescript@4.9.5
+      prettier: 2.8.6
+      typescript: 4.9.5
+      vite: 4.2.1_@types+node@18.15.5
+      vitest: 0.29.7_5uqtpclv46q4s4vwxjehfl3s34
+      webdriverio: 8.6.7_typescript@4.9.5
+
+  example:
+    specifiers:
+      '@bucketeer/js-client-sdk': workspace:*
+      typescript: 4.9.5
+      vite: 4.2.1
+    dependencies:
+      '@bucketeer/js-client-sdk': link:..
+    devDependencies:
+      typescript: 4.9.5
+      vite: 4.2.1
 
 packages:
 
@@ -4037,6 +4050,39 @@ packages:
       - sugarss
       - supports-color
       - terser
+    dev: true
+
+  /vite/4.2.1:
+    resolution: {integrity: sha512-7MKhqdy0ISo4wnvwtqZkjke6XN4taqQ2TBaTccLIpOKv7Vp2h4Y+NpmWCnGDeSvvn45KxvWgGyb0MkHvY1vgbg==}
+    engines: {node: ^14.18.0 || >=16.0.0}
+    hasBin: true
+    peerDependencies:
+      '@types/node': '>= 14'
+      less: '*'
+      sass: '*'
+      stylus: '*'
+      sugarss: '*'
+      terser: ^5.4.0
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+      less:
+        optional: true
+      sass:
+        optional: true
+      stylus:
+        optional: true
+      sugarss:
+        optional: true
+      terser:
+        optional: true
+    dependencies:
+      esbuild: 0.17.12
+      postcss: 8.4.21
+      resolve: 1.22.1
+      rollup: 3.20.0
+    optionalDependencies:
+      fsevents: 2.3.2
     dev: true
 
   /vite/4.2.1_@types+node@18.15.5:
