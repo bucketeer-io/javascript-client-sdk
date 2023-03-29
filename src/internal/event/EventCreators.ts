@@ -74,13 +74,13 @@ export const newGoalEvent = (
 
 export const newLatencyMetricsData = (
   apiId: ApiId,
-  duration: number,
+  latencySecond: number,
   featureTag: string,
 ): LatencyMetricsEvent => {
   return {
     apiId,
     labels: { tag: featureTag },
-    duration: { value: duration },
+    latencySecond: { value: latencySecond },
     '@type': MetricsEventType.LatencyMetrics,
   }
 }

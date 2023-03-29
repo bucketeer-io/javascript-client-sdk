@@ -220,7 +220,7 @@ suite('internal/event/EventInteractor', () => {
           event: {
             apiId: ApiId.GET_EVALUATION,
             labels: { tag: 'feature_tag_value' },
-            duration: { value: 1 },
+            latencySecond: { value: 1 },
             '@type': MetricsEventType.LatencyMetrics,
           },
         },
