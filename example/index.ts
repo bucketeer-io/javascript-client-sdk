@@ -76,7 +76,9 @@ export default async function start(root: HTMLElement) {
 
   window.addEventListener('beforeunload', () => {
     log('destroy BKTClient')
-    getBKTClient()?.removeEvaluationUpdateListener(listenerId)
+    if (listenerId) {
+      getBKTClient()?.removeEvaluationUpdateListener(listenerId)
+    }
     destroyBKTClient()
   })
 
