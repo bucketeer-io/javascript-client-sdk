@@ -1,0 +1,44 @@
+name: Publish snapshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_version:
+        required: true
+        type: string
+        description: The base version to use for the snapshot. For example, if the base version is 1.0.0, the snapshot version will be '1.0.0-${timestamp}-${GIT_COMMIT}'
+      dry_run:
+        type: boolean
+        required: false
+        default: false
+        description: 'dry-run pnpm publish'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: pnpm/action-setup@v2
+
+      - name: Setup node env 🏗
+        uses: actions/setup-node@v3
+        with:
+          node-version-file: '.node-version'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies 👨🏻‍💻
+        run: pnpm install --frozen-lockfile
+
+      - name: bump version for prerelease
+        run: pnpm version $(pnpm exec jiti ./.github/snapshot-version.ts ${{ github.event.inputs.base_version }}) --no-git-tag-version
+
+      - name: Build SDK
+        run: pnpm build
+
+      - name: Publish to NPM with next tag
+        run: pnpm publish --tag next --no-git-checks --dry-run ${{ github.event.inputs.dry_run }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
