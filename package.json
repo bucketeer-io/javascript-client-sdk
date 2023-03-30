@@ -4,7 +4,8 @@
   "version": "2.0.0",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "main": "./dist/bucketeer.umd.cjs",
   "module": "./dist/bucketeer.js",

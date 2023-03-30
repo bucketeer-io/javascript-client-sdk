@@ -1,7 +1,6 @@
 name: release-please
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
@@ -17,8 +16,12 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+
     steps:
       - uses: google-github-actions/release-please-action@v3.7.4
+        id: release
         with:
           changelog-types: |
             [
@@ -32,3 +35,9 @@ jobs:
           release-type: node
           package-name: "@bucketeer/js-client-sdk"
           release-as: 2.0.0
+
+  publish:
+    needs: [release_please]
+    if: ${{ needs.release_please.outputs.release_created }}
+    uses: ./.github/workflows/reusable-publish-npm.yml
+    secrets: inherit
