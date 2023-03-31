@@ -17,6 +17,7 @@ import {
   NotFoundException,
   TimeoutException,
 } from '../src/BKTExceptions'
+import { ApiId, MetricsEventType } from '../src/internal/model/MetricsEventData'
 
 function getDefaultComponent(client: BKTClient): DefaultComponent {
   return (client as BKTClientImpl).component as DefaultComponent
@@ -154,6 +155,23 @@ suite('e2e/events', () => {
       await expect(() =>
         initializeBKTClient(config, user),
       ).rejects.toThrowError(ForbiddenException)
+
+      const client = getBKTClient()
+      assert(client != null)
+      const component = getDefaultComponent(client)
+
+      const events = component.dataModule.eventStorage().getAll()
+
+      expect(events).toHaveLength(1)
+      expect(
+        events.some((e) => {
+          return (
+            e.type === EventType.METRICS &&
+            e.event.event['@type'] === MetricsEventType.ForbiddenError &&
+            e.event.event.apiId === ApiId.GET_EVALUATIONS
+          )
+        }),
+      ).toBe(true)
     })
 
     test('Using a random string in the featureTag setting should throw NotFound', async () => {
@@ -198,6 +216,23 @@ suite('e2e/events', () => {
       await expect(() =>
         initializeBKTClient(config, user, 1),
       ).rejects.toThrowError(TimeoutException)
+
+      const client = getBKTClient()
+      assert(client != null)
+      const component = getDefaultComponent(client)
+
+      const events = component.dataModule.eventStorage().getAll()
+
+      expect(events).toHaveLength(1)
+      expect(
+        events.some((e) => {
+          return (
+            e.type === EventType.METRICS &&
+            e.event.event['@type'] === MetricsEventType.TimeoutError &&
+            e.event.event.apiId === ApiId.GET_EVALUATIONS
+          )
+        }),
+      ).toBe(true)
     })
   })
 })
