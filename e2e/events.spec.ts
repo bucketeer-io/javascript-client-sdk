@@ -172,9 +172,13 @@ suite('e2e/events', () => {
           )
         }),
       ).toBe(true)
+
+      await expect(() => client.flush()).rejects.toThrowError(
+        ForbiddenException,
+      )
     })
 
-    test('Using a random string in the featureTag setting should throw NotFound', async () => {
+    test('Using a random string in the featureTag setting should not affect api request', async () => {
       destroyBKTClient()
       localStorage.clear()
 
@@ -190,9 +194,7 @@ suite('e2e/events', () => {
         id: USER_ID,
       })
 
-      await expect(() =>
-        initializeBKTClient(config, user),
-      ).rejects.toThrowError(NotFoundException)
+      await initializeBKTClient(config, user)
     })
 
     test('Timeout', async () => {
@@ -233,6 +235,11 @@ suite('e2e/events', () => {
           )
         }),
       ).toBe(true)
+
+      await client.flush()
+
+      const events2 = component.dataModule.eventStorage().getAll()
+      expect(events2).toHaveLength(0)
     })
   })
 })
