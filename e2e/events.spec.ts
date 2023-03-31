@@ -12,6 +12,11 @@ import { DefaultComponent } from '../src/internal/di/Component'
 import { FEATURE_ID_STRING, GOAL_ID, GOAL_VALUE, USER_ID } from './constants'
 import './assertions'
 import { EventType } from '../src/internal/model/Event'
+import {
+  ForbiddenException,
+  NotFoundException,
+  TimeoutException,
+} from '../src/BKTExceptions'
 
 function getDefaultComponent(client: BKTClient): DefaultComponent {
   return (client as BKTClientImpl).component as DefaultComponent
@@ -105,5 +110,94 @@ suite('e2e/events', () => {
     await client.flush()
 
     expect(component.dataModule.eventStorage().getAll()).toHaveLength(0)
+  })
+
+  suite('MetricsEvent', () => {
+    test('altering featureTag should not affect api request', async () => {
+      // delete the feature tag setting before the request
+      config.featureTag = ''
+
+      const client = getBKTClient()
+      assert(client != null)
+
+      // might throw BadRequest error if there's problem
+      await client.fetchEvaluations()
+    })
+
+    test('Altering the api key should not affect api request', async () => {
+      // delete the api key setting before the request
+      config.apiKey = ''
+
+      const client = getBKTClient()
+      assert(client != null)
+
+      // might throw Unauthorized error if there's problem
+      await client.fetchEvaluations()
+    })
+
+    test('Using a random string in the api key setting should throw Forbidden', async () => {
+      destroyBKTClient()
+      localStorage.clear()
+
+      config = defineBKTConfig({
+        apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
+        apiKey: 'some-random-string',
+        featureTag: 'javascript',
+        appVersion: '1.2.3',
+        fetch: window.fetch,
+      })
+
+      user = defineBKTUser({
+        id: USER_ID,
+      })
+
+      await expect(() =>
+        initializeBKTClient(config, user),
+      ).rejects.toThrowError(ForbiddenException)
+    })
+
+    test('Using a random string in the featureTag setting should throw NotFound', async () => {
+      destroyBKTClient()
+      localStorage.clear()
+
+      config = defineBKTConfig({
+        apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
+        apiKey: import.meta.env.VITE_BKT_API_KEY,
+        featureTag: 'some-random-feature-tag',
+        appVersion: '1.2.3',
+        fetch: window.fetch,
+      })
+
+      user = defineBKTUser({
+        id: USER_ID,
+      })
+
+      await expect(() =>
+        initializeBKTClient(config, user),
+      ).rejects.toThrowError(NotFoundException)
+    })
+
+    test('Timeout', async () => {
+      // setting a very low value for the timeout
+
+      destroyBKTClient()
+      localStorage.clear()
+
+      config = defineBKTConfig({
+        apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
+        apiKey: import.meta.env.VITE_BKT_API_KEY,
+        featureTag: 'javascript',
+        appVersion: '1.2.3',
+        fetch: window.fetch,
+      })
+
+      user = defineBKTUser({
+        id: USER_ID,
+      })
+
+      await expect(() =>
+        initializeBKTClient(config, user, 1),
+      ).rejects.toThrowError(TimeoutException)
+    })
   })
 })
