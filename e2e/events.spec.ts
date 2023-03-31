@@ -12,10 +12,7 @@ import { DefaultComponent } from '../src/internal/di/Component'
 import { FEATURE_ID_STRING, GOAL_ID, GOAL_VALUE, USER_ID } from './constants'
 import './assertions'
 import { EventType } from '../src/internal/model/Event'
-import {
-  ForbiddenException,
-  TimeoutException,
-} from '../src/BKTExceptions'
+import { ForbiddenException, TimeoutException } from '../src/BKTExceptions'
 import { ApiId, MetricsEventType } from '../src/internal/model/MetricsEventData'
 
 function getDefaultComponent(client: BKTClient): DefaultComponent {
