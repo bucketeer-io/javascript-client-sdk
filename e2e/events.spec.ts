@@ -14,7 +14,6 @@ import './assertions'
 import { EventType } from '../src/internal/model/Event'
 import {
   ForbiddenException,
-  NotFoundException,
   TimeoutException,
 } from '../src/BKTExceptions'
 import { ApiId, MetricsEventType } from '../src/internal/model/MetricsEventData'
@@ -176,6 +175,50 @@ suite('e2e/events', () => {
       await expect(() => client.flush()).rejects.toThrowError(
         ForbiddenException,
       )
+
+      const events2 = component.dataModule.eventStorage().getAll()
+
+      // error from /register_events does not get stored
+      expect(events2).toHaveLength(1)
+
+      destroyBKTClient()
+
+      // recreate client with correct api key, and flush events
+      config = defineBKTConfig({
+        apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
+        apiKey: import.meta.env.VITE_BKT_API_KEY,
+        featureTag: 'javascript',
+        appVersion: '1.2.3',
+        fetch: window.fetch,
+      })
+
+      await initializeBKTClient(config, user)
+
+      const client2 = getBKTClient()
+      assert(client2 != null)
+      const component2 = getDefaultComponent(client)
+
+      const events3 = component2.dataModule.eventStorage().getAll()
+
+      // error from /register_events does not get stored
+      expect(events3).toHaveLength(3)
+      // ForbiddenError should still exist
+      expect(
+        events.some((e) => {
+          return (
+            e.type === EventType.METRICS &&
+            e.event.event['@type'] === MetricsEventType.ForbiddenError &&
+            e.event.event.apiId === ApiId.GET_EVALUATIONS
+          )
+        }),
+      ).toBe(true)
+
+      await client2.flush()
+
+      const events4 = component2.dataModule.eventStorage().getAll()
+
+      // error from /register_events does not get stored
+      expect(events4).toHaveLength(0)
     })
 
     test('Using a random string in the featureTag setting should not affect api request', async () => {
