@@ -15,7 +15,19 @@
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "all non-major dependencies",
       "groupSlug": "all-minor-patch",
-      "excludePackageNames": []
+      "excludePackageNames": [
+        "@vitest/browser",
+        "vitest",
+        "webdriverio"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "@vitest/browser",
+        "vitest",
+        "webdriverio"
+      ],
+      "groupName": "vitest"
     }
   ]
 }
