@@ -8,5 +8,9 @@ export default defineConfig({
   test: {
     setupFiles: ['test/globalSetup.ts'],
     environment: 'happy-dom',
+    browser: {
+      provider: 'webdriverio',
+      name: 'chrome',
+    }
   },
 })

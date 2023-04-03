@@ -31,7 +31,7 @@
     "@types/node": "18.15.11",
     "@typescript-eslint/eslint-plugin": "5.57.0",
     "@typescript-eslint/parser": "5.57.0",
-    "@vitest/browser": "0.29.8",
+    "@vitest/browser": "0.29.7",
     "cross-fetch": "3.1.5",
     "eslint": "8.37.0",
     "eslint-config-prettier": "8.8.0",
@@ -43,7 +43,7 @@
     "prettier": "2.8.7",
     "typescript": "5.0.3",
     "vite": "4.2.1",
-    "vitest": "0.29.8",
+    "vitest": "0.29.7",
     "webdriverio": "8.6.9"
   },
   "packageManager": "pnpm@8.1.0"
