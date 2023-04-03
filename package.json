@@ -4,7 +4,8 @@
   "version": "2.0.0",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "main": "./dist/bucketeer.umd.cjs",
   "module": "./dist/bucketeer.js",
@@ -37,6 +38,7 @@
     "eslint-plugin-import": "2.27.5",
     "eslint-plugin-prettier": "4.2.1",
     "happy-dom": "8.9.0",
+    "jiti": "1.18.2",
     "msw": "1.2.0",
     "prettier": "2.8.6",
     "typescript": "4.9.5",
