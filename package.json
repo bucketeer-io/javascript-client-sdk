@@ -29,15 +29,15 @@
   "devDependencies": {
     "@types/jsdom": "21.1.1",
     "@types/node": "18.15.11",
-    "@typescript-eslint/eslint-plugin": "5.57.0",
-    "@typescript-eslint/parser": "5.57.0",
+    "@typescript-eslint/eslint-plugin": "5.57.1",
+    "@typescript-eslint/parser": "5.57.1",
     "@vitest/browser": "0.29.7",
     "cross-fetch": "3.1.5",
     "eslint": "8.37.0",
     "eslint-config-prettier": "8.8.0",
     "eslint-plugin-import": "2.27.5",
     "eslint-plugin-prettier": "4.2.1",
-    "happy-dom": "9.1.0",
+    "happy-dom": "9.1.7",
     "jiti": "1.18.2",
     "msw": "1.2.1",
     "prettier": "2.8.7",
@@ -46,5 +46,5 @@
     "vitest": "0.29.7",
     "webdriverio": "8.6.9"
   },
-  "packageManager": "pnpm@8.1.0"
+  "packageManager": "pnpm@8.1.1"
 }
