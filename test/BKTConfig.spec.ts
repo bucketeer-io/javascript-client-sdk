@@ -1,5 +1,6 @@
-import { describe, test, expect } from 'vitest'
+import { suite, test, expect } from 'vitest'
 import { defineBKTConfig } from '../src/BKTConfig'
+import { IllegalArgumentException } from '../src/BKTExceptions'
 
 const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
   apiKey: 'api-key',
@@ -7,10 +8,9 @@ const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
   featureTag: 'feature-tag',
   appVersion: '1.2.3',
   userAgent: 'user-agent-value',
-  fetch,
 }
 
-describe('defineBKTConfig', () => {
+suite('defineBKTConfig', () => {
   test('all parameters are valid', () => {
     const result = defineBKTConfig({
       ...defaultConfig,
@@ -22,6 +22,7 @@ describe('defineBKTConfig', () => {
       eventsMaxBatchQueueCount: 50,
       pollingInterval: 600_000,
       storageKeyPrefix: '',
+      fetch: window.fetch,
     })
   })
 
@@ -95,5 +96,14 @@ describe('defineBKTConfig', () => {
     })
 
     expect(result.userAgent).toBe(window.navigator.userAgent)
+  })
+
+  test('explicitly passing undefined to fetch field throws', () => {
+    expect(() => {
+      defineBKTConfig({
+        ...defaultConfig,
+        fetch: undefined,
+      })
+    }).toThrow(IllegalArgumentException)
   })
 })
