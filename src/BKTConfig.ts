@@ -26,7 +26,7 @@ interface RawBKTConfig {
   appVersion: string
   storageKeyPrefix?: string
   userAgent?: string
-  fetch: FetchLike
+  fetch?: FetchLike
 }
 
 export interface BKTConfig extends RawBKTConfig {
@@ -34,6 +34,7 @@ export interface BKTConfig extends RawBKTConfig {
   eventsMaxBatchQueueCount: number
   pollingInterval: number
   userAgent: string
+  fetch: FetchLike
 }
 
 export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
@@ -43,6 +44,7 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     pollingInterval: DEFAULT_POLLING_INTERVAL_MILLIS,
     storageKeyPrefix: '',
     userAgent: window.navigator.userAgent,
+    fetch: window.fetch,
     ...config,
   }
 
@@ -55,6 +57,7 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     throw new IllegalArgumentException('featureTag is required')
   if (!result.appVersion)
     throw new IllegalArgumentException('appVersion is required')
+  if (!result.fetch) throw new IllegalArgumentException('fetch is required')
 
   if (result.pollingInterval < MINIMUM_POLLING_INTERVAL_MILLIS) {
     result.pollingInterval = DEFAULT_POLLING_INTERVAL_MILLIS
