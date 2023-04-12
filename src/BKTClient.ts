@@ -216,19 +216,22 @@ export const getBKTClient = (): BKTClient | null => {
   return getInstance()
 }
 
-export const initializeBKTClient = (
+export const initializeBKTClient = async (
   config: BKTConfig,
   user: BKTUser,
   timeoutMillis = 5_000,
-): Promise<void> => {
-  if (getInstance()) {
-    return Promise.resolve()
+): Promise<BKTClient> => {
+  const client = getInstance()
+  if (client) {
+    return client
   }
 
-  const client = new BKTClientImpl(config, user)
-  setInstance(client)
+  const impl = new BKTClientImpl(config, user) satisfies BKTClient
+  setInstance(impl)
 
-  return client.initializeInternal(timeoutMillis)
+  await impl.initializeInternal(timeoutMillis)
+
+  return impl
 }
 
 export const destroyBKTClient = (): void => {

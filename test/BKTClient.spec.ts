@@ -68,11 +68,8 @@ suite('BKTClient', () => {
         }),
       )
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
-
-      const client = getBKTClient()
-
-      assert(client !== null)
+      const client = await initializeBKTClient(config, toBKTUser(user1), 1000)
+      expect(client).not.toBeNull()
 
       const evaluationInteractor =
         getDefaultComponent(client).evaluationInteractor()
@@ -145,9 +142,11 @@ suite('BKTClient', () => {
         }),
       )
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
+      const client1 = await initializeBKTClient(config, toBKTUser(user1), 1000)
+      expect(client1).not.toBeNull()
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
+      const client2 = await initializeBKTClient(config, toBKTUser(user1), 1000)
+      expect(client2).not.toBeNull()
     })
   })
 

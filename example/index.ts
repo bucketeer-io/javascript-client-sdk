@@ -59,15 +59,12 @@ export default async function start(root: HTMLElement) {
   const initialFetchPromise = initializeBKTClient(config, user)
 
   initialFetchPromise
-    .then(() => {
+    .then((client) => {
       log('initialization completed')
       buttonEl?.removeAttribute('disabled')
       flushEl?.removeAttribute('disabled')
 
-      const value = getBKTClient()?.stringVariation(
-        STRING_FEATURE_ID,
-        'default_value',
-      )
+      const value = client.stringVariation(STRING_FEATURE_ID, 'default_value')
       log(`value for feature_id: ${value}`)
     })
     .catch((error) => {
