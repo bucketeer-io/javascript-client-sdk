@@ -7,7 +7,7 @@
     "@bucketeer/js-client-sdk": "workspace:*"
   },
   "devDependencies": {
-    "vite": "4.2.1",
+    "vite": "4.2.2",
     "typescript": "5.0.4"
   }
 }
