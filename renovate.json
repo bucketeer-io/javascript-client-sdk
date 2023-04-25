@@ -4,7 +4,8 @@
     ":timezone(Asia/Tokyo)",
     "config:base",
     ":pinDependencies",
-    ":pinDevDependencies"
+    ":pinDevDependencies",
+    "schedule:monthly"
   ],
   "lockFileMaintenance": {
     "enabled": true
