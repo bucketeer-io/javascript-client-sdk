@@ -1,9 +1,7 @@
 # Bucketeer Client-side SDK for JavaScript
 
-**!! This is still in development !!**
-
-
-TBD
+## Getting started
+Refer to the [SDK documentation](https://docs.bucketeer.io/sdk/client-side/javascript) for instructions on how to use the SDK.
 
 ## Development
 
