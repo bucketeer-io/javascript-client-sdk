@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies 👨🏻‍💻
         run: pnpm install --frozen-lockfile
 
+      - name: Build SDK
+        run: pnpm build
+
       - name: Run Tests
         run: pnpm test:e2e --browser.headless
         env:
