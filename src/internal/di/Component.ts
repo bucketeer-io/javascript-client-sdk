@@ -43,7 +43,7 @@ export class DefaultComponent implements Component {
   eventInteractor(): EventInteractor {
     if (!this._eventInteractor) {
       this._eventInteractor = this.interactorModule.eventInteractor(
-        this.dataModule.config().eventsMaxBatchQueueCount,
+        this.dataModule.config().eventsMaxQueueSize,
         this.dataModule.apiClient(),
         this.dataModule.eventStorage(),
         this.dataModule.idGenerator(),

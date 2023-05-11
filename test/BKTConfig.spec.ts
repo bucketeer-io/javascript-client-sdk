@@ -19,7 +19,7 @@ suite('defineBKTConfig', () => {
     expect(result).toStrictEqual({
       ...defaultConfig,
       eventsFlushInterval: 60_000,
-      eventsMaxBatchQueueCount: 50,
+      eventsMaxQueueSize: 50,
       pollingInterval: 600_000,
       storageKeyPrefix: '',
       fetch: window.fetch,

@@ -89,7 +89,7 @@ export class BKTClientImpl implements BKTClient {
     }
   }
 
-  track(goalId: string, value: number): void {
+  track(goalId: string, value = 0.0): void {
     this.component
       .eventInteractor()
       .trackGoalEvent(

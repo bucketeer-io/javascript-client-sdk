@@ -28,7 +28,7 @@ suite('internal/scheduler/EventTask', () => {
       apiEndpoint: 'https://api.bucketeer.io',
       featureTag: 'feature_tag_value',
       appVersion: '1.2.3',
-      eventsMaxBatchQueueCount: 3,
+      eventsMaxQueueSize: 3,
       eventsFlushInterval: 1000,
       fetch,
     })
