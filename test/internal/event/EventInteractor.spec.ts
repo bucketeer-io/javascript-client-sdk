@@ -63,7 +63,7 @@ suite('internal/event/EventInteractor', () => {
       apiEndpoint: 'https://api.bucketeer.io',
       featureTag: 'feature_tag_value',
       appVersion: '1.2.3',
-      eventsMaxBatchQueueCount: 3,
+      eventsMaxQueueSize: 3,
       userAgent: 'user_agent_value',
       fetch,
     })
@@ -430,7 +430,7 @@ suite('internal/event/EventInteractor', () => {
       expect(eventStorage.getAll()).toHaveLength(3)
     })
 
-    test('current cache is less than `eventsMaxBatchQueueCount`', async () => {
+    test('current cache is less than `eventsMaxQueueSize`', async () => {
       interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
 
       expect(eventStorage.getAll()).toHaveLength(2)

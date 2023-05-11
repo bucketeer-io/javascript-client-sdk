@@ -21,7 +21,7 @@ interface RawBKTConfig {
   apiEndpoint: string
   featureTag: string
   eventsFlushInterval?: number
-  eventsMaxBatchQueueCount?: number
+  eventsMaxQueueSize?: number
   pollingInterval?: number
   appVersion: string
   storageKeyPrefix?: string
@@ -31,7 +31,7 @@ interface RawBKTConfig {
 
 export interface BKTConfig extends RawBKTConfig {
   eventsFlushInterval: number
-  eventsMaxBatchQueueCount: number
+  eventsMaxQueueSize: number
   pollingInterval: number
   userAgent: string
   fetch: FetchLike
@@ -40,7 +40,7 @@ export interface BKTConfig extends RawBKTConfig {
 export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
   const result: BKTConfig = {
     eventsFlushInterval: MINIMUM_FLUSH_INTERVAL_MILLIS,
-    eventsMaxBatchQueueCount: DEFAULT_MAX_QUEUE_SIZE,
+    eventsMaxQueueSize: DEFAULT_MAX_QUEUE_SIZE,
     pollingInterval: DEFAULT_POLLING_INTERVAL_MILLIS,
     storageKeyPrefix: '',
     userAgent: window.navigator.userAgent,
