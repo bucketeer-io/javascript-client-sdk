@@ -21,9 +21,9 @@ export const newMetadata = (
   deviceModel: string,
 ): Record<string, string> => {
   return {
-    appVersion,
-    // osVersion, osVersion is not available in javascript-client-sdk
-    deviceModel,
+    app_version: appVersion,
+    // os_version, osVersion is not available in javascript-client-sdk
+    device_model: deviceModel,
   }
 }
 

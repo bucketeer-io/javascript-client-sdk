@@ -104,8 +104,8 @@ suite('internal/event/EventInteractor', () => {
           userId: user1.id,
           user: user1,
           metadata: {
-            appVersion: '1.2.3',
-            deviceModel: 'user_agent_value',
+            app_version: '1.2.3',
+            device_model: 'user_agent_value',
           },
           reason: {
             type: 'CLIENT',
@@ -146,8 +146,8 @@ suite('internal/event/EventInteractor', () => {
           userId: user1.id,
           user: user1,
           metadata: {
-            appVersion: '1.2.3',
-            deviceModel: 'user_agent_value',
+            app_version: '1.2.3',
+            device_model: 'user_agent_value',
           },
           reason: {
             type: 'CLIENT',
@@ -183,8 +183,8 @@ suite('internal/event/EventInteractor', () => {
           userId: user1.id,
           user: user1,
           metadata: {
-            appVersion: '1.2.3',
-            deviceModel: 'user_agent_value',
+            app_version: '1.2.3',
+            device_model: 'user_agent_value',
           },
           sdkVersion: __BKT_SDK_VERSION__,
           tag: 'feature_tag_value',
@@ -213,8 +213,8 @@ suite('internal/event/EventInteractor', () => {
           timestamp: clock.currentTimeSecondsCalls[0],
           sourceId: SourceID.JAVASCRIPT,
           metadata: {
-            appVersion: '1.2.3',
-            deviceModel: 'user_agent_value',
+            app_version: '1.2.3',
+            device_model: 'user_agent_value',
           },
           sdkVersion: __BKT_SDK_VERSION__,
           event: {
@@ -233,8 +233,8 @@ suite('internal/event/EventInteractor', () => {
           timestamp: clock.currentTimeSecondsCalls[1],
           sourceId: SourceID.JAVASCRIPT,
           metadata: {
-            appVersion: '1.2.3',
-            deviceModel: 'user_agent_value',
+            app_version: '1.2.3',
+            device_model: 'user_agent_value',
           },
           sdkVersion: __BKT_SDK_VERSION__,
           event: {
@@ -274,8 +274,8 @@ suite('internal/event/EventInteractor', () => {
           timestamp: clock.currentTimeSecondsCalls[0],
           sourceId: SourceID.JAVASCRIPT,
           metadata: {
-            appVersion: '1.2.3',
-            deviceModel: 'user_agent_value',
+            app_version: '1.2.3',
+            device_model: 'user_agent_value',
           },
           sdkVersion: __BKT_SDK_VERSION__,
           event: {
