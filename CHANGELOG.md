@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.2](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.0.1...v2.0.2) (2023-05-22)
+
+
+### Miscellaneous
+
+* change metadata key format to snake case ([#72](https://github.com/bucketeer-io/javascript-client-sdk/issues/72)) ([92981f1](https://github.com/bucketeer-io/javascript-client-sdk/commit/92981f19bb95c41573a6bfdfba65e8ae159d71d0))
+* **deps:** lock file maintenance ([#71](https://github.com/bucketeer-io/javascript-client-sdk/issues/71)) ([ddf5229](https://github.com/bucketeer-io/javascript-client-sdk/commit/ddf5229d5f1b578c9332a57755ebaa4c8456e7d8))
+* set default value for track interface ([#69](https://github.com/bucketeer-io/javascript-client-sdk/issues/69)) ([da69f66](https://github.com/bucketeer-io/javascript-client-sdk/commit/da69f666ab3caac39d8d8b7770b9db9e1e130c29))
+
 ## [2.0.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.0.0...v2.0.1) (2023-05-09)
 
 
