@@ -8,6 +8,6 @@
   },
   "devDependencies": {
     "vite": "4.3.5",
-    "typescript": "5.0.4"
+    "typescript": "5.1.3"
   }
 }
