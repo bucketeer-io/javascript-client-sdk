@@ -9,7 +9,16 @@ import {
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { BKTUser, defineBKTUser } from '../src/BKTUser'
 import { DefaultComponent } from '../src/internal/di/Component'
-import { FEATURE_ID_STRING, GOAL_ID, GOAL_VALUE, USER_ID } from './constants'
+import {
+  FEATURE_ID_BOOLEAN,
+  FEATURE_ID_DOUBLE,
+  FEATURE_ID_INT,
+  FEATURE_ID_JSON,
+  FEATURE_ID_STRING,
+  GOAL_ID,
+  GOAL_VALUE,
+  USER_ID,
+} from './constants'
 import './assertions'
 import { EventType } from '../src/internal/model/Event'
 import { ForbiddenException, TimeoutException } from '../src/BKTExceptions'
@@ -67,11 +76,18 @@ suite('e2e/events', () => {
     assert(client != null)
 
     expect(client.stringVariation(FEATURE_ID_STRING, '')).toBe('value-1')
+    expect(client.numberVariation(FEATURE_ID_INT, 0)).toBe(10)
+    expect(client.numberVariation(FEATURE_ID_DOUBLE, 0.0)).toBe(2.1)
+    expect(client.booleanVariation(FEATURE_ID_BOOLEAN, false)).toBe(true)
+    expect(client.jsonVariation(FEATURE_ID_JSON, '')).toStrictEqual({
+      key: 'value-1',
+    })
 
     const component = getDefaultComponent(client)
 
     const events = component.dataModule.eventStorage().getAll()
-    expect(events).toHaveLength(3)
+    // It includes the Latency and ResponseSize metrics
+    expect(events).toHaveLength(7)
     expect(
       events.some(
         (e) =>
@@ -93,10 +109,21 @@ suite('e2e/events', () => {
     const component = getDefaultComponent(client)
     component.dataModule.evaluationStorage().clear()
 
-    expect(client.stringVariation(FEATURE_ID_STRING, '')).toBe('')
+    expect(client.stringVariation(FEATURE_ID_STRING, 'value-default')).toBe(
+      'value-default',
+    )
+    expect(client.numberVariation(FEATURE_ID_INT, 0)).toBe(0)
+    expect(client.numberVariation(FEATURE_ID_DOUBLE, 0.0)).toBe(0.0)
+    expect(client.booleanVariation(FEATURE_ID_BOOLEAN, false)).toBe(false)
+    expect(
+      client.jsonVariation(FEATURE_ID_JSON, { key: 'value-default' }),
+    ).toStrictEqual({
+      key: 'value-default',
+    })
 
     const events = component.dataModule.eventStorage().getAll()
-    expect(events).toHaveLength(3)
+    // It includes the Latency and ResponseSize metrics
+    expect(events).toHaveLength(7)
     expect(
       events.some(
         (e) =>
