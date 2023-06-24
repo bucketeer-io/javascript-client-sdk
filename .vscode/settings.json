@@ -4,7 +4,6 @@
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
   },
-  "eslint.packageManager": "pnpm",
   "eslint.format.enable": true,
   "yaml.schemas": {
     "https://json.schemastore.org/github-workflow.json": [

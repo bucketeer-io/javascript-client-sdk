@@ -2,7 +2,16 @@ import assert from 'assert'
 import { rest } from 'msw'
 import { SetupServer } from 'msw/node'
 import fetch from 'cross-fetch'
-import { expect, suite, test, beforeEach, afterEach, vi } from 'vitest'
+import {
+  expect,
+  suite,
+  test,
+  beforeEach,
+  afterEach,
+  vi,
+  beforeAll,
+  afterAll,
+} from 'vitest'
 import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
 import {
   BadRequestException,
@@ -57,6 +66,10 @@ suite('internal/event/EventInteractor', () => {
   let clock: FakeClock
   let idGenerator: FakeIdGenerator
 
+  beforeAll(() => {
+    server = setupServerAndListen()
+  })
+
   beforeEach(() => {
     config = defineBKTConfig({
       apiKey: 'api_key_value',
@@ -80,8 +93,12 @@ suite('internal/event/EventInteractor', () => {
   })
 
   afterEach(() => {
-    server?.close()
+    server.resetHandlers()
     eventStorage.clear()
+  })
+
+  afterAll(() => {
+    server.close()
   })
 
   test('trackEvaluationEvent', () => {
@@ -295,7 +312,7 @@ suite('internal/event/EventInteractor', () => {
 
   suite('sendEvents', () => {
     test('success', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           RegisterEventsRequest,
           Record<string, never>,
@@ -342,7 +359,7 @@ suite('internal/event/EventInteractor', () => {
     })
 
     test('success - some events are failed', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           RegisterEventsRequest,
           Record<string, never>,
@@ -393,7 +410,7 @@ suite('internal/event/EventInteractor', () => {
     })
 
     test('failure', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<RegisterEventsRequest, Record<string, never>, ErrorResponse>(
           `${config.apiEndpoint}/register_events`,
           async (_req, res, ctx) => {
@@ -445,7 +462,7 @@ suite('internal/event/EventInteractor', () => {
     })
 
     test('force=true', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           RegisterEventsRequest,
           Record<string, never>,
