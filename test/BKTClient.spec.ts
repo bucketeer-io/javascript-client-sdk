@@ -13,7 +13,7 @@ import {
 import {
   destroyBKTClient,
   getBKTClient,
-  initializeBKTClient,
+  initializeBKTClientInternal,
 } from '../src/BKTClient'
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { GetEvaluationsRequest } from '../src/internal/model/request/GetEvaluationsRequest'
@@ -22,7 +22,7 @@ import { evaluation1, user1Evaluations } from './mocks/evaluations'
 import {
   setupServerAndListen,
   getDefaultComponent,
-  clearLocalStorageIfNeeded,
+  TestPlatformModule,
 } from './utils'
 import fetch from 'cross-fetch'
 import { user1 } from './mocks/users'
@@ -37,10 +37,14 @@ import { BKTEvaluation } from '../src/BKTEvaluation'
 import { ErrorResponse } from '../src/internal/model/response/ErrorResponse'
 import { RegisterEventsRequest } from '../src/internal/model/request/RegisterEventsRequest'
 import { RegisterEventsResponse } from '../src/internal/model/response/RegisterEventsResponse'
+import { DefaultComponent } from '../src/internal/di/Component'
+import { DataModule } from '../src/internal/di/DataModule'
+import { InteractorModule } from '../src/internal/di/InteractorModule'
 
 suite('BKTClient', () => {
   let server: SetupServer
   let config: BKTConfig
+  let component: DefaultComponent
 
   beforeAll(() => {
     server = setupServerAndListen()
@@ -55,11 +59,15 @@ suite('BKTClient', () => {
       eventsMaxQueueSize: 3,
       fetch,
     })
+
+    component = new DefaultComponent(
+      new TestPlatformModule(),
+      new DataModule(toBKTUser(user1), config),
+      new InteractorModule(),
+    )
   })
 
   afterEach(() => {
-    clearLocalStorageIfNeeded()
-
     destroyBKTClient()
     server.resetHandlers()
   })
@@ -86,7 +94,7 @@ suite('BKTClient', () => {
         }),
       )
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
+      await initializeBKTClientInternal(component, 1000)
 
       const client = getBKTClient()
 
@@ -121,7 +129,7 @@ suite('BKTClient', () => {
       )
 
       await expect(async () => {
-        await initializeBKTClient(config, toBKTUser(user1), 500)
+        await initializeBKTClientInternal(component, 500)
       }).rejects.toThrow(TimeoutException)
 
       const client = getBKTClient()
@@ -163,9 +171,9 @@ suite('BKTClient', () => {
         }),
       )
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
+      await initializeBKTClientInternal(component, 1000)
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
+      await initializeBKTClientInternal(component, 1000)
     })
   })
 
@@ -192,7 +200,7 @@ suite('BKTClient', () => {
       }),
     )
 
-    await initializeBKTClient(config, toBKTUser(user1), 1000)
+    await initializeBKTClientInternal(component, 1000)
 
     expect(getBKTClient()).not.toBeNull()
 
@@ -239,7 +247,7 @@ suite('BKTClient', () => {
           }),
         )
 
-        await initializeBKTClient(config, toBKTUser(user1), 1000)
+        await initializeBKTClientInternal(component, 1000)
 
         const client = getBKTClient()
 
@@ -275,7 +283,7 @@ suite('BKTClient', () => {
         }),
       )
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
+      await initializeBKTClientInternal(component, 1000)
 
       const client = getBKTClient()
 
@@ -323,7 +331,7 @@ suite('BKTClient', () => {
           }),
         )
 
-        await initializeBKTClient(config, toBKTUser(user1), 1000)
+        await initializeBKTClientInternal(component, 1000)
 
         const client = getBKTClient()
 
@@ -359,7 +367,7 @@ suite('BKTClient', () => {
         }),
       )
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
+      await initializeBKTClientInternal(component, 1000)
 
       const client = getBKTClient()
 
@@ -409,7 +417,7 @@ suite('BKTClient', () => {
           }),
         )
 
-        await initializeBKTClient(config, toBKTUser(user1), 1000)
+        await initializeBKTClientInternal(component, 1000)
 
         const client = getBKTClient()
 
@@ -463,7 +471,7 @@ suite('BKTClient', () => {
           }),
         )
 
-        await initializeBKTClient(config, toBKTUser(user1), 1000)
+        await initializeBKTClientInternal(component, 1000)
 
         const client = getBKTClient()
 
@@ -503,7 +511,7 @@ suite('BKTClient', () => {
       }),
     )
 
-    await initializeBKTClient(config, toBKTUser(user1), 1000)
+    await initializeBKTClientInternal(component, 1000)
 
     const client = getBKTClient()
 
@@ -538,7 +546,7 @@ suite('BKTClient', () => {
       }),
     )
 
-    await initializeBKTClient(config, toBKTUser(user1), 1000)
+    await initializeBKTClientInternal(component, 1000)
 
     const client = getBKTClient()
 
@@ -574,15 +582,14 @@ suite('BKTClient', () => {
       }),
     )
 
-    await initializeBKTClient(config, toBKTUser(user1), 1000)
+    await initializeBKTClientInternal(component, 1000)
 
     const client = getBKTClient()
 
     assert(client !== null)
 
-    const component = getDefaultComponent(client)
-    const userHolder = component.userHolder()
-    const storage = component.dataModule.evaluationStorage()
+    const userHolder = getDefaultComponent(client).userHolder()
+    const storage = getDefaultComponent(client).dataModule.evaluationStorage()
 
     expect(userHolder.get().data).toBeUndefined()
     expect(storage.getCurrentEvaluationsId()).toBe('user_evaluation_id_value')
@@ -647,7 +654,7 @@ suite('BKTClient', () => {
         }),
       )
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
+      await initializeBKTClientInternal(component, 1000)
 
       const client = getBKTClient()
 
@@ -705,7 +712,7 @@ suite('BKTClient', () => {
         }),
       )
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
+      await initializeBKTClientInternal(component, 1000)
 
       const client = getBKTClient()
 
@@ -751,14 +758,13 @@ suite('BKTClient', () => {
         }),
       )
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
+      await initializeBKTClientInternal(component, 1000)
 
       const client = getBKTClient()
 
       assert(client !== null)
 
-      const component = getDefaultComponent(client)
-      const eventStorage = component.dataModule.eventStorage()
+      const eventStorage = getDefaultComponent(client).dataModule.eventStorage()
 
       expect(eventStorage.getAll().length).toBe(2)
 
@@ -798,14 +804,13 @@ suite('BKTClient', () => {
         ),
       )
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
+      await initializeBKTClientInternal(component, 1000)
 
       const client = getBKTClient()
 
       assert(client !== null)
 
-      const component = getDefaultComponent(client)
-      const eventStorage = component.dataModule.eventStorage()
+      const eventStorage = getDefaultComponent(client).dataModule.eventStorage()
 
       expect(eventStorage.getAll().length).toBe(2)
 
@@ -835,7 +840,7 @@ suite('BKTClient', () => {
         }),
       )
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
+      await initializeBKTClientInternal(component, 1000)
 
       const client = getBKTClient()
 
@@ -871,7 +876,7 @@ suite('BKTClient', () => {
         }),
       )
 
-      await initializeBKTClient(config, toBKTUser(user1), 1000)
+      await initializeBKTClientInternal(component, 1000)
 
       const client = getBKTClient()
 

@@ -18,7 +18,7 @@ import { DataModule } from '../../../src/internal/di/DataModule'
 import { RegisterEventsRequest } from '../../../src/internal/model/request/RegisterEventsRequest'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
 import { EventTask } from '../../../src/internal/scheduler/EventTask'
-import { clearLocalStorageIfNeeded, setupServerAndListen } from '../../utils'
+import { TestPlatformModule, setupServerAndListen } from '../../utils'
 import { InteractorModule } from '../../../src/internal/di/InteractorModule'
 import { user1 } from '../../mocks/users'
 import { evaluation1, evaluation2 } from '../../mocks/evaluations'
@@ -47,14 +47,13 @@ suite('internal/scheduler/EventTask', () => {
     })
 
     component = new DefaultComponent(
+      new TestPlatformModule(),
       new DataModule(user1, config),
       new InteractorModule(),
     )
   })
 
   afterEach(() => {
-    clearLocalStorageIfNeeded()
-
     destroyBKTClient()
     server.resetHandlers()
     task.stop()
