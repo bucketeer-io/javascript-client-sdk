@@ -31,8 +31,11 @@ jobs:
       - name: Run ESLint
         run: pnpm lint
 
-      - name: Run Tests
-        run: pnpm test
+      - name: Run Tests for Browser environment
+        run: pnpm test:browser
+
+      - name: Run Tests form Node.js environment
+        run: pnpm test:node
 
       - name: Run build
         run: pnpm build
