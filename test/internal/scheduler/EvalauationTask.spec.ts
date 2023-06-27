@@ -1,6 +1,15 @@
 import { rest } from 'msw'
 import { SetupServer } from 'msw/node'
-import { beforeEach, afterEach, expect, suite, test, vi } from 'vitest'
+import {
+  beforeEach,
+  afterEach,
+  expect,
+  suite,
+  test,
+  vi,
+  afterAll,
+  beforeAll,
+} from 'vitest'
 import fetch from 'cross-fetch'
 import { destroyBKTClient } from '../../../src/BKTClient'
 import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
@@ -19,6 +28,10 @@ suite('internal/scheduler/EventTask', () => {
   let config: BKTConfig
   let component: DefaultComponent
   let task: EvaluationTask
+
+  beforeAll(() => {
+    server = setupServerAndListen()
+  })
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -41,16 +54,21 @@ suite('internal/scheduler/EventTask', () => {
 
   afterEach(() => {
     destroyBKTClient()
-    server?.close()
     localStorage.clear()
     task.stop()
+
+    server.resetHandlers()
 
     vi.useRealTimers()
   })
 
+  afterAll(() => {
+    server.close()
+  })
+
   test('start', async () => {
     let requestCount = 0
-    server = setupServerAndListen(
+    server.use(
       rest.post<
         GetEvaluationsRequest,
         Record<string, never>,
@@ -76,7 +94,7 @@ suite('internal/scheduler/EventTask', () => {
 
   test('stop should cancel timer', async () => {
     let requestCount = 0
-    server = setupServerAndListen(
+    server.use(
       rest.post<
         GetEvaluationsRequest,
         Record<string, never>,
@@ -109,7 +127,7 @@ suite('internal/scheduler/EventTask', () => {
   suite('retry', () => {
     test('should back to normal interval after maxRetryCount', async () => {
       let requestCount = 0
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
@@ -175,7 +193,7 @@ suite('internal/scheduler/EventTask', () => {
     })
 
     test('should back to normal interval after successful request', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,

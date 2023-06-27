@@ -1,10 +1,16 @@
 import { rest } from 'msw'
 import { SetupServer } from 'msw/node'
 import assert from 'assert'
-import { beforeEach, afterEach, expect, suite, test } from 'vitest'
 import {
-  BKTClient,
-  BKTClientImpl,
+  beforeEach,
+  afterEach,
+  expect,
+  suite,
+  test,
+  beforeAll,
+  afterAll,
+} from 'vitest'
+import {
   destroyBKTClient,
   getBKTClient,
   initializeBKTClient,
@@ -33,6 +39,10 @@ suite('BKTClient', () => {
   let server: SetupServer
   let config: BKTConfig
 
+  beforeAll(() => {
+    server = setupServerAndListen()
+  })
+
   beforeEach(() => {
     config = defineBKTConfig({
       apiKey: 'api_key_value',
@@ -46,13 +56,17 @@ suite('BKTClient', () => {
 
   afterEach(() => {
     destroyBKTClient()
-    server?.close()
+    server.resetHandlers()
     localStorage.clear()
+  })
+
+  afterAll(() => {
+    server.close()
   })
 
   suite('initializeBKTClient', () => {
     test('first evaluation request succeeds', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
@@ -85,7 +99,7 @@ suite('BKTClient', () => {
     })
 
     test('first evaluation request timeouts', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
@@ -121,7 +135,7 @@ suite('BKTClient', () => {
     })
 
     test('second call should immediately resolves without api request', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
@@ -158,7 +172,7 @@ suite('BKTClient', () => {
   })
 
   test('destroyBKtClient', async () => {
-    server = setupServerAndListen(
+    server.use(
       rest.post<
         GetEvaluationsRequest,
         Record<string, never>,
@@ -195,7 +209,7 @@ suite('BKTClient', () => {
     ])(
       'value=%s, default=%s, actual=%s',
       async (value: string, defaultValue: string, actual: string) => {
-        server = setupServerAndListen(
+        server.use(
           rest.post<
             GetEvaluationsRequest,
             Record<string, never>,
@@ -234,7 +248,7 @@ suite('BKTClient', () => {
     )
 
     test('returns default value if feature is not found', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
@@ -279,7 +293,7 @@ suite('BKTClient', () => {
     ])(
       'value=%s, default=%s, actual=%s',
       async (value: string, defaultValue: number, actual: number) => {
-        server = setupServerAndListen(
+        server.use(
           rest.post<
             GetEvaluationsRequest,
             Record<string, never>,
@@ -318,7 +332,7 @@ suite('BKTClient', () => {
     )
 
     test('returns default value if feature is not found', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
@@ -365,7 +379,7 @@ suite('BKTClient', () => {
     ])(
       'value=%s, default=%s, actual=%s',
       async (value: string, defaultValue: boolean, actual: boolean) => {
-        server = setupServerAndListen(
+        server.use(
           rest.post<
             GetEvaluationsRequest,
             Record<string, never>,
@@ -419,7 +433,7 @@ suite('BKTClient', () => {
     ])(
       'value=%s, default=%s, actual=%s',
       async (value, defaultValue, actual) => {
-        server = setupServerAndListen(
+        server.use(
           rest.post<
             GetEvaluationsRequest,
             Record<string, never>,
@@ -462,7 +476,7 @@ suite('BKTClient', () => {
   })
 
   test('track', async () => {
-    server = setupServerAndListen(
+    server.use(
       rest.post<
         GetEvaluationsRequest,
         Record<string, never>,
@@ -504,7 +518,7 @@ suite('BKTClient', () => {
   })
 
   test('currentUser', async () => {
-    server = setupServerAndListen(
+    server.use(
       rest.post<
         GetEvaluationsRequest,
         Record<string, never>,
@@ -533,7 +547,7 @@ suite('BKTClient', () => {
   })
 
   test('updateUserAttributes', async () => {
-    server = setupServerAndListen(
+    server.use(
       rest.post<
         GetEvaluationsRequest,
         Record<string, never>,
@@ -587,7 +601,7 @@ suite('BKTClient', () => {
         },
       } satisfies Evaluation
 
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
@@ -647,7 +661,7 @@ suite('BKTClient', () => {
     })
 
     test('failure', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
@@ -710,7 +724,7 @@ suite('BKTClient', () => {
 
   suite('flush', () => {
     test('success', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
@@ -750,7 +764,7 @@ suite('BKTClient', () => {
     })
 
     test('failure', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
@@ -801,7 +815,7 @@ suite('BKTClient', () => {
 
   suite('evaluationDetails', () => {
     test('return BKTEvaluation if target evaluation exists', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
@@ -837,7 +851,7 @@ suite('BKTClient', () => {
     })
 
     test('return null if target evaluation does not exist', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,

@@ -1,4 +1,12 @@
-import { expect, suite, test, beforeEach, afterEach } from 'vitest'
+import {
+  expect,
+  suite,
+  test,
+  beforeEach,
+  afterEach,
+  afterAll,
+  beforeAll,
+} from 'vitest'
 import fetch from 'cross-fetch'
 import { rest } from 'msw'
 import assert from 'assert'
@@ -22,6 +30,10 @@ suite('internal/remote/ApiClient', () => {
   let server: SetupServer
   let apiClient: ApiClient
 
+  beforeAll(() => {
+    server = setupServerAndListen()
+  })
+
   beforeEach(() => {
     apiClient = new ApiClientImpl(
       endpoint,
@@ -32,12 +44,16 @@ suite('internal/remote/ApiClient', () => {
   })
 
   afterEach(() => {
+    server.resetHandlers()
+  })
+
+  afterAll(() => {
     server.close()
   })
 
   suite('getEvaluations', () => {
     test('success', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
@@ -82,7 +98,7 @@ suite('internal/remote/ApiClient', () => {
     })
 
     test('network error', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post(`${endpoint}/get_evaluations`, (_req, res, _ctx) => {
           return res.networkError('network error')
         }),
@@ -108,7 +124,7 @@ suite('internal/remote/ApiClient', () => {
         fetch,
         200,
       )
-      server = setupServerAndListen(
+      server.use(
         rest.post(`${endpoint}/get_evaluations`, async (_req, res, ctx) => {
           return res(
             ctx.delay(1000),
@@ -133,7 +149,7 @@ suite('internal/remote/ApiClient', () => {
 
   suite('registerEvents', () => {
     test('success', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           RegisterEventsRequest,
           Record<string, never>,
@@ -179,7 +195,7 @@ suite('internal/remote/ApiClient', () => {
     })
 
     test('network error', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post(`${endpoint}/register_events`, (_req, res, _ctx) => {
           return res.networkError('network error')
         }),
@@ -204,7 +220,7 @@ suite('internal/remote/ApiClient', () => {
         fetch,
         200,
       )
-      server = setupServerAndListen(
+      server.use(
         rest.post(`${endpoint}/register_events`, async (_req, res, ctx) => {
           return res(
             ctx.delay(1000),

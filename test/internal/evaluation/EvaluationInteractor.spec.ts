@@ -1,6 +1,15 @@
 import { rest } from 'msw'
 import { SetupServer } from 'msw/node'
-import { expect, suite, test, beforeEach, afterEach, vi } from 'vitest'
+import {
+  expect,
+  suite,
+  test,
+  beforeEach,
+  afterEach,
+  vi,
+  beforeAll,
+  afterAll,
+} from 'vitest'
 import fetch from 'cross-fetch'
 import assert from 'assert'
 import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
@@ -27,6 +36,10 @@ suite('internal/evaluation/EvaluationInteractor', () => {
   let interactor: EvaluationInteractor
   let evaluationStorage: EvaluationStorageImpl
 
+  beforeAll(() => {
+    server = setupServerAndListen()
+  })
+
   beforeEach(() => {
     config = defineBKTConfig({
       apiKey: 'api_key_value',
@@ -46,13 +59,17 @@ suite('internal/evaluation/EvaluationInteractor', () => {
   })
 
   afterEach(() => {
-    server.close()
+    server.resetHandlers()
     evaluationStorage.clear()
+  })
+
+  afterAll(() => {
+    server.close()
   })
 
   suite('fetch', () => {
     test('initial load', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
@@ -98,7 +115,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         ...evaluation1,
         variationValue: 'new_variation_value',
       }
-      server = setupServerAndListen(
+      server.use(
         // initial request
         rest.post<
           GetEvaluationsRequest,
@@ -161,7 +178,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     })
 
     test('update with no change', async () => {
-      server = setupServerAndListen(
+      server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
