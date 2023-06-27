@@ -10,24 +10,32 @@
     "dist",
     "README.md"
   ],
-  "main": "./dist/bucketeer.umd.cjs",
-  "module": "./dist/bucketeer.js",
-  "types": "./dist/types/main.d.ts",
+  "main": "./dist/main.cjs",
+  "module": "./dist/main.mjs",
+  "browser": "./dist/main.browser.mjs",
+  "types": "./dist/main.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/bucketeer.js",
-      "require": "./dist/bucketeer.umd.cjs"
+      "node": {
+        "import": "./dist/main.mjs",
+        "require": "./dist/main.cjs"
+      },
+      "default": {
+        "import": "./dist/main.browser.mjs"
+      }
     }
   },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build && tsc --emitDeclarationOnly --incremental false --composite false --project tsconfig.lib.json",
     "preview": "vite preview",
-    "test": "vitest --config ./vitest.config.ts --dir test",
+    "test": "pnpm test:browser --run ; pnpm test:node --run",
+    "test:browser": "vitest --config ./vitest-browser.config.ts --dir test",
+    "test:node": "vitest --config ./vitest-node.config.ts --dir test",
     "test:e2e": "vitest --config ./vitest-e2e.config.ts --dir e2e",
     "lint": "eslint --ext .ts,.js,.cjs .",
     "lint:fix": "eslint --ext .ts,.js,.cjs --fix .",
-    "example:serve": "pnpm build && pnpm --filter example serve"
+    "example:serve": "pnpm exec unbuild && pnpm --filter example serve"
   },
   "devDependencies": {
     "@types/jsdom": "21.1.1",
@@ -48,7 +56,8 @@
     "typescript": "5.1.3",
     "vite": "4.3.9",
     "vitest": "0.32.2",
-    "webdriverio": "8.11.2"
+    "webdriverio": "8.11.2",
+    "unbuild": "^1.2.1"
   },
   "packageManager": "pnpm@8.6.2"
 }

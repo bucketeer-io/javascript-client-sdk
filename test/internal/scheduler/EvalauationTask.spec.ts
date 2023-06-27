@@ -15,7 +15,7 @@ import { destroyBKTClient } from '../../../src/BKTClient'
 import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
 import { DefaultComponent } from '../../../src/internal/di/Component'
 import { DataModule } from '../../../src/internal/di/DataModule'
-import { setupServerAndListen } from '../../utils'
+import { clearLocalStorageIfNeeded, setupServerAndListen } from '../../utils'
 import { InteractorModule } from '../../../src/internal/di/InteractorModule'
 import { user1 } from '../../mocks/users'
 import { user1Evaluations } from '../../mocks/evaluations'
@@ -53,8 +53,8 @@ suite('internal/scheduler/EventTask', () => {
   })
 
   afterEach(() => {
+    clearLocalStorageIfNeeded()
     destroyBKTClient()
-    localStorage.clear()
     task.stop()
 
     server.resetHandlers()

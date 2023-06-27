@@ -12,7 +12,7 @@ export class EvaluationTask implements ScheduledTask {
     private maxRetryCount = MAX_RETRY_COUNT,
   ) {}
 
-  private timerId?: number
+  private timerId?: ReturnType<typeof setTimeout>
   private retryCount = 0
   private running = false
 
@@ -20,7 +20,7 @@ export class EvaluationTask implements ScheduledTask {
     clearTimeout(this.timerId)
     // fetchEvaluations call is asynchronous and setInterval does not wait for it.
     // So have to use setTimeout instead.
-    this.timerId = window.setTimeout(() => {
+    this.timerId = setTimeout(() => {
       this.fetchEvaluations()
     }, interval)
   }

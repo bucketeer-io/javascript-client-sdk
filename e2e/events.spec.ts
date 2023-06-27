@@ -4,8 +4,8 @@ import {
   BKTClientImpl,
   destroyBKTClient,
   getBKTClient,
-  initializeBKTClient,
 } from '../src/BKTClient'
+import { initializeBKTClient } from '../src/main.browser'
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { BKTUser, defineBKTUser } from '../src/BKTUser'
 import { DefaultComponent } from '../src/internal/di/Component'

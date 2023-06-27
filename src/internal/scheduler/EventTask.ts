@@ -9,7 +9,7 @@ type EventUpdateListener = Parameters<
 export class EventTask implements ScheduledTask {
   constructor(private component: Component) {}
 
-  private timerId?: number | NodeJS.Timeout
+  private timerId?: ReturnType<typeof setTimeout>
   private running = false
 
   private eventUpdateListener: EventUpdateListener = async (_) => {

@@ -3,7 +3,7 @@ import {
   destroyBKTClient,
   getBKTClient,
   initializeBKTClient,
-} from '../src/BKTClient'
+} from '../src/main.browser'
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { BKTUser, defineBKTUser } from '../src/BKTUser'
 import {

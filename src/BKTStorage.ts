@@ -7,7 +7,7 @@ export interface BKTStorage<T> {
   clear(): void
 }
 
-export class DefaultStorage<T> implements BKTStorage<T> {
+export class BrowserLocalStorage<T> implements BKTStorage<T> {
   constructor(private key: string) {}
 
   public set<T>(value: T | null) {
@@ -37,9 +37,25 @@ export class InMemoryStorage<T> implements BKTStorage<T> {
   }
 
   get(): T | null {
-    return this.cache[this.key]
+    return this.cache[this.key] ?? null
   }
+
   clear(): void {
     delete this.cache[this.key]
+  }
+}
+
+/**
+ * Automatically pick up the storage implementation to use based on the environment.
+ * In the browser, use localStorage. In Node.js, use in-memory storage.
+ *
+ * @param key storage key
+ * @returns BKTStorage<T>
+ */
+export const createBKTStorage = <T>(key: string): BKTStorage<T> => {
+  if (typeof localStorage !== 'undefined') {
+    return new BrowserLocalStorage<T>(key)
+  } else {
+    return new InMemoryStorage<T>(key)
   }
 }

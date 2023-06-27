@@ -19,11 +19,14 @@ import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { GetEvaluationsRequest } from '../src/internal/model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../src/internal/model/response/GetEvaluationsResponse'
 import { evaluation1, user1Evaluations } from './mocks/evaluations'
-import { setupServerAndListen } from './utils'
+import {
+  setupServerAndListen,
+  getDefaultComponent,
+  clearLocalStorageIfNeeded,
+} from './utils'
 import fetch from 'cross-fetch'
 import { user1 } from './mocks/users'
 import { toBKTUser } from '../src/internal/UserHolder'
-import { DefaultComponent } from '../src/internal/di/Component'
 import {
   InternalServerErrorException,
   TimeoutException,
@@ -55,9 +58,10 @@ suite('BKTClient', () => {
   })
 
   afterEach(() => {
+    clearLocalStorageIfNeeded()
+
     destroyBKTClient()
     server.resetHandlers()
-    localStorage.clear()
   })
 
   afterAll(() => {
@@ -877,10 +881,6 @@ suite('BKTClient', () => {
     })
   })
 })
-
-function getDefaultComponent(client: BKTClient): DefaultComponent {
-  return (client as BKTClientImpl).component as DefaultComponent
-}
 
 function buildEvaluation(value: string): Evaluation {
   return {

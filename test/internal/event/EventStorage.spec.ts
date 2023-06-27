@@ -4,7 +4,7 @@ import {
   EventStorage,
   EventStorageImpl,
 } from '../../../src/internal/event/EventStorage'
-import { BKTStorage, DefaultStorage } from '../../../src/internal/storage'
+import { BKTStorage, createBKTStorage } from '../../../src/BKTStorage'
 import {
   evaluationEvent1,
   evaluationEvent2,
@@ -16,7 +16,7 @@ suite('internal/event/EventStorage', () => {
   let eventStorage: EventStorage
 
   beforeEach(() => {
-    storage = new DefaultStorage('bkt_event')
+    storage = createBKTStorage('bkt_event')
     eventStorage = new EventStorageImpl('user_id_1', storage)
   })
 
