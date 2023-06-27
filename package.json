@@ -27,7 +27,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build && tsc --emitDeclarationOnly --incremental false --composite false --project tsconfig.lib.json",
+    "build": "unbuild",
     "preview": "vite preview",
     "test": "pnpm test:browser --run ; pnpm test:node --run",
     "test:browser": "vitest --config ./vitest-browser.config.ts --dir test",
