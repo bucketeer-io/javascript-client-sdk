@@ -1,7 +1,7 @@
 import { RequestHandler } from 'msw'
 import { SetupServer, setupServer } from 'msw/node'
 import { Clock, DefaultClock } from '../src/internal/Clock'
-import { IdGenerator, createIdGenerator } from '../src/internal/IdGenerator'
+import { IdGenerator } from '../src/internal/IdGenerator'
 import { BKTClient, BKTClientImpl } from '../src/BKTClient'
 import { Component, DefaultComponent } from '../src/internal/di/Component'
 import { EvaluationStorageImpl } from '../src/internal/evaluation/EvaluationStorage'
