@@ -34,7 +34,7 @@ export const newBaseEvent = (
   return {
     timestamp,
     sourceId: SourceID.JAVASCRIPT,
-    sdkVersion: '__BKT_SDK_VERSION__',
+    sdkVersion: `${__BKT_SDK_VERSION__}`,
     metadata,
   }
 }

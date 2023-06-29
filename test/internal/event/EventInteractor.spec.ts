@@ -125,7 +125,7 @@ suite('internal/event/EventInteractor', () => {
           reason: {
             type: 'CLIENT',
           },
-          sdkVersion: '__BKT_SDK_VERSION__',
+          sdkVersion: __BKT_SDK_VERSION__,
           tag: 'feature_tag_value',
         },
       },
@@ -167,7 +167,7 @@ suite('internal/event/EventInteractor', () => {
           reason: {
             type: 'CLIENT',
           },
-          sdkVersion: '__BKT_SDK_VERSION__',
+          sdkVersion: __BKT_SDK_VERSION__,
           tag: 'feature_tag_value',
         },
       },
@@ -201,7 +201,7 @@ suite('internal/event/EventInteractor', () => {
             app_version: '1.2.3',
             device_model: 'user_agent_value',
           },
-          sdkVersion: '__BKT_SDK_VERSION__',
+          sdkVersion: __BKT_SDK_VERSION__,
           tag: 'feature_tag_value',
         },
       },
@@ -231,7 +231,7 @@ suite('internal/event/EventInteractor', () => {
             app_version: '1.2.3',
             device_model: 'user_agent_value',
           },
-          sdkVersion: '__BKT_SDK_VERSION__',
+          sdkVersion: __BKT_SDK_VERSION__,
           event: {
             apiId: ApiId.GET_EVALUATION,
             labels: { tag: 'feature_tag_value' },
@@ -251,7 +251,7 @@ suite('internal/event/EventInteractor', () => {
             app_version: '1.2.3',
             device_model: 'user_agent_value',
           },
-          sdkVersion: '__BKT_SDK_VERSION__',
+          sdkVersion: __BKT_SDK_VERSION__,
           event: {
             apiId: ApiId.GET_EVALUATION,
             labels: { tag: 'feature_tag_value' },
@@ -292,7 +292,7 @@ suite('internal/event/EventInteractor', () => {
             app_version: '1.2.3',
             device_model: 'user_agent_value',
           },
-          sdkVersion: '__BKT_SDK_VERSION__',
+          sdkVersion: __BKT_SDK_VERSION__,
           event: {
             apiId: ApiId.GET_EVALUATION,
             labels: { tag: 'feature_tag_value' },

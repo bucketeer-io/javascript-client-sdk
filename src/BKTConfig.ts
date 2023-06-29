@@ -8,7 +8,12 @@ const DEFAULT_MAX_QUEUE_SIZE = 50
 const MINIMUM_POLLING_INTERVAL_MILLIS = 60_000 // 60 seconds
 const DEFAULT_POLLING_INTERVAL_MILLIS = 600_000 // 10 minutes
 
-const VERSION = '__BKT_SDK_VERSION__'
+// unbuild currently does not support specifying tsconfig.json
+// thus it does not read types from globals.d.ts for now
+// https://github.com/unjs/unbuild/issues/256
+declare const __BKT_SDK_VERSION__: string
+
+const VERSION = `${__BKT_SDK_VERSION__}`
 
 const isValidUrl = (url: string): boolean => {
   try {
