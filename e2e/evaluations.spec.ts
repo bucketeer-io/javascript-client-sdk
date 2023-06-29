@@ -57,11 +57,12 @@ suite('e2e/evaluations', () => {
 
       const detail = client.evaluationDetails(FEATURE_ID_STRING)
       expect(detail).toBeEvaluation({
-        id: 'feature-js-e2e-string:4:bucketeer-js-user-id-1',
+        id: 'feature-js-e2e-string:5:bucketeer-js-user-id-1',
         featureId: FEATURE_ID_STRING,
-        featureVersion: 4,
+        featureVersion: 5,
         userId: USER_ID,
         variationId: '87e0a1ef-a0cb-49da-8460-289948f117ba',
+        variationName: 'variation ',
         variationValue: 'value-1',
         reason: 'DEFAULT',
       })
@@ -85,11 +86,12 @@ suite('e2e/evaluations', () => {
 
         const detail = client.evaluationDetails(FEATURE_ID_INT)
         expect(detail).toBeEvaluation({
-          id: 'feature-js-e2e-int:2:bucketeer-js-user-id-1',
+          id: 'feature-js-e2e-int:3:bucketeer-js-user-id-1',
           featureId: FEATURE_ID_INT,
-          featureVersion: 2,
+          featureVersion: 3,
           userId: USER_ID,
           variationId: '6079c503-c281-4561-b870-c2c59a75e6a6',
+          variationName: 'variation 10',
           variationValue: '10',
           reason: 'DEFAULT',
         })
@@ -112,11 +114,12 @@ suite('e2e/evaluations', () => {
 
         const detail = client.evaluationDetails(FEATURE_ID_DOUBLE)
         expect(detail).toBeEvaluation({
-          id: 'feature-js-e2e-double:2:bucketeer-js-user-id-1',
+          id: 'feature-js-e2e-double:3:bucketeer-js-user-id-1',
           featureId: FEATURE_ID_DOUBLE,
-          featureVersion: 2,
+          featureVersion: 3,
           userId: USER_ID,
           variationId: '2d4a213c-1721-434b-8484-1b72826ece98',
+          variationName: 'variation 2.1',
           variationValue: '2.1',
           reason: 'DEFAULT',
         })
@@ -140,11 +143,12 @@ suite('e2e/evaluations', () => {
 
       const detail = client.evaluationDetails(FEATURE_ID_BOOLEAN)
       expect(detail).toBeEvaluation({
-        id: 'feature-js-e2e-boolean:2:bucketeer-js-user-id-1',
+        id: 'feature-js-e2e-boolean:3:bucketeer-js-user-id-1',
         featureId: FEATURE_ID_BOOLEAN,
-        featureVersion: 2,
+        featureVersion: 3,
         userId: USER_ID,
         variationId: '4fab39c8-bf62-4a78-8a10-1b8bc3dd3806',
+        variationName: 'variation true',
         variationValue: 'true',
         reason: 'DEFAULT',
       })
@@ -169,11 +173,12 @@ suite('e2e/evaluations', () => {
 
       const detail = client.evaluationDetails(FEATURE_ID_JSON)
       expect(detail).toBeEvaluation({
-        id: 'feature-js-e2e-json:2:bucketeer-js-user-id-1',
+        id: 'feature-js-e2e-json:3:bucketeer-js-user-id-1',
         featureId: FEATURE_ID_JSON,
-        featureVersion: 2,
+        featureVersion: 3,
         userId: USER_ID,
         variationId: '8b53a27b-2658-4f8c-925e-fb277808ed30',
+        variationName: 'variation 1',
         variationValue: `{ "key": "value-1" }`,
         reason: 'DEFAULT',
       })

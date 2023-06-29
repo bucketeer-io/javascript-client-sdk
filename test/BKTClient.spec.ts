@@ -595,10 +595,6 @@ suite('BKTClient', () => {
       const updatedEvaluation1 = {
         ...evaluation1,
         variationValue: 'updated_evaluation_value',
-        variation: {
-          ...evaluation1.variation,
-          value: 'updated_evaluation_value',
-        },
       } satisfies Evaluation
 
       server.use(
@@ -846,6 +842,7 @@ suite('BKTClient', () => {
         userId: user1.id,
         reason: evaluation1.reason.type,
         variationId: evaluation1.variationId,
+        variationName: evaluation1.variationName,
         variationValue: evaluation1.variationValue,
       })
     })
@@ -887,13 +884,10 @@ function buildEvaluation(value: string): Evaluation {
     id: 'evaluation_id_value',
     featureId: 'feature_id_value',
     featureVersion: 1,
-    variationId: 'variation_id_value',
     userId: user1.id,
+    variationId: 'variation_id_value',
+    variationName: 'variation_name_value',
     variationValue: value,
-    variation: {
-      id: 'variation_id_value',
-      value,
-    },
     reason: {
       type: 'CLIENT',
     },

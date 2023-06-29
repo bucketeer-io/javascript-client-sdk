@@ -50,11 +50,12 @@ suite('e2e/BKTClientTest', () => {
     const detail = client.evaluationDetails(FEATURE_ID_STRING)
 
     expect(detail).toBeEvaluation({
-      id: 'feature-js-e2e-string:4:bucketeer-js-user-id-1',
+      id: 'feature-js-e2e-string:5:bucketeer-js-user-id-1',
       featureId: FEATURE_ID_STRING,
-      featureVersion: 4,
+      featureVersion: 5,
       userId: USER_ID,
       variationId: '802f2b29-a5c5-47d1-b5ba-f457d224c7b2',
+      variationName: 'variation 2',
       variationValue: 'value-2',
       reason: 'RULE',
     })
