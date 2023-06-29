@@ -1,5 +1,4 @@
 import { Reason } from './Reason'
-import { Variation } from './Variation'
 
 export interface Evaluation {
   id: string
@@ -7,7 +6,7 @@ export interface Evaluation {
   featureVersion: number
   userId: string
   variationId: string
-  variation: Variation
-  reason: Reason
+  variationName: string
   variationValue: string
+  reason: Reason
 }
