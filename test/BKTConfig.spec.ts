@@ -99,7 +99,7 @@ suite('defineBKTConfig', () => {
 
     if (typeof window === 'undefined') {
       expect(result.userAgent).toBe(
-        `Bucketeer JavaScript SDK(__BKT_SDK_VERSION__)`,
+        `Bucketeer JavaScript SDK(${__BKT_SDK_VERSION__})`,
       )
     } else {
       expect(result.userAgent).toBe(window.navigator.userAgent)
