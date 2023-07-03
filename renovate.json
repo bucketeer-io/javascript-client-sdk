@@ -14,10 +14,12 @@
     {
       "matchPackagePatterns": ["*"],
       "matchUpdateTypes": ["minor", "patch"],
+      "commitMessagePrefix": "build(deps)",
       "groupName": "all non-major dependencies",
       "groupSlug": "all-minor-patch",
       "excludePackageNames": [
         "@vitest/browser",
+        "@vitest/utils",
         "vitest",
         "webdriverio"
       ]
@@ -25,9 +27,11 @@
     {
       "matchPackageNames": [
         "@vitest/browser",
+        "@vitest/utils",
         "vitest",
         "webdriverio"
       ],
+      "commitMessagePrefix": "build(deps)",
       "groupName": "vitest"
     }
   ]
