@@ -1,5 +1,5 @@
 import { Event } from '../model/Event'
-import { BKTStorage } from '../storage'
+import { BKTStorage } from '../../BKTStorage'
 
 export interface EventEntity {
   userId: string

@@ -4,7 +4,8 @@ import { BKTUser } from './BKTUser'
 import { Component, DefaultComponent } from './internal/di/Component'
 import { DataModule } from './internal/di/DataModule'
 import { InteractorModule } from './internal/di/InteractorModule'
-import { NodePlatformModule } from './internal/di/PlatformModule.node'
+import { BrowserPlatformModule } from './internal/di/PlatformModule.browser'
+import { User } from './internal/model/User'
 
 export type { BKTConfig } from './BKTConfig'
 export { defineBKTConfig } from './BKTConfig'
@@ -18,9 +19,9 @@ export type {
   InMemoryStorage,
 } from './BKTStorage'
 
-const createNodeComponent = (config: BKTConfig, user: BKTUser): Component => {
+const createBrowserComponent = (config: BKTConfig, user: User): Component => {
   return new DefaultComponent(
-    new NodePlatformModule(),
+    new BrowserPlatformModule(),
     new DataModule(user, config),
     new InteractorModule(),
   )
@@ -31,6 +32,6 @@ export const initializeBKTClient = async (
   user: BKTUser,
   timeoutMillis = 5_000,
 ): Promise<void> => {
-  const component = createNodeComponent(config, user)
+  const component = createBrowserComponent(config, user)
   return initializeBKTClientInternal(component, timeoutMillis)
 }

@@ -1,9 +1,6 @@
-import { BKTConfig } from './BKTConfig'
 import { BKTEvaluation } from './BKTEvaluation'
 import { BKTUser } from './BKTUser'
-import { Component, DefaultComponent } from './internal/di/Component'
-import { DataModule } from './internal/di/DataModule'
-import { InteractorModule } from './internal/di/InteractorModule'
+import { Component } from './internal/di/Component'
 import { clearInstance, getInstance, setInstance } from './internal/instance'
 import { ApiId } from './internal/model/MetricsEventData'
 import { TaskScheduler } from './internal/scheduler/TaskScheduler'
@@ -26,19 +23,9 @@ export interface BKTClient {
 }
 
 export class BKTClientImpl implements BKTClient {
-  component: Component
   taskScheduler: TaskScheduler | null = null
 
-  constructor(
-    config: BKTConfig,
-    user: BKTUser,
-    component: Component = new DefaultComponent(
-      new DataModule(user, config),
-      new InteractorModule(),
-    ),
-  ) {
-    this.component = component
-  }
+  constructor(public component: Component) {}
 
   initializeInternal(timeoutMillis: number): Promise<void> {
     this.scheduleTasks()
@@ -217,16 +204,15 @@ export const getBKTClient = (): BKTClient | null => {
   return getInstance()
 }
 
-export const initializeBKTClient = (
-  config: BKTConfig,
-  user: BKTUser,
+export const initializeBKTClientInternal = (
+  component: Component,
   timeoutMillis = 5_000,
 ): Promise<void> => {
   if (getInstance()) {
     return Promise.resolve()
   }
 
-  const client = new BKTClientImpl(config, user)
+  const client = new BKTClientImpl(component)
   setInstance(client)
 
   return client.initializeInternal(timeoutMillis)

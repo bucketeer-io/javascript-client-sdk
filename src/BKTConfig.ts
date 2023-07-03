@@ -1,4 +1,5 @@
 import { IllegalArgumentException } from './BKTExceptions'
+import { BKTStorage, createBKTStorage } from './BKTStorage'
 import { FetchLike } from './internal/remote/fetch'
 
 const MINIMUM_FLUSH_INTERVAL_MILLIS = 60_000 // 60 seconds
@@ -6,6 +7,13 @@ const DEFAULT_FLUSH_INTERVAL_MILLIS = 60_000 // 60 seconds
 const DEFAULT_MAX_QUEUE_SIZE = 50
 const MINIMUM_POLLING_INTERVAL_MILLIS = 60_000 // 60 seconds
 const DEFAULT_POLLING_INTERVAL_MILLIS = 600_000 // 10 minutes
+
+// unbuild currently does not support specifying tsconfig.json
+// thus it does not read types from globals.d.ts for now
+// https://github.com/unjs/unbuild/issues/256
+declare const __BKT_SDK_VERSION__: string
+
+const VERSION = `${__BKT_SDK_VERSION__}`
 
 const isValidUrl = (url: string): boolean => {
   try {
@@ -27,6 +35,7 @@ interface RawBKTConfig {
   storageKeyPrefix?: string
   userAgent?: string
   fetch?: FetchLike
+  storageFactory?: <T>(key: string) => BKTStorage<T>
 }
 
 export interface BKTConfig extends RawBKTConfig {
@@ -35,16 +44,28 @@ export interface BKTConfig extends RawBKTConfig {
   pollingInterval: number
   userAgent: string
   fetch: FetchLike
+  storageFactory: <T>(key: string) => BKTStorage<T>
+}
+
+const defaultUserAgent = () => {
+  if (typeof window === 'undefined') {
+    return `Bucketeer JavaScript SDK(${VERSION})`
+  } else {
+    return window.navigator.userAgent
+  }
 }
 
 export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
+  const userAgent = defaultUserAgent()
+
   const result: BKTConfig = {
     eventsFlushInterval: MINIMUM_FLUSH_INTERVAL_MILLIS,
     eventsMaxQueueSize: DEFAULT_MAX_QUEUE_SIZE,
     pollingInterval: DEFAULT_POLLING_INTERVAL_MILLIS,
     storageKeyPrefix: '',
-    userAgent: window.navigator.userAgent,
-    fetch: window.fetch,
+    userAgent,
+    fetch,
+    storageFactory: createBKTStorage,
     ...config,
   }
 
@@ -68,7 +89,7 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
   }
 
   if (!result.userAgent) {
-    result.userAgent = window.navigator.userAgent
+    result.userAgent = userAgent
   }
 
   return {

@@ -6,11 +6,7 @@ export default defineConfig({
     __BKT_SDK_VERSION__: JSON.stringify(packageJson.version),
   },
   test: {
-    setupFiles: ['test/globalSetup.ts'],
-    environment: 'happy-dom',
-    browser: {
-      provider: 'webdriverio',
-      name: 'chrome',
-    },
+    setupFiles: [],
+    environment: 'node',
   },
 })

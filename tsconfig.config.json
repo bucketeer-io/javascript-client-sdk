@@ -4,5 +4,5 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
   },
-  "include": ["vite.config.ts", "package.json"]
+  "include": ["build.config.ts", "package.json"]
 }

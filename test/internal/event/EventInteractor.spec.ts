@@ -36,19 +36,16 @@ import { RegisterEventsResponse } from '../../../src/internal/model/response/Reg
 import { SourceID } from '../../../src/internal/model/SourceID'
 import { evaluation1 } from '../../mocks/evaluations'
 import { user1 } from '../../mocks/users'
-import { FakeClock, FakeIdGenerator, setupServerAndListen } from '../../utils'
+import {
+  FakeClock,
+  FakeIdGenerator,
+  TestPlatformModule,
+  setupServerAndListen,
+} from '../../utils'
 import { ErrorResponse } from '../../../src/internal/model/response/ErrorResponse'
-import { IdGenerator } from '../../../src/internal/IdGenerator'
 import { Clock } from '../../../src/internal/Clock'
 
 class TestDataModule extends DataModule {
-  idGenerator(): IdGenerator {
-    if (!this._idGenerator) {
-      this._idGenerator = new FakeIdGenerator()
-    }
-    return this._idGenerator
-  }
-
   clock(): Clock {
     if (!this._clock) {
       this._clock = new FakeClock()
@@ -81,6 +78,7 @@ suite('internal/event/EventInteractor', () => {
       fetch,
     })
     component = new DefaultComponent(
+      new TestPlatformModule(),
       new TestDataModule(user1, config),
       new InteractorModule(),
     )
@@ -89,7 +87,7 @@ suite('internal/event/EventInteractor', () => {
     eventStorage = component.dataModule.eventStorage() as EventStorageImpl
 
     clock = component.dataModule.clock() as FakeClock
-    idGenerator = component.dataModule.idGenerator() as FakeIdGenerator
+    idGenerator = component.platformModule.idGenerator() as FakeIdGenerator
   })
 
   afterEach(() => {

@@ -1,6 +1,7 @@
 import { suite, test, expect } from 'vitest'
 import { defineBKTConfig } from '../src/BKTConfig'
 import { IllegalArgumentException } from '../src/BKTExceptions'
+import { createBKTStorage } from '../src/BKTStorage'
 
 const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
   apiKey: 'api-key',
@@ -22,7 +23,8 @@ suite('defineBKTConfig', () => {
       eventsMaxQueueSize: 50,
       pollingInterval: 600_000,
       storageKeyPrefix: '',
-      fetch: window.fetch,
+      fetch,
+      storageFactory: createBKTStorage,
     })
   })
 
@@ -89,13 +91,19 @@ suite('defineBKTConfig', () => {
     expect(result.pollingInterval).toBe(600_000)
   })
 
-  test('empty userAgent should be replaced with a browser value', () => {
+  test('empty userAgent should be replaced with default value', () => {
     const result = defineBKTConfig({
       ...defaultConfig,
       userAgent: '',
     })
 
-    expect(result.userAgent).toBe(window.navigator.userAgent)
+    if (typeof window === 'undefined') {
+      expect(result.userAgent).toBe(
+        `Bucketeer JavaScript SDK(${__BKT_SDK_VERSION__})`,
+      )
+    } else {
+      expect(result.userAgent).toBe(window.navigator.userAgent)
+    }
   })
 
   test('explicitly passing undefined to fetch field throws', () => {

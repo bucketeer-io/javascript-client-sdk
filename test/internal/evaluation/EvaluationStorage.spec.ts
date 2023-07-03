@@ -4,7 +4,7 @@ import {
   EvaluationStorage,
   EvaluationStorageImpl,
 } from '../../../src/internal/evaluation/EvaluationStorage'
-import { BKTStorage, DefaultStorage } from '../../../src/internal/storage'
+import { BKTStorage, createBKTStorage } from '../../../src/BKTStorage'
 import { evaluation1, evaluation2, evaluation3 } from '../../mocks/evaluations'
 
 suite('internal/evaluation/EvaluationStorage', () => {
@@ -12,7 +12,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
   let evaluationStorage: EvaluationStorage
 
   beforeEach(() => {
-    storage = new DefaultStorage('bkt_evaluation')
+    storage = createBKTStorage('bkt_evaluation')
     evaluationStorage = new EvaluationStorageImpl('user_id_1', storage)
   })
 

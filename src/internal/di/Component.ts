@@ -4,6 +4,7 @@ import { EventInteractor } from '../event/EventInteractor'
 import { UserHolder } from '../UserHolder'
 import { DataModule } from './DataModule'
 import { InteractorModule } from './InteractorModule'
+import { PlatformModule } from './PlatformModule'
 
 export interface Component {
   config(): BKTConfig
@@ -17,6 +18,7 @@ export class DefaultComponent implements Component {
   private _eventInteractor?: EventInteractor
 
   constructor(
+    public platformModule: PlatformModule,
     public dataModule: DataModule,
     public interactorModule: InteractorModule,
   ) {}
@@ -34,7 +36,7 @@ export class DefaultComponent implements Component {
       this._evaluationInteractor = this.interactorModule.evaluationInteractor(
         this.dataModule.apiClient(),
         this.dataModule.evaluationStorage(),
-        this.dataModule.idGenerator(),
+        this.platformModule.idGenerator(),
       )
     }
     return this._evaluationInteractor
@@ -46,7 +48,7 @@ export class DefaultComponent implements Component {
         this.dataModule.config().eventsMaxQueueSize,
         this.dataModule.apiClient(),
         this.dataModule.eventStorage(),
-        this.dataModule.idGenerator(),
+        this.platformModule.idGenerator(),
         this.dataModule.clock(),
         this.dataModule.config().appVersion,
         this.dataModule.config().userAgent,
