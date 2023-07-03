@@ -7,11 +7,8 @@ export const evaluation1 = {
   featureVersion: 9,
   userId: 'user_id_1',
   variationId: 'test-feature-1-variation-A',
+  variationName: 'test variation name1',
   variationValue: 'test variation value1',
-  variation: {
-    id: 'test-feature-1-variation-A',
-    value: 'test variation value1',
-  },
   reason: {
     type: 'CLIENT',
   },
@@ -23,11 +20,8 @@ export const evaluation2 = {
   featureVersion: 9,
   userId: 'user_id_1',
   variationId: 'test-feature-2-variation-A',
+  variationName: 'test variation name2',
   variationValue: 'test variation value2',
-  variation: {
-    id: 'test-feature-2-variation-A',
-    value: 'test variation value2',
-  },
   reason: {
     type: 'CLIENT',
   },
@@ -39,11 +33,8 @@ export const evaluation3 = {
   featureVersion: 9,
   userId: 'user_id_2',
   variationId: 'test-feature-1-variation-A',
+  variationName: 'test variation name2',
   variationValue: 'test variation value2',
-  variation: {
-    id: 'test-feature-1-variation-A',
-    value: 'test variation value2',
-  },
   reason: {
     type: 'CLIENT',
   },

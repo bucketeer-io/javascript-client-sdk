@@ -4,6 +4,7 @@ export interface BKTEvaluation {
   readonly featureVersion: number
   readonly userId: string
   readonly variationId: string
+  readonly variationName: string
   readonly variationValue: string
   readonly reason:
     | 'TARGET'

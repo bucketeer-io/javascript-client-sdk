@@ -131,6 +131,7 @@ export class BKTClientImpl implements BKTClient {
         featureVersion: raw.featureVersion,
         userId: raw.userId,
         variationId: raw.variationId,
+        variationName: raw.variationName,
         variationValue: raw.variationValue,
         reason: raw.reason.type,
       } satisfies BKTEvaluation
