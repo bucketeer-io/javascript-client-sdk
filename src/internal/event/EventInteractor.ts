@@ -248,7 +248,14 @@ export class EventInteractor {
     }
   }
 
-  private getMetricsEventUniqueKey(event: MetricsEvent): string {
+  /**
+   * !!VISIBLE FOR TESTING!!
+   * get unique key for MetricsEvent
+   *
+   * @param event
+   * @returns
+   */
+  getMetricsEventUniqueKey(event: MetricsEvent): string {
     return `${event.event.apiId}::${event.event['@type']}`
   }
 

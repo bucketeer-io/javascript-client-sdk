@@ -15,6 +15,8 @@ import {
 import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
 import {
   BadRequestException,
+  InternalServerErrorException,
+  NetworkException,
   UnknownException,
 } from '../../../src/BKTExceptions'
 import { DefaultComponent } from '../../../src/internal/di/Component'
@@ -25,6 +27,7 @@ import { EventStorageImpl } from '../../../src/internal/event/EventStorage'
 import {
   Event,
   EventType,
+  MetricsEvent,
   RootEventType,
 } from '../../../src/internal/model/Event'
 import {
@@ -306,6 +309,67 @@ suite('internal/event/EventInteractor', () => {
 
     expect(mockListener).toHaveBeenCalledOnce()
     expect(mockListener).toHaveBeenCalledWith(expected)
+  })
+
+  test('Do not save dupilicate MetricsEvents', () => {
+    // trackSuccess saves two Events in each call
+    // -> should save 4
+    interactor.trackSuccess(
+      ApiId.GET_EVALUATIONS,
+      'feature_tag_value_1',
+      1,
+      723,
+    )
+    interactor.trackSuccess(
+      ApiId.REGISTER_EVENTS,
+      'feature_tag_value_1',
+      1,
+      724,
+    )
+    // this should be ignored
+    interactor.trackSuccess(
+      ApiId.GET_EVALUATIONS,
+      'feature_tag_value_2',
+      1,
+      725,
+    )
+
+    // trackFailure saves one Event in each call
+    interactor.trackFailure(
+      ApiId.GET_EVALUATIONS,
+      'feature_tag_value',
+      new BadRequestException(),
+    )
+    interactor.trackFailure(
+      ApiId.GET_EVALUATIONS,
+      'feature_tag_value_1',
+      new NetworkException(),
+    )
+    interactor.trackFailure(
+      ApiId.REGISTER_EVENTS,
+      'feature_tag_value_1',
+      new InternalServerErrorException(),
+    )
+    // this should be ignored
+    interactor.trackFailure(
+      ApiId.GET_EVALUATIONS,
+      'feature_tag_value_2',
+      new BadRequestException(),
+    )
+
+    const events = eventStorage
+      .getAll()
+      .map((e) => interactor.getMetricsEventUniqueKey(e.event as MetricsEvent))
+
+    expect(events).toStrictEqual([
+      '2::type.googleapis.com/bucketeer.event.client.LatencyMetricsEvent',
+      '2::type.googleapis.com/bucketeer.event.client.SizeMetricsEvent',
+      '3::type.googleapis.com/bucketeer.event.client.LatencyMetricsEvent',
+      '3::type.googleapis.com/bucketeer.event.client.SizeMetricsEvent',
+      '2::type.googleapis.com/bucketeer.event.client.BadRequestErrorMetricsEvent',
+      '2::type.googleapis.com/bucketeer.event.client.NetworkErrorMetricsEvent',
+      '3::type.googleapis.com/bucketeer.event.client.InternalServerErrorMetricsEvent',
+    ])
   })
 
   suite('sendEvents', () => {
