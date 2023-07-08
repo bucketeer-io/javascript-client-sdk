@@ -2,7 +2,7 @@ import { BKTException } from '../../BKTExceptions'
 import { Clock } from '../Clock'
 import { IdGenerator } from '../IdGenerator'
 import { Evaluation } from '../model/Evaluation'
-import { EventType, Event } from '../model/Event'
+import { EventType, Event, MetricsEvent } from '../model/Event'
 import { ApiId, MetricsEventType } from '../model/MetricsEventData'
 import { User } from '../model/User'
 import { ApiClient } from '../remote/ApiClient'
@@ -132,7 +132,7 @@ export class EventInteractor {
     seconds: number,
     sizeByte: number,
   ): void {
-    this.eventStorage.addAll([
+    const metricsEvents: Event[] = [
       {
         id: this.idGenerator.newId(),
         type: EventType.METRICS,
@@ -159,31 +159,41 @@ export class EventInteractor {
           },
         ),
       },
-    ])
+    ]
 
-    this.notifyEventsUpdated()
+    const added = this.addMetricsEvents(metricsEvents)
+
+    if (added) {
+      this.notifyEventsUpdated()
+    }
   }
 
   trackFailure(apiId: ApiId, featureTag: string, error: BKTException): void {
-    this.eventStorage.add({
-      id: this.idGenerator.newId(),
-      type: EventType.METRICS,
-      event: newMetricsEvent(
-        newBaseEvent(
-          this.clock.currentTimeSeconds(),
-          newMetadata(this.appVersion, this.userAgent),
-        ),
-        {
-          event: newErrorMetricsData(
-            apiId,
-            error.type ?? MetricsEventType.UnknownError,
-            featureTag,
+    const metricsEvents: Event[] = [
+      {
+        id: this.idGenerator.newId(),
+        type: EventType.METRICS,
+        event: newMetricsEvent(
+          newBaseEvent(
+            this.clock.currentTimeSeconds(),
+            newMetadata(this.appVersion, this.userAgent),
           ),
-        },
-      ),
-    })
+          {
+            event: newErrorMetricsData(
+              apiId,
+              error.type ?? MetricsEventType.UnknownError,
+              featureTag,
+            ),
+          },
+        ),
+      },
+    ]
 
-    this.notifyEventsUpdated()
+    const added = this.addMetricsEvents(metricsEvents)
+
+    if (added) {
+      this.notifyEventsUpdated()
+    }
   }
 
   async sendEvents(force = false): Promise<SendEventsResult> {
@@ -236,5 +246,47 @@ export class EventInteractor {
       const events = this.eventStorage.getAll()
       listener(events)
     }
+  }
+
+  /**
+   * !!VISIBLE FOR TESTING!!
+   * get unique key for MetricsEvent
+   *
+   * @param event
+   * @returns
+   */
+  getMetricsEventUniqueKey(event: MetricsEvent): string {
+    return `${event.event.apiId}::${event.event['@type']}`
+  }
+
+  /**
+   * !!VISIBLE FOR TESTING!!
+   *
+   * Filter duplicate metric events by finding existing metrics events on the cache database fist,
+   * then remove all new duplicate metrics events, only add new metrics event
+   *
+   * @param events array of Event
+   * @returns true if new metrics events added, false otherwise
+   */
+  addMetricsEvents(events: Event[]): boolean {
+    const storedEvents = this.eventStorage.getAll()
+    const metricsEventUniqueKeys: string[] = storedEvents
+      .filter((v) => v.type === EventType.METRICS)
+      .map((v) => this.getMetricsEventUniqueKey(v.event as MetricsEvent))
+
+    const newEvents = events.filter(
+      (v) =>
+        v.type === EventType.METRICS &&
+        !metricsEventUniqueKeys.includes(
+          this.getMetricsEventUniqueKey(v.event as MetricsEvent),
+        ),
+    )
+
+    if (newEvents.length > 0) {
+      this.eventStorage.addAll(newEvents)
+      return true
+    }
+
+    return false
   }
 }
