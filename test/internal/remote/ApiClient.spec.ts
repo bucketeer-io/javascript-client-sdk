@@ -35,11 +35,7 @@ suite('internal/remote/ApiClient', () => {
   })
 
   beforeEach(() => {
-    apiClient = new ApiClientImpl(
-      endpoint,
-      'api_key_value',
-      fetch,
-    )
+    apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch)
   })
 
   afterEach(() => {
@@ -79,13 +75,11 @@ suite('internal/remote/ApiClient', () => {
         }),
       )
 
-      const response = await apiClient.getEvaluations(
-        {
-          user: user1,
-          userEvaluationsId: 'user_evaluation_id',
-          tag:'feature_tag_value',
-        }
-      )
+      const response = await apiClient.getEvaluations({
+        user: user1,
+        userEvaluationsId: 'user_evaluation_id',
+        tag: 'feature_tag_value',
+      })
 
       assert(response.type === 'success')
 
@@ -106,13 +100,11 @@ suite('internal/remote/ApiClient', () => {
         }),
       )
 
-      const response = await apiClient.getEvaluations(
-        {
-         user: user1,
-          userEvaluationsId: 'user_evaluation_id',
-          tag:'feature_tag_value',
-        }
-      )
+      const response = await apiClient.getEvaluations({
+        user: user1,
+        userEvaluationsId: 'user_evaluation_id',
+        tag: 'feature_tag_value',
+      })
 
       assert(response.type === 'failure')
 
@@ -122,12 +114,7 @@ suite('internal/remote/ApiClient', () => {
     })
 
     test('timeout error', async () => {
-      apiClient = new ApiClientImpl(
-        endpoint,
-        'api_key_value',
-        fetch,
-        200,
-      )
+      apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
       server.use(
         rest.post(`${endpoint}/get_evaluations`, async (_req, res, ctx) => {
           return res(
@@ -138,13 +125,11 @@ suite('internal/remote/ApiClient', () => {
         }),
       )
 
-      const response = await apiClient.getEvaluations(
-        {
-          user: user1,
-          userEvaluationsId: 'user_evaluation_id',
-          tag:'feature_tag_value',
-        }
-      )
+      const response = await apiClient.getEvaluations({
+        user: user1,
+        userEvaluationsId: 'user_evaluation_id',
+        tag: 'feature_tag_value',
+      })
 
       assert(response.type === 'failure')
 
@@ -220,12 +205,7 @@ suite('internal/remote/ApiClient', () => {
     })
 
     test('timeout error', async () => {
-      apiClient = new ApiClientImpl(
-        endpoint,
-        'api_key_value',
-        fetch,
-        200,
-      )
+      apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
       server.use(
         rest.post(`${endpoint}/register_events`, async (_req, res, ctx) => {
           return res(

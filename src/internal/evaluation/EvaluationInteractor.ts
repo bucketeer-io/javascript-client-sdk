@@ -11,7 +11,9 @@ export class EvaluationInteractor {
     private apiClient: ApiClient,
     private evaluationStorage: EvaluationStorage,
     private idGenerator: IdGenerator,
-  ) {}
+  ) {
+    this.evaluationStorage.updateFeatureTag(this.featureTag)
+  }
 
   // visible for testing. should only be accessed from test code
   updateListeners: Record<string, () => void> = {}
@@ -27,6 +29,12 @@ export class EvaluationInteractor {
       {
         user,
         userEvaluationsId: currentEvaluationsId,
+        userEvaluationCondition: {
+          evaluatedAt: this.evaluationStorage.getEvaluatedAt() ?? 0,
+          userAttributesUpdated:
+            this.evaluationStorage.getUserAttributesUpdated(),
+        },
+        sdkVersion: `${__BKT_SDK_VERSION__}`,
         tag: this.featureTag,
       },
       timeoutMillis,
@@ -34,19 +42,34 @@ export class EvaluationInteractor {
 
     if (result.type === 'success') {
       const response = result.value
-      const newEvaluationId = response.userEvaluationsId
 
-      if (currentEvaluationsId === newEvaluationId) {
-        // evaluations are up-to-date
-        return result
+      let shouldNotify: boolean
+      if (response.evaluations.forceUpdate) {
+        // 1- Delete all the evaluations from local storage, and save the latest evaluations from the response into the local storage
+        // 2- Save the UserEvaluations.CreatedAt in the response as evaluatedAt in the localStorage
+        this.evaluationStorage.deleteAllAndInsert(
+          response.userEvaluationsId,
+          response.evaluations.evaluations ?? [],
+          response.evaluations.createdAt,
+        )
+        shouldNotify = true
+      } else {
+        // 1- Check the evaluation list in the response and upsert them in the localStorage if the list is not empty
+        // 2- Check the archivedFeatureIds list and delete them from the localStorage if is not empty
+        // 3- Save the UserEvaluations.CreatedAt in the response as evaluatedAt in the localStorage
+        shouldNotify = this.evaluationStorage.update(
+          response.userEvaluationsId,
+          response.evaluations.evaluations ?? [],
+          response.evaluations.archivedFeatureIds ?? [],
+          response.evaluations.createdAt,
+        )
       }
 
-      this.evaluationStorage.deleteAllAndInsert(
-        response.userEvaluationsId,
-        response.evaluations.evaluations ?? [],
-      )
+      this.evaluationStorage.clearUserAttributesUpdated()
 
-      Object.values(this.updateListeners).forEach((listener) => listener())
+      if (shouldNotify) {
+        Object.values(this.updateListeners).forEach((listener) => listener())
+      }
     }
 
     return result

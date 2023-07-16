@@ -1,4 +1,4 @@
-import { rest } from 'msw'
+import { RestRequest, rest } from 'msw'
 import { SetupServer } from 'msw/node'
 import {
   expect,
@@ -26,8 +26,11 @@ import {
   evaluation3,
   user1Evaluations,
 } from '../../mocks/evaluations'
-import { EvaluationStorageImpl } from '../../../src/internal/evaluation/EvaluationStorage'
-import { setupServerAndListen } from '../../utils'
+import {
+  EvaluationEntity,
+  EvaluationStorageImpl,
+} from '../../../src/internal/evaluation/EvaluationStorage'
+import { FakeClock, setupServerAndListen } from '../../utils'
 import { NodePlatformModule } from '../../../src/internal/di/PlatformModule.node'
 
 suite('internal/evaluation/EvaluationInteractor', () => {
@@ -36,6 +39,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
   let component: DefaultComponent
   let interactor: EvaluationInteractor
   let evaluationStorage: EvaluationStorageImpl
+  let clock: FakeClock
 
   beforeAll(() => {
     server = setupServerAndListen()
@@ -58,6 +62,8 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     interactor = component.evaluationInteractor()
     evaluationStorage =
       component.dataModule.evaluationStorage() as EvaluationStorageImpl
+
+    clock = new FakeClock()
   })
 
   afterEach(() => {
@@ -100,7 +106,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
 
       const stored = evaluationStorage.storage.get()
 
-      expect(stored).toStrictEqual({
+      expect(stored).toStrictEqual<EvaluationEntity>({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value',
         evaluations: {
@@ -168,7 +174,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       assert(result2.type === 'success')
 
       const stored = evaluationStorage.storage.get()
-      expect(stored).toStrictEqual({
+      expect(stored).toStrictEqual<EvaluationEntity>({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value_updated',
         evaluations: {
@@ -180,16 +186,25 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     })
 
     test('update with no change', async () => {
+      const requestInterceptor = vi.fn<
+        [RestRequest<GetEvaluationsRequest>],
+        void
+      >()
+
       server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, async (req, res, ctx) => {
+          requestInterceptor(req)
           return res(
             ctx.status(200),
             ctx.json({
-              evaluations: user1Evaluations,
+              evaluations: {
+                ...user1Evaluations,
+                createdAt: clock.currentTimeMillis(),
+              },
               userEvaluationsId: 'user_evaluation_id_value',
             }),
           )
@@ -206,16 +221,19 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       assert(result2.type === 'success')
 
       const stored = evaluationStorage.storage.get()
-      expect(stored).toStrictEqual({
+      expect(stored).toStrictEqual<EvaluationEntity>({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value',
         evaluations: {
           [evaluation1.featureId]: evaluation1,
           [evaluation2.featureId]: evaluation2,
         },
+        userAttributesUpdated: false,
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: clock.currentTimeMillisCalls[1],
       })
 
-      expect(mockListener).toBeCalledTimes(1)
+      expect(mockListener).toBeCalledTimes(2)
     })
   })
 
@@ -263,7 +281,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
 
     interactor.clearCurrentEvaluationsId()
 
-    expect(evaluationStorage.storage.get()).toStrictEqual({
+    expect(evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
       userId: user1.id,
       currentEvaluationsId: null,
       evaluations: {
@@ -312,5 +330,13 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     interactor.clearUpdateListeners()
 
     expect(Object.keys(interactor.updateListeners)).toHaveLength(0)
+  })
+
+  suite('update', () => {
+    test('forceUpdate=true', () => {})
+
+    test('upsert evaluations', () => {})
+
+    test('should delete evaluations if listed in archivedFeatureIds', () => {})
   })
 })
