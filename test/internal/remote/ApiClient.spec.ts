@@ -38,7 +38,6 @@ suite('internal/remote/ApiClient', () => {
     apiClient = new ApiClientImpl(
       endpoint,
       'api_key_value',
-      'feature_tag_value',
       fetch,
     )
   })
@@ -81,8 +80,11 @@ suite('internal/remote/ApiClient', () => {
       )
 
       const response = await apiClient.getEvaluations(
-        user1,
-        'user_evaluation_id',
+        {
+          user: user1,
+          userEvaluationsId: 'user_evaluation_id',
+          tag:'feature_tag_value',
+        }
       )
 
       assert(response.type === 'success')
@@ -105,8 +107,11 @@ suite('internal/remote/ApiClient', () => {
       )
 
       const response = await apiClient.getEvaluations(
-        user1,
-        'user_evaluation_id',
+        {
+         user: user1,
+          userEvaluationsId: 'user_evaluation_id',
+          tag:'feature_tag_value',
+        }
       )
 
       assert(response.type === 'failure')
@@ -120,7 +125,6 @@ suite('internal/remote/ApiClient', () => {
       apiClient = new ApiClientImpl(
         endpoint,
         'api_key_value',
-        'feature_tag_value',
         fetch,
         200,
       )
@@ -135,8 +139,11 @@ suite('internal/remote/ApiClient', () => {
       )
 
       const response = await apiClient.getEvaluations(
-        user1,
-        'user_evaluation_id',
+        {
+          user: user1,
+          userEvaluationsId: 'user_evaluation_id',
+          tag:'feature_tag_value',
+        }
       )
 
       assert(response.type === 'failure')
@@ -216,7 +223,6 @@ suite('internal/remote/ApiClient', () => {
       apiClient = new ApiClientImpl(
         endpoint,
         'api_key_value',
-        'feature_tag_value',
         fetch,
         200,
       )

@@ -7,6 +7,7 @@ import { EvaluationStorage } from './EvaluationStorage'
 
 export class EvaluationInteractor {
   constructor(
+    private featureTag: string,
     private apiClient: ApiClient,
     private evaluationStorage: EvaluationStorage,
     private idGenerator: IdGenerator,
@@ -23,8 +24,11 @@ export class EvaluationInteractor {
       this.evaluationStorage.getCurrentEvaluationsId() ?? ''
 
     const result = await this.apiClient.getEvaluations(
-      user,
-      currentEvaluationsId,
+      {
+        user,
+        userEvaluationsId: currentEvaluationsId,
+        tag: this.featureTag,
+      },
       timeoutMillis,
     )
 

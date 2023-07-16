@@ -43,7 +43,6 @@ export class DataModule {
       this._apiClient = new ApiClientImpl(
         config.apiEndpoint,
         config.apiKey,
-        config.featureTag,
         config.fetch,
       )
     }
@@ -52,11 +51,10 @@ export class DataModule {
 
   evaluationStorage(): EvaluationStorage {
     if (!this._evaluationStorage) {
+      const config = this.config()
       this._evaluationStorage = new EvaluationStorageImpl(
         this.userHolder().userId,
-        this.config().storageFactory(
-          `${this.config().storageKeyPrefix}_bkt_evaluations`,
-        ),
+        config.storageFactory(`${config.storageKeyPrefix}_bkt_evaluations`),
       )
     }
     return this._evaluationStorage
@@ -64,11 +62,10 @@ export class DataModule {
 
   eventStorage(): EventStorage {
     if (!this._eventStorage) {
+      const config = this.config()
       this._eventStorage = new EventStorageImpl(
         this.userHolder().userId,
-        this.config().storageFactory(
-          `${this.config().storageKeyPrefix}_bkt_events`,
-        ),
+        config.storageFactory(`${config.storageKeyPrefix}_bkt_events`),
       )
     }
     return this._eventStorage

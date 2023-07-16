@@ -2,7 +2,6 @@ import { BKTException } from '../../BKTExceptions'
 import { GetEvaluationsRequest } from '../model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../model/response/GetEvaluationsResponse'
 import { SourceID } from '../model/SourceID'
-import { User } from '../model/User'
 import { FetchLike, FetchRequestLike } from './fetch'
 import { postInternal } from './post'
 import {
@@ -17,8 +16,7 @@ import { RegisterEventsResponse } from '../model/response/RegisterEventsResponse
 
 export interface ApiClient {
   getEvaluations(
-    user: User,
-    userEvaluationsId: string,
+    request: Omit<GetEvaluationsRequest, 'sourceId'>,
     timeoutMillis?: number,
   ): Promise<GetEvaluationsResult>
   registerEvents(events: Event[]): Promise<RegisterEventsResult>
@@ -30,20 +28,16 @@ export class ApiClientImpl implements ApiClient {
   constructor(
     private readonly endpoint: string,
     private readonly apiKey: string,
-    private readonly featureTag: string,
     private readonly fetch: FetchLike,
     private readonly defaultRequestTimeoutMillis: number = DEFAULT_REQUEST_TIMEOUT_MILLIS,
   ) {}
 
   async getEvaluations(
-    user: User,
-    userEvaluationsId: string,
-    timeoutMillis: number = this.defaultRequestTimeoutMillis,
+    request: Omit<GetEvaluationsRequest, 'sourceId'>,
+    timeoutMillis: number | undefined = this.defaultRequestTimeoutMillis,
   ): Promise<GetEvaluationsResult> {
     const body: GetEvaluationsRequest = {
-      tag: this.featureTag,
-      user,
-      userEvaluationsId: userEvaluationsId,
+      ...request,
       sourceId: SourceID.JAVASCRIPT,
     }
 
@@ -75,13 +69,13 @@ export class ApiClientImpl implements ApiClient {
         type: 'success',
         sizeByte: contentLength,
         seconds: (finish - start) / 1000,
-        featureTag: this.featureTag,
+        featureTag: request.tag,
         value: (await res.json()) as GetEvaluationsResponse,
       } satisfies GetEvaluationsSuccess
     } catch (e) {
       return {
         type: 'failure',
-        featureTag: this.featureTag,
+        featureTag: request.tag,
         error: e as BKTException,
       } satisfies GetEvaluationsFailure
     }
