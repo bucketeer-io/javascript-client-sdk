@@ -26,7 +26,6 @@ export interface EvaluationStorage {
   ): boolean
 
   getCurrentEvaluationsId(): string | null
-  clearCurrentEvaluationsId(): void
 
   getEvaluatedAt(): number | null
 
@@ -111,14 +110,6 @@ export class EvaluationStorageImpl implements EvaluationStorage {
 
   getCurrentEvaluationsId(): string | null {
     return this.getInternal(this.userId).currentEvaluationsId
-  }
-
-  clearCurrentEvaluationsId(): void {
-    const entity = this.getInternal(this.userId)
-    this.storage.set({
-      ...entity,
-      currentEvaluationsId: null,
-    })
   }
 
   getEvaluatedAt(): number | null {

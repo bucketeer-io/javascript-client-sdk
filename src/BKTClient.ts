@@ -93,7 +93,7 @@ export class BKTClientImpl implements BKTClient {
 
   updateUserAttributes(attributes: Record<string, string>): void {
     this.component.userHolder().updateAttributes((_prev) => ({ ...attributes }))
-    this.component.evaluationInteractor().clearCurrentEvaluationsId()
+    this.component.evaluationInteractor().setUserAttributesUpdated()
   }
 
   async fetchEvaluations(timeoutMillis?: number): Promise<void> {

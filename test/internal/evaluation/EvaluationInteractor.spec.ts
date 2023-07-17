@@ -292,34 +292,6 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     })
   })
 
-  test('clearCurrentEvaluationsId', () => {
-    evaluationStorage.storage.set({
-      userId: user1.id,
-      currentEvaluationsId: 'user_evaluation_id_value',
-      evaluations: {
-        [evaluation1.featureId]: evaluation1,
-        [evaluation2.featureId]: evaluation2,
-      },
-      currentFeatureTag: 'feature_tag_value',
-      evaluatedAt: 1234567890,
-      userAttributesUpdated: false,
-    })
-
-    interactor.clearCurrentEvaluationsId()
-
-    expect(evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
-      userId: user1.id,
-      currentEvaluationsId: null,
-      evaluations: {
-        [evaluation1.featureId]: evaluation1,
-        [evaluation2.featureId]: evaluation2,
-      },
-      currentFeatureTag: 'feature_tag_value',
-      evaluatedAt: 1234567890,
-      userAttributesUpdated: false,
-    })
-  })
-
   test('addUpdateListener', () => {
     const key1 = interactor.addUpdateListener(() => {
       /* empty */

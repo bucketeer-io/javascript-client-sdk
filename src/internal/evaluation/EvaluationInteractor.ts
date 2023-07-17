@@ -79,8 +79,8 @@ export class EvaluationInteractor {
     return this.evaluationStorage.getByFeatureId(featureId)
   }
 
-  clearCurrentEvaluationsId(): void {
-    this.evaluationStorage.clearCurrentEvaluationsId()
+  setUserAttributesUpdated(): void {
+    this.evaluationStorage.setUserAttributesUpdated()
   }
 
   addUpdateListener(listener: () => void): string {

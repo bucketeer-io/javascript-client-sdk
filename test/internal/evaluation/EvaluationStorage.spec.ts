@@ -148,49 +148,6 @@ suite('internal/evaluation/EvaluationStorage', () => {
     })
   })
 
-  suite('clearCurrentEvaluationsId', () => {
-    test('has cache', () => {
-      storage.set({
-        userId: 'user_id_1',
-        currentEvaluationsId: 'evaluations_id_1',
-        evaluations: {
-          [evaluation1.featureId]: evaluation1,
-          [evaluation2.featureId]: evaluation2,
-        },
-        currentFeatureTag: 'feature_tag_1',
-        evaluatedAt: 1234567890,
-        userAttributesUpdated: true,
-      })
-
-      evaluationStorage.clearCurrentEvaluationsId()
-
-      expect(storage.get()).toStrictEqual<EvaluationEntity>({
-        userId: 'user_id_1',
-        currentEvaluationsId: null,
-        evaluations: {
-          [evaluation1.featureId]: evaluation1,
-          [evaluation2.featureId]: evaluation2,
-        },
-        currentFeatureTag: 'feature_tag_1',
-        evaluatedAt: 1234567890,
-        userAttributesUpdated: true,
-      })
-    })
-
-    test('no cache', () => {
-      evaluationStorage.clearCurrentEvaluationsId()
-
-      expect(storage.get()).toStrictEqual<EvaluationEntity>({
-        userId: 'user_id_1',
-        currentEvaluationsId: null,
-        evaluations: {},
-        currentFeatureTag: null,
-        evaluatedAt: null,
-        userAttributesUpdated: false,
-      })
-    })
-  })
-
   suite('getEvaluatedAt', () => {
     test('null if not saved', () => {
       const result = evaluationStorage.getEvaluatedAt()
