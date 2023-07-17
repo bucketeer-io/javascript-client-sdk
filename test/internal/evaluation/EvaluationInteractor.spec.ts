@@ -86,7 +86,10 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           return res(
             ctx.status(200),
             ctx.json({
-              evaluations: user1Evaluations,
+              evaluations: {
+                ...user1Evaluations,
+                createdAt: clock.currentTimeMillis(),
+              },
               userEvaluationsId: 'user_evaluation_id_value',
             }),
           )
@@ -113,6 +116,9 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation1.featureId]: evaluation1,
           [evaluation2.featureId]: evaluation2,
         },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: clock.currentTimeMillisCalls[0],
+        userAttributesUpdated: false,
       })
 
       expect(mockListener).toBeCalledTimes(1)
@@ -133,7 +139,10 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           return res.once(
             ctx.status(200),
             ctx.json({
-              evaluations: user1Evaluations,
+              evaluations: {
+                ...user1Evaluations,
+                createdAt: clock.currentTimeMillis(),
+              },
               userEvaluationsId: 'user_evaluation_id_value',
             }),
           )
@@ -146,10 +155,11 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         >(`${config.apiEndpoint}/get_evaluations`, async (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
-            ctx.json({
+            ctx.json<GetEvaluationsResponse>({
               evaluations: {
                 ...user1Evaluations,
                 evaluations: [newEvaluation],
+                createdAt: clock.currentTimeMillis(),
               },
               userEvaluationsId: 'user_evaluation_id_value_updated',
             }),
@@ -178,8 +188,15 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value_updated',
         evaluations: {
+          [user1Evaluations.evaluations[0].featureId]:
+            user1Evaluations.evaluations[0],
+          [user1Evaluations.evaluations[1].featureId]:
+            user1Evaluations.evaluations[1],
           [newEvaluation.featureId]: newEvaluation,
         },
+        evaluatedAt: clock.currentTimeMillisCalls[1],
+        currentFeatureTag: 'feature_tag_value',
+        userAttributesUpdated: false,
       })
 
       expect(mockListener).toBeCalledTimes(2)
@@ -246,6 +263,9 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation1.featureId]: evaluation1,
           [evaluation2.featureId]: evaluation2,
         },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: 1234567890,
+        userAttributesUpdated: false,
       })
 
       const result = interactor.getLatest(evaluation1.featureId)
@@ -261,6 +281,9 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation1.featureId]: evaluation1,
           [evaluation2.featureId]: evaluation2,
         },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: 1234567890,
+        userAttributesUpdated: false,
       })
 
       const result = interactor.getLatest(evaluation3.featureId)
@@ -277,6 +300,9 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         [evaluation1.featureId]: evaluation1,
         [evaluation2.featureId]: evaluation2,
       },
+      currentFeatureTag: 'feature_tag_value',
+      evaluatedAt: 1234567890,
+      userAttributesUpdated: false,
     })
 
     interactor.clearCurrentEvaluationsId()
@@ -288,6 +314,9 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         [evaluation1.featureId]: evaluation1,
         [evaluation2.featureId]: evaluation2,
       },
+      currentFeatureTag: 'feature_tag_value',
+      evaluatedAt: 1234567890,
+      userAttributesUpdated: false,
     })
   })
 
