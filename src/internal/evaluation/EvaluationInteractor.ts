@@ -12,6 +12,7 @@ export class EvaluationInteractor {
     private evaluationStorage: EvaluationStorage,
     private idGenerator: IdGenerator,
   ) {
+    // check if the new featureTag is different from the saved one
     this.evaluationStorage.updateFeatureTag(this.featureTag)
   }
 
