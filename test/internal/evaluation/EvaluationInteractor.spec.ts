@@ -226,6 +226,26 @@ suite('internal/evaluation/EvaluationInteractor', () => {
             }),
           )
         }),
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async (req, res, ctx) => {
+          requestInterceptor(req)
+          return res(
+            ctx.status(200),
+            ctx.json({
+              evaluations: {
+                id: '17388826713971171773',
+                evaluations: [],
+                archivedFeatureIds: [],
+                createdAt: clock.currentTimeMillis(),
+                forceUpdate: false,
+              },
+              userEvaluationsId: 'user_evaluation_id_value',
+            }),
+          )
+        }),
       )
 
       const mockListener = vi.fn<[], void>()

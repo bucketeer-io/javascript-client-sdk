@@ -3,6 +3,7 @@ import { Evaluation } from '../model/Evaluation'
 import { User } from '../model/User'
 import { ApiClient } from '../remote/ApiClient'
 import { GetEvaluationsResult } from '../remote/GetEvaluationsResult'
+import { SDK_VERSION } from '../version'
 import { EvaluationStorage } from './EvaluationStorage'
 
 export class EvaluationInteractor {
@@ -35,7 +36,7 @@ export class EvaluationInteractor {
           userAttributesUpdated:
             this.evaluationStorage.getUserAttributesUpdated(),
         },
-        sdkVersion: `${__BKT_SDK_VERSION__}`,
+        sdkVersion: SDK_VERSION,
         tag: this.featureTag,
       },
       timeoutMillis,

@@ -1,19 +1,13 @@
 import { IllegalArgumentException } from './BKTExceptions'
 import { BKTStorage, createBKTStorage } from './BKTStorage'
 import { FetchLike } from './internal/remote/fetch'
+import { SDK_VERSION } from './internal/version'
 
 const MINIMUM_FLUSH_INTERVAL_MILLIS = 60_000 // 60 seconds
 const DEFAULT_FLUSH_INTERVAL_MILLIS = 60_000 // 60 seconds
 const DEFAULT_MAX_QUEUE_SIZE = 50
 const MINIMUM_POLLING_INTERVAL_MILLIS = 60_000 // 60 seconds
 const DEFAULT_POLLING_INTERVAL_MILLIS = 600_000 // 10 minutes
-
-// unbuild currently does not support specifying tsconfig.json
-// thus it does not read types from globals.d.ts for now
-// https://github.com/unjs/unbuild/issues/256
-declare const __BKT_SDK_VERSION__: string
-
-const VERSION = `${__BKT_SDK_VERSION__}`
 
 const isValidUrl = (url: string): boolean => {
   try {
@@ -49,7 +43,7 @@ export interface BKTConfig extends RawBKTConfig {
 
 const defaultUserAgent = () => {
   if (typeof window === 'undefined') {
-    return `Bucketeer JavaScript SDK(${VERSION})`
+    return `Bucketeer JavaScript SDK(${SDK_VERSION})`
   } else {
     return window.navigator.userAgent
   }
