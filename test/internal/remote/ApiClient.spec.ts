@@ -6,9 +6,10 @@ import {
   afterEach,
   afterAll,
   beforeAll,
+  vi,
 } from 'vitest'
 import fetch from 'cross-fetch'
-import { rest } from 'msw'
+import { RestRequest, rest } from 'msw'
 import assert from 'assert'
 import { SetupServer } from 'msw/node'
 import { GetEvaluationsRequest } from '../../../src/internal/model/request/GetEvaluationsRequest'
@@ -24,6 +25,7 @@ import { RegisterEventsRequest } from '../../../src/internal/model/request/Regis
 import { evaluationEvent1, metricsEvent1 } from '../../mocks/events'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
 import { setupServerAndListen } from '../../utils'
+import { SDK_VERSION } from '../../../src/internal/version'
 
 suite('internal/remote/ApiClient', () => {
   const endpoint = 'https://api.bucketeer.io'
@@ -48,21 +50,18 @@ suite('internal/remote/ApiClient', () => {
 
   suite('getEvaluations', () => {
     test('success', async () => {
+      const requestInterceptor = vi.fn<
+        [RestRequest<GetEvaluationsRequest>],
+        void
+      >()
+
       server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
         >(`${endpoint}/get_evaluations`, async (req, res, ctx) => {
-          expect(req.headers.get('Authorization')).toBe('api_key_value')
-
-          const request = await req.json()
-          expect(request).toStrictEqual<GetEvaluationsRequest>({
-            tag: 'feature_tag_value',
-            user: user1,
-            userEvaluationsId: 'user_evaluation_id',
-            sourceId: SourceID.JAVASCRIPT,
-          })
+          requestInterceptor(req)
 
           return res(
             ctx.status(200),
@@ -79,6 +78,10 @@ suite('internal/remote/ApiClient', () => {
         user: user1,
         userEvaluationsId: 'user_evaluation_id',
         tag: 'feature_tag_value',
+        userEvaluationCondition: {
+          evaluatedAt: '0',
+          userAttributesUpdated: false,
+        },
       })
 
       assert(response.type === 'success')
@@ -90,6 +93,25 @@ suite('internal/remote/ApiClient', () => {
       expect(response.value).toStrictEqual({
         evaluations: user1Evaluations,
         userEvaluationsId: 'user_evaluation_id',
+      })
+
+      expect(requestInterceptor).toHaveBeenCalledTimes(1)
+
+      const request = requestInterceptor.mock.calls[0][0]
+
+      expect(request.headers.get('Authorization')).toBe('api_key_value')
+
+      const requestBody = await request.json()
+      expect(requestBody).toStrictEqual<GetEvaluationsRequest>({
+        tag: 'feature_tag_value',
+        user: user1,
+        userEvaluationsId: 'user_evaluation_id',
+        sourceId: SourceID.JAVASCRIPT,
+        sdkVersion: SDK_VERSION,
+        userEvaluationCondition: {
+          evaluatedAt: '0',
+          userAttributesUpdated: false,
+        },
       })
     })
 
@@ -104,6 +126,10 @@ suite('internal/remote/ApiClient', () => {
         user: user1,
         userEvaluationsId: 'user_evaluation_id',
         tag: 'feature_tag_value',
+        userEvaluationCondition: {
+          evaluatedAt: '0',
+          userAttributesUpdated: false,
+        },
       })
 
       assert(response.type === 'failure')
@@ -129,6 +155,10 @@ suite('internal/remote/ApiClient', () => {
         user: user1,
         userEvaluationsId: 'user_evaluation_id',
         tag: 'feature_tag_value',
+        userEvaluationCondition: {
+          evaluatedAt: '0',
+          userAttributesUpdated: false,
+        },
       })
 
       assert(response.type === 'failure')
@@ -141,18 +171,18 @@ suite('internal/remote/ApiClient', () => {
 
   suite('registerEvents', () => {
     test('success', async () => {
+      const requestInterceptor = vi.fn<
+        [RestRequest<RegisterEventsRequest>],
+        void
+      >()
+
       server.use(
         rest.post<
           RegisterEventsRequest,
           Record<string, never>,
           RegisterEventsResponse
         >(`${endpoint}/register_events`, async (req, res, ctx) => {
-          expect(req.headers.get('Authorization')).toBe('api_key_value')
-
-          const request = await req.json()
-          expect(request).toStrictEqual<RegisterEventsRequest>({
-            events: [evaluationEvent1, metricsEvent1],
-          })
+          requestInterceptor(req)
 
           return res(
             ctx.status(200),
@@ -183,6 +213,15 @@ suite('internal/remote/ApiClient', () => {
             message: 'error',
           },
         },
+      })
+
+      const request = requestInterceptor.mock.calls[0][0]
+      expect(request.headers.get('Authorization')).toBe('api_key_value')
+
+      const requestBody = await request.json()
+      expect(requestBody).toStrictEqual<RegisterEventsRequest>({
+        events: [evaluationEvent1, metricsEvent1],
+        sdkVersion: SDK_VERSION,
       })
     })
 

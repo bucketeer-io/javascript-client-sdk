@@ -13,10 +13,11 @@ import { Event } from '../model/Event'
 import { RegisterEventsResult } from './RegisterEventsResult'
 import { RegisterEventsRequest } from '../model/request/RegisterEventsRequest'
 import { RegisterEventsResponse } from '../model/response/RegisterEventsResponse'
+import { SDK_VERSION } from '../version'
 
 export interface ApiClient {
   getEvaluations(
-    request: Omit<GetEvaluationsRequest, 'sourceId'>,
+    request: Omit<GetEvaluationsRequest, 'sourceId' | 'sdkVersion'>,
     timeoutMillis?: number,
   ): Promise<GetEvaluationsResult>
   registerEvents(events: Event[]): Promise<RegisterEventsResult>
@@ -33,12 +34,13 @@ export class ApiClientImpl implements ApiClient {
   ) {}
 
   async getEvaluations(
-    request: Omit<GetEvaluationsRequest, 'sourceId'>,
+    request: Omit<GetEvaluationsRequest, 'sourceId' | 'sdkVersion'>,
     timeoutMillis: number | undefined = this.defaultRequestTimeoutMillis,
   ): Promise<GetEvaluationsResult> {
     const body: GetEvaluationsRequest = {
       ...request,
       sourceId: SourceID.JAVASCRIPT,
+      sdkVersion: SDK_VERSION,
     }
 
     try {
@@ -82,7 +84,7 @@ export class ApiClientImpl implements ApiClient {
   }
 
   async registerEvents(events: Event[]): Promise<RegisterEventsResult> {
-    const body: RegisterEventsRequest = { events }
+    const body: RegisterEventsRequest = { events, sdkVersion: SDK_VERSION }
 
     try {
       const res = await postInternal(
