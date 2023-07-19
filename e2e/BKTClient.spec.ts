@@ -8,6 +8,10 @@ import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { BKTUser, defineBKTUser } from '../src/BKTUser'
 import { FEATURE_ID_STRING, USER_ID } from './constants'
 import './assertions'
+import { BKTClient, BKTClientImpl } from '../src/BKTClient'
+import { DefaultComponent } from '../src/internal/di/Component'
+import { EvaluationStorageImpl } from '../src/internal/evaluation/EvaluationStorage'
+import { evaluation1 } from '../test/mocks/evaluations'
 
 suite('e2e/BKTClientTest', () => {
   let config: BKTConfig
@@ -60,4 +64,90 @@ suite('e2e/BKTClientTest', () => {
       reason: 'RULE',
     })
   })
+
+  suite('forceUpdate', () => {
+    test('evaluatedAt is too old', async () => {
+      const client = getBKTClient()
+
+      assert(client != null)
+
+      const evaluationStorage = getDefaultComponent(
+        client,
+      ).dataModule.evaluationStorage() as EvaluationStorageImpl
+
+      const current = evaluationStorage.storage.get()
+
+      assert(current != null)
+
+      // update evaluations manually, and check if evaluation1 is deleted after fetchEvaluations
+      evaluationStorage.storage.set({
+        ...current,
+        evaluations: { [evaluation1.featureId]: evaluation1 },
+        evaluatedAt: '1',
+      })
+
+      const testTarget = evaluationStorage.storage.get()
+
+      assert(testTarget != null)
+      console.log(testTarget)
+
+      expect(testTarget.evaluatedAt).toBe('1')
+      expect(testTarget.evaluations[evaluation1.featureId]).toStrictEqual(
+        evaluation1,
+      )
+
+      await client.fetchEvaluations()
+
+      const updated = evaluationStorage.storage.get()
+
+      assert(updated != null)
+
+      expect(updated.evaluatedAt).not.toBe('1')
+      expect(updated.evaluations[evaluation1.featureId]).toBeUndefined()
+    })
+
+    test('userEvaluationId is null', async () => {
+      const client = getBKTClient()
+
+      assert(client != null)
+
+      const evaluationStorage = getDefaultComponent(
+        client,
+      ).dataModule.evaluationStorage() as EvaluationStorageImpl
+
+      const current = evaluationStorage.storage.get()
+
+      assert(current != null)
+
+      // update evaluations manually, and check if evaluation1 is deleted after fetchEvaluations
+      evaluationStorage.storage.set({
+        ...current,
+        evaluations: { [evaluation1.featureId]: evaluation1 },
+        currentEvaluationsId: null,
+      })
+
+      const testTarget = evaluationStorage.storage.get()
+
+      assert(testTarget != null)
+      console.log(testTarget)
+
+      expect(testTarget.currentEvaluationsId).toBeNull()
+      expect(testTarget.evaluations[evaluation1.featureId]).toStrictEqual(
+        evaluation1,
+      )
+
+      await client.fetchEvaluations()
+
+      const updated = evaluationStorage.storage.get()
+
+      assert(updated != null)
+
+      expect(updated.currentEvaluationsId).not.toBeNull()
+      expect(updated.evaluations[evaluation1.featureId]).toBeUndefined()
+    })
+  })
 })
+
+const getDefaultComponent = (client: BKTClient): DefaultComponent => {
+  return (client as BKTClientImpl).component as DefaultComponent
+}
