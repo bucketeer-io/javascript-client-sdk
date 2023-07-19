@@ -6,7 +6,7 @@ export interface EvaluationEntity {
   currentEvaluationsId: string | null
   evaluations: Record<string /* featureId */, Evaluation>
   currentFeatureTag: string | null
-  evaluatedAt: number | null
+  evaluatedAt: string | null
   userAttributesUpdated: boolean
 }
 
@@ -16,18 +16,18 @@ export interface EvaluationStorage {
   deleteAllAndInsert(
     evaluationsId: string,
     evaluations: Evaluation[],
-    evaluatedAt: number,
+    evaluatedAt: string,
   ): void
   update(
     evaluationsId: string,
     evaluations: Evaluation[],
     archivedFeatureIds: string[],
-    evaluatedAt: number,
+    evaluatedAt: string,
   ): boolean
 
   getCurrentEvaluationsId(): string | null
 
-  getEvaluatedAt(): number | null
+  getEvaluatedAt(): string | null
 
   /**
    * @returns true if featureTag has been updated
@@ -55,7 +55,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   deleteAllAndInsert(
     evaluationsId: string,
     evaluations: Evaluation[],
-    evaluatedAt: number,
+    evaluatedAt: string,
   ): void {
     const entity = this.getInternal(this.userId)
     const updated: EvaluationEntity = {
@@ -78,7 +78,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     evaluationsId: string,
     evaluations: Evaluation[],
     archivedFeatureIds: string[],
-    evaluatedAt: number,
+    evaluatedAt: string,
   ): boolean {
     const entity = this.getInternal(this.userId)
 
@@ -112,7 +112,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     return this.getInternal(this.userId).currentEvaluationsId
   }
 
-  getEvaluatedAt(): number | null {
+  getEvaluatedAt(): string | null {
     return this.getInternal(this.userId).evaluatedAt
   }
 

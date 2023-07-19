@@ -88,7 +88,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
             ctx.json({
               evaluations: {
                 ...user1Evaluations,
-                createdAt: clock.currentTimeMillis(),
+                createdAt: clock.currentTimeMillis().toString(),
               },
               userEvaluationsId: 'user_evaluation_id_value',
             }),
@@ -117,7 +117,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation2.featureId]: evaluation2,
         },
         currentFeatureTag: 'feature_tag_value',
-        evaluatedAt: clock.currentTimeMillisCalls[0],
+        evaluatedAt: clock.currentTimeMillisCalls[0].toString(),
         userAttributesUpdated: false,
       })
 
@@ -141,7 +141,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
             ctx.json({
               evaluations: {
                 ...user1Evaluations,
-                createdAt: clock.currentTimeMillis(),
+                createdAt: clock.currentTimeMillis().toString(),
               },
               userEvaluationsId: 'user_evaluation_id_value',
             }),
@@ -159,7 +159,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
               evaluations: {
                 ...user1Evaluations,
                 evaluations: [newEvaluation],
-                createdAt: clock.currentTimeMillis(),
+                createdAt: clock.currentTimeMillis().toString(),
               },
               userEvaluationsId: 'user_evaluation_id_value_updated',
             }),
@@ -194,7 +194,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
             user1Evaluations.evaluations[1],
           [newEvaluation.featureId]: newEvaluation,
         },
-        evaluatedAt: clock.currentTimeMillisCalls[1],
+        evaluatedAt: clock.currentTimeMillisCalls[1].toString(),
         currentFeatureTag: 'feature_tag_value',
         userAttributesUpdated: false,
       })
@@ -220,7 +220,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
             ctx.json({
               evaluations: {
                 ...user1Evaluations,
-                createdAt: clock.currentTimeMillis(),
+                createdAt: clock.currentTimeMillis().toString(),
               },
               userEvaluationsId: 'user_evaluation_id_value',
             }),
@@ -239,7 +239,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
                 id: '17388826713971171773',
                 evaluations: [],
                 archivedFeatureIds: [],
-                createdAt: clock.currentTimeMillis(),
+                createdAt: clock.currentTimeMillis().toString(),
                 forceUpdate: false,
               },
               userEvaluationsId: 'user_evaluation_id_value',
@@ -267,7 +267,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         },
         userAttributesUpdated: false,
         currentFeatureTag: 'feature_tag_value',
-        evaluatedAt: clock.currentTimeMillisCalls[1],
+        evaluatedAt: clock.currentTimeMillisCalls[1].toString(),
       })
 
       expect(mockListener).toBeCalledTimes(2)
@@ -284,7 +284,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation2.featureId]: evaluation2,
         },
         currentFeatureTag: 'feature_tag_value',
-        evaluatedAt: 1234567890,
+        evaluatedAt: '1234567890',
         userAttributesUpdated: false,
       })
 
@@ -302,7 +302,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation2.featureId]: evaluation2,
         },
         currentFeatureTag: 'feature_tag_value',
-        evaluatedAt: 1234567890,
+        evaluatedAt: '1234567890',
         userAttributesUpdated: false,
       })
 
@@ -371,7 +371,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation1.featureId]: evaluation1,
         },
         currentFeatureTag: 'feature_tag_value',
-        evaluatedAt: clock.currentTimeMillis(),
+        evaluatedAt: clock.currentTimeMillis().toString(),
         userAttributesUpdated: false,
       })
 
@@ -391,7 +391,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
               evaluations: {
                 id: '17388826713971171773',
                 evaluations: [evaluation1_updated, evaluation2],
-                createdAt: clock.currentTimeMillis(),
+                createdAt: clock.currentTimeMillis().toString(),
                 forceUpdate: false,
                 archivedFeatureIds: [],
               },
@@ -412,7 +412,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation2.featureId]: evaluation2,
         },
         currentFeatureTag: 'feature_tag_value',
-        evaluatedAt: clock.currentTimeMillisCalls[1],
+        evaluatedAt: clock.currentTimeMillisCalls[1].toString(),
         userAttributesUpdated: false,
       })
 
@@ -428,7 +428,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation2.featureId]: evaluation2,
         },
         currentFeatureTag: 'feature_tag_value',
-        evaluatedAt: clock.currentTimeMillis(),
+        evaluatedAt: clock.currentTimeMillis().toString(),
         userAttributesUpdated: false,
       })
 
@@ -448,7 +448,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
               evaluations: {
                 id: '17388826713971171773',
                 evaluations: [evaluation2_updated],
-                createdAt: clock.currentTimeMillis(),
+                createdAt: clock.currentTimeMillis().toString(),
                 forceUpdate: false,
                 archivedFeatureIds: [],
               },
@@ -469,7 +469,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation2_updated.featureId]: evaluation2_updated,
         },
         currentFeatureTag: 'feature_tag_value',
-        evaluatedAt: clock.currentTimeMillisCalls[1],
+        evaluatedAt: clock.currentTimeMillisCalls[1].toString(),
         userAttributesUpdated: false,
       })
 
@@ -485,7 +485,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation2.featureId]: evaluation2,
         },
         currentFeatureTag: 'feature_tag_value',
-        evaluatedAt: clock.currentTimeMillis(),
+        evaluatedAt: clock.currentTimeMillis().toString(),
         userAttributesUpdated: false,
       })
 
@@ -505,7 +505,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
               evaluations: {
                 id: '17388826713971171773',
                 evaluations: [evaluation1_updated],
-                createdAt: clock.currentTimeMillis(),
+                createdAt: clock.currentTimeMillis().toString(),
                 forceUpdate: false,
                 archivedFeatureIds: [evaluation2.featureId],
               },
@@ -525,7 +525,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation1_updated.featureId]: evaluation1_updated,
         },
         currentFeatureTag: 'feature_tag_value',
-        evaluatedAt: clock.currentTimeMillisCalls[1],
+        evaluatedAt: clock.currentTimeMillisCalls[1].toString(),
         userAttributesUpdated: false,
       })
 

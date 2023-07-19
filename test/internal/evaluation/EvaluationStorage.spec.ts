@@ -33,7 +33,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
           [evaluation2.featureId]: evaluation2,
         },
         currentFeatureTag: 'feature_tag_1',
-        evaluatedAt: 1234567890,
+        evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
 
@@ -51,7 +51,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
           [evaluation2.featureId]: evaluation2,
         },
         currentFeatureTag: 'feature_tag_1',
-        evaluatedAt: 1234567890,
+        evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
 
@@ -70,14 +70,14 @@ suite('internal/evaluation/EvaluationStorage', () => {
         [evaluation2.featureId]: evaluation2,
       },
       currentFeatureTag: 'feature_tag_1',
-      evaluatedAt: 1234567890,
+      evaluatedAt: '1234567890',
       userAttributesUpdated: true,
     })
 
     evaluationStorage.deleteAllAndInsert(
       'evaluatIons_id_2',
       [evaluation3],
-      clock.currentTimeMillis(),
+      clock.currentTimeMillis().toString(),
     )
 
     expect(storage.get()).toStrictEqual<EvaluationEntity>({
@@ -87,7 +87,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         [evaluation3.featureId]: evaluation3,
       },
       currentFeatureTag: 'feature_tag_1',
-      evaluatedAt: clock.currentTimeMillisCalls[0],
+      evaluatedAt: clock.currentTimeMillisCalls[0].toString(),
       userAttributesUpdated: true,
     })
   })
@@ -102,7 +102,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
           [evaluation2.featureId]: evaluation2,
         },
         currentFeatureTag: 'feature_tag_1',
-        evaluatedAt: 1234567890,
+        evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
 
@@ -123,7 +123,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         currentEvaluationsId: null,
         evaluations: {},
         currentFeatureTag: 'feature_tag_1',
-        evaluatedAt: 1234567890,
+        evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
 
@@ -138,7 +138,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         currentEvaluationsId: 'evaluations_id_1',
         evaluations: {},
         currentFeatureTag: 'feature_tag_1',
-        evaluatedAt: 1234567890,
+        evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
 
@@ -166,7 +166,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
           [evaluation2.featureId]: evaluation2,
         },
         currentFeatureTag: 'feature_tag_1',
-        evaluatedAt: 1234567890,
+        evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
 
@@ -189,7 +189,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
           [evaluation2.featureId]: evaluation2,
         },
         currentFeatureTag: 'feature_tag_1',
-        evaluatedAt: 1234567890,
+        evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
 
@@ -219,7 +219,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         [evaluation2.featureId]: evaluation2,
       },
       currentFeatureTag: 'feature_tag_1',
-      evaluatedAt: 1234567890,
+      evaluatedAt: '1234567890',
       userAttributesUpdated: true,
     })
 
@@ -235,7 +235,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         [evaluation2.featureId]: evaluation2,
       },
       currentFeatureTag: 'feature_tag_1',
-      evaluatedAt: 1234567890,
+      evaluatedAt: '1234567890',
       userAttributesUpdated: true,
     })
 

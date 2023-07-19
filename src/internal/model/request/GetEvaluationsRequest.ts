@@ -2,7 +2,8 @@ import { SourceID } from '../SourceID'
 import { User } from '../User'
 
 interface UserEvaluationCondition {
-  evaluatedAt: number
+  // This can be a number, but `UserEvaluations.createdAt` is returned as string and is defined as int64, so we use string here.
+  evaluatedAt: string
   userAttributesUpdated: boolean
 }
 

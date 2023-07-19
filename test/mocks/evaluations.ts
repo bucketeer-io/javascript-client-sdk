@@ -43,7 +43,7 @@ export const evaluation3 = {
 export const user1Evaluations = {
   id: '17388826713971171773',
   evaluations: [evaluation1, evaluation2],
-  createdAt: 0,
+  createdAt: '0',
   archivedFeatureIds: [],
   forceUpdate: false,
 } satisfies UserEvaluations

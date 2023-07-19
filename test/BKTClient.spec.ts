@@ -624,7 +624,7 @@ suite('BKTClient', () => {
               evaluations: {
                 id: 'user_evaluation_id_value',
                 evaluations: [evaluation1],
-                createdAt: clock.currentTimeMillis(),
+                createdAt: clock.currentTimeMillis().toString(),
                 forceUpdate: false,
                 archivedFeatureIds: [],
               },
@@ -643,7 +643,7 @@ suite('BKTClient', () => {
               evaluations: {
                 id: 'user_evaluation_id_value_updated',
                 evaluations: [updatedEvaluation1],
-                createdAt: clock.currentTimeMillis(),
+                createdAt: clock.currentTimeMillis().toString(),
                 forceUpdate: false,
                 archivedFeatureIds: [],
               },
@@ -690,7 +690,7 @@ suite('BKTClient', () => {
               evaluations: {
                 id: 'user_evaluation_id_value',
                 evaluations: [evaluation1],
-                createdAt: clock.currentTimeMillis(),
+                createdAt: clock.currentTimeMillis().toString(),
                 forceUpdate: false,
                 archivedFeatureIds: [],
               },

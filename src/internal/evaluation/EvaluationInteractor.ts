@@ -32,7 +32,7 @@ export class EvaluationInteractor {
         user,
         userEvaluationsId: currentEvaluationsId,
         userEvaluationCondition: {
-          evaluatedAt: this.evaluationStorage.getEvaluatedAt() ?? 0,
+          evaluatedAt: this.evaluationStorage.getEvaluatedAt() ?? '0',
           userAttributesUpdated:
             this.evaluationStorage.getUserAttributesUpdated(),
         },
