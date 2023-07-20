@@ -55,15 +55,6 @@ suite('defineBKTConfig', () => {
     }).toThrowError('apiEndpoint is invalid')
   })
 
-  test('empty featureTag throws', () => {
-    expect(() => {
-      defineBKTConfig({
-        ...defaultConfig,
-        featureTag: '',
-      })
-    }).toThrowError('featureTag is required')
-  })
-
   test('empty appVersion throws', () => {
     expect(() => {
       defineBKTConfig({

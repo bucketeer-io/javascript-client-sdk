@@ -21,7 +21,7 @@ const isValidUrl = (url: string): boolean => {
 interface RawBKTConfig {
   apiKey: string
   apiEndpoint: string
-  featureTag: string
+  featureTag?: string
   eventsFlushInterval?: number
   eventsMaxQueueSize?: number
   pollingInterval?: number
@@ -33,6 +33,7 @@ interface RawBKTConfig {
 }
 
 export interface BKTConfig extends RawBKTConfig {
+  featureTag: string
   eventsFlushInterval: number
   eventsMaxQueueSize: number
   pollingInterval: number
@@ -53,6 +54,7 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
   const userAgent = defaultUserAgent()
 
   const result: BKTConfig = {
+    featureTag: '',
     eventsFlushInterval: MINIMUM_FLUSH_INTERVAL_MILLIS,
     eventsMaxQueueSize: DEFAULT_MAX_QUEUE_SIZE,
     pollingInterval: DEFAULT_POLLING_INTERVAL_MILLIS,
@@ -68,8 +70,6 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     throw new IllegalArgumentException('apiEndpoint is required')
   if (!isValidUrl(result.apiEndpoint))
     throw new IllegalArgumentException('apiEndpoint is invalid')
-  if (!result.featureTag)
-    throw new IllegalArgumentException('featureTag is required')
   if (!result.appVersion)
     throw new IllegalArgumentException('appVersion is required')
   if (!result.fetch) throw new IllegalArgumentException('fetch is required')

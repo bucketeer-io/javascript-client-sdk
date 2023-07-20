@@ -17,55 +17,73 @@ suite('e2e/BKTClientTest', () => {
   let config: BKTConfig
   let user: BKTUser
 
-  beforeEach(async () => {
-    config = defineBKTConfig({
-      apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
-      apiKey: import.meta.env.VITE_BKT_API_KEY,
-      featureTag: 'javascript',
-      appVersion: '1.2.3',
-      fetch: window.fetch,
-    })
-
-    user = defineBKTUser({
-      id: USER_ID,
-    })
-
-    await initializeBKTClient(config, user)
-  })
-
   afterEach(() => {
     destroyBKTClient()
     localStorage.clear()
   })
 
-  test('evaluation update flow', async () => {
-    const client = getBKTClient()
+  suite('evaluation update flow', () => {
+    beforeEach(async () => {
+      config = defineBKTConfig({
+        apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
+        apiKey: import.meta.env.VITE_BKT_API_KEY,
+        featureTag: 'javascript',
+        appVersion: '1.2.3',
+        fetch: window.fetch,
+      })
 
-    assert(client != null)
+      user = defineBKTUser({
+        id: USER_ID,
+      })
 
-    expect(client.stringVariation(FEATURE_ID_STRING, '')).toBe('value-1')
+      await initializeBKTClient(config, user)
+    })
 
-    client.updateUserAttributes({ app_version: '0.0.1' })
+    test('test', async () => {
+      const client = getBKTClient()
 
-    await client.fetchEvaluations()
+      assert(client != null)
 
-    expect(client.stringVariation(FEATURE_ID_STRING, '')).toBe('value-2')
+      expect(client.stringVariation(FEATURE_ID_STRING, '')).toBe('value-1')
 
-    const detail = client.evaluationDetails(FEATURE_ID_STRING)
+      client.updateUserAttributes({ app_version: '0.0.1' })
 
-    expect(detail).toBeEvaluation({
-      id: 'feature-js-e2e-string:5:bucketeer-js-user-id-1',
-      featureId: FEATURE_ID_STRING,
-      featureVersion: 5,
-      userId: USER_ID,
-      variationId: '802f2b29-a5c5-47d1-b5ba-f457d224c7b2',
-      variationName: 'variation 2',
-      variationValue: 'value-2',
-      reason: 'RULE',
+      await client.fetchEvaluations()
+
+      expect(client.stringVariation(FEATURE_ID_STRING, '')).toBe('value-2')
+
+      const detail = client.evaluationDetails(FEATURE_ID_STRING)
+
+      expect(detail).toBeEvaluation({
+        id: 'feature-js-e2e-string:5:bucketeer-js-user-id-1',
+        featureId: FEATURE_ID_STRING,
+        featureVersion: 5,
+        userId: USER_ID,
+        variationId: '802f2b29-a5c5-47d1-b5ba-f457d224c7b2',
+        variationName: 'variation 2',
+        variationValue: 'value-2',
+        reason: 'RULE',
+      })
     })
   })
 
   suite('forceUpdate', () => {
+    beforeEach(async () => {
+      config = defineBKTConfig({
+        apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
+        apiKey: import.meta.env.VITE_BKT_API_KEY,
+        featureTag: 'javascript',
+        appVersion: '1.2.3',
+        fetch: window.fetch,
+      })
+
+      user = defineBKTUser({
+        id: USER_ID,
+      })
+
+      await initializeBKTClient(config, user)
+    })
+
     test('userEvaluationsId is different and evaluatedAt is too old', async () => {
       const client = getBKTClient()
 
@@ -151,6 +169,41 @@ suite('e2e/BKTClientTest', () => {
 
       expect(updated.currentEvaluationsId).not.toBeNull()
       expect(updated.evaluations[evaluation1.featureId]).toBeUndefined()
+    })
+  })
+
+  suite('featureTag', () => {
+    beforeEach(async () => {
+      config = defineBKTConfig({
+        apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
+        apiKey: import.meta.env.VITE_BKT_API_KEY,
+        appVersion: '1.2.3',
+        fetch: window.fetch,
+      })
+
+      user = defineBKTUser({
+        id: USER_ID,
+      })
+
+      await initializeBKTClient(config, user)
+    })
+
+    test('initialize without featureTag should retieve all features', async () => {
+      const client = getBKTClient()
+
+      assert(client != null)
+
+      const javascript = client.evaluationDetails('feature-js-e2e-string')
+      console.log(javascript)
+      expect(javascript).not.toBeNull()
+
+      // can retrieve evaluations for other featureTag
+      const android = client.evaluationDetails('feature-android-e2e-string')
+      console.log(android)
+      expect(android).not.toBeNull()
+
+      const golang = client.evaluationDetails('feature-go-server-e2e-1')
+      expect(golang).not.toBeNull()
     })
   })
 })
