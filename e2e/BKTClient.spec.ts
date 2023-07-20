@@ -66,7 +66,7 @@ suite('e2e/BKTClientTest', () => {
   })
 
   suite('forceUpdate', () => {
-    test('evaluatedAt is too old', async () => {
+    test('userEvaluationsId is different and evaluatedAt is too old', async () => {
       const client = getBKTClient()
 
       assert(client != null)
@@ -79,10 +79,17 @@ suite('e2e/BKTClientTest', () => {
 
       assert(current != null)
 
+      const randomEvaluationsId = crypto
+        .getRandomValues(new Uint8Array(16))
+        .join('')
+        .slice(0, 19)
+        .toString()
+
       // update evaluations manually, and check if evaluation1 is deleted after fetchEvaluations
       evaluationStorage.storage.set({
         ...current,
         evaluations: { [evaluation1.featureId]: evaluation1 },
+        currentEvaluationsId: randomEvaluationsId,
         evaluatedAt: '1',
       })
 
