@@ -74,6 +74,10 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     throw new IllegalArgumentException('appVersion is required')
   if (!result.fetch) throw new IllegalArgumentException('fetch is required')
 
+  if (result.featureTag === undefined) {
+    result.featureTag = ''
+  }
+
   if (result.pollingInterval < MINIMUM_POLLING_INTERVAL_MILLIS) {
     result.pollingInterval = DEFAULT_POLLING_INTERVAL_MILLIS
   }

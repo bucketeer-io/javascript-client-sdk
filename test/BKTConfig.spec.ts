@@ -105,4 +105,13 @@ suite('defineBKTConfig', () => {
       })
     }).toThrow(IllegalArgumentException)
   })
+
+  test('explicitly passing undefined to featureTag results in empty string', () => {
+    const result = defineBKTConfig({
+      ...defaultConfig,
+      featureTag: undefined,
+    })
+
+    expect(result.featureTag).toBe('')
+  })
 })
