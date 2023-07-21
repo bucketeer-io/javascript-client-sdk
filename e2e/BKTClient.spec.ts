@@ -114,7 +114,6 @@ suite('e2e/BKTClientTest', () => {
       const testTarget = evaluationStorage.storage.get()
 
       assert(testTarget != null)
-      console.log(testTarget)
 
       expect(testTarget.evaluatedAt).toBe('1')
       expect(testTarget.evaluations[evaluation1.featureId]).toStrictEqual(
@@ -154,7 +153,6 @@ suite('e2e/BKTClientTest', () => {
       const testTarget = evaluationStorage.storage.get()
 
       assert(testTarget != null)
-      console.log(testTarget)
 
       expect(testTarget.currentEvaluationsId).toBeNull()
       expect(testTarget.evaluations[evaluation1.featureId]).toStrictEqual(
@@ -194,12 +192,10 @@ suite('e2e/BKTClientTest', () => {
       assert(client != null)
 
       const javascript = client.evaluationDetails('feature-js-e2e-string')
-      console.log(javascript)
       expect(javascript).not.toBeNull()
 
       // can retrieve evaluations for other featureTag
       const android = client.evaluationDetails('feature-android-e2e-string')
-      console.log(android)
       expect(android).not.toBeNull()
 
       const golang = client.evaluationDetails('feature-go-server-e2e-1')
