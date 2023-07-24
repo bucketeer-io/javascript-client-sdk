@@ -1,5 +1,41 @@
 # Changelog
 
+## [2.1.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.0.2...v2.1.0) (2023-07-24)
+
+
+### Build System
+
+* **deps:** lock file maintenance ([#73](https://github.com/bucketeer-io/javascript-client-sdk/issues/73)) ([910381e](https://github.com/bucketeer-io/javascript-client-sdk/commit/910381ef2611a2733e2d94d6e139937d3aba28c6))
+* **deps:** lock file maintenance ([#86](https://github.com/bucketeer-io/javascript-client-sdk/issues/86)) ([0bf4bf8](https://github.com/bucketeer-io/javascript-client-sdk/commit/0bf4bf87347dbd937d6b20f20faad4012ffa6af0))
+* **deps:** lock file maintenance ([#89](https://github.com/bucketeer-io/javascript-client-sdk/issues/89)) ([ceb7c16](https://github.com/bucketeer-io/javascript-client-sdk/commit/ceb7c1671314744d0b62b49d37fc1278bede297c))
+* **deps:** update all non-major dependencies ([#76](https://github.com/bucketeer-io/javascript-client-sdk/issues/76)) ([2a2cb40](https://github.com/bucketeer-io/javascript-client-sdk/commit/2a2cb403bb06cecaa90ad306cc4c26164d3f797b))
+* **deps:** update all non-major dependencies ([#85](https://github.com/bucketeer-io/javascript-client-sdk/issues/85)) ([643d1f5](https://github.com/bucketeer-io/javascript-client-sdk/commit/643d1f520abf773f787926259a9bf092d7f6c1e3))
+* **deps:** update all non-major dependencies ([#97](https://github.com/bucketeer-io/javascript-client-sdk/issues/97)) ([31b490b](https://github.com/bucketeer-io/javascript-client-sdk/commit/31b490b8cf61a6fe85f85c8609325578d7d092e0))
+* **deps:** update dependency vite to v4.3.9 [security] ([#78](https://github.com/bucketeer-io/javascript-client-sdk/issues/78)) ([5b00060](https://github.com/bucketeer-io/javascript-client-sdk/commit/5b00060eae7b553858eaa045aba2d866ace7e605))
+* **deps:** update vitest ([#75](https://github.com/bucketeer-io/javascript-client-sdk/issues/75)) ([4cd5f3d](https://github.com/bucketeer-io/javascript-client-sdk/commit/4cd5f3d41d201fdd372f91da3f52df92f024527e))
+
+
+### Miscellaneous
+
+* add the current timeout setting in the TimeoutErrorMetricsEvent ([#94](https://github.com/bucketeer-io/javascript-client-sdk/issues/94)) ([703006a](https://github.com/bucketeer-io/javascript-client-sdk/commit/703006a9c16d63fe957a386eac3b544c560f7ca1))
+* add variation name property to BKTEvaluation ([#84](https://github.com/bucketeer-io/javascript-client-sdk/issues/84)) ([fed70a1](https://github.com/bucketeer-io/javascript-client-sdk/commit/fed70a121e647f07b8eda50577452799af948516))
+* change not to save the same metrics events ([#88](https://github.com/bucketeer-io/javascript-client-sdk/issues/88)) ([484f02e](https://github.com/bucketeer-io/javascript-client-sdk/commit/484f02e05e2e8b329a8aeb8dffa6635bc21edf03))
+* **deps:** lock file maintenance ([#83](https://github.com/bucketeer-io/javascript-client-sdk/issues/83)) ([fe50f9f](https://github.com/bucketeer-io/javascript-client-sdk/commit/fe50f9fd97a9ec50b9a562880f55f2997ed23258))
+* **deps:** pin dependency @vitest/utils to v0.31.0 ([#74](https://github.com/bucketeer-io/javascript-client-sdk/issues/74)) ([816e93c](https://github.com/bucketeer-io/javascript-client-sdk/commit/816e93cacf0a4089b761d338fe8060a42686446b))
+* **deps:** update dependency cross-fetch to v4 ([#95](https://github.com/bucketeer-io/javascript-client-sdk/issues/95)) ([335921a](https://github.com/bucketeer-io/javascript-client-sdk/commit/335921ade974503ee80f5eb87edea5aeff7b4fa7))
+* **deps:** update dependency prettier to v3 ([#96](https://github.com/bucketeer-io/javascript-client-sdk/issues/96)) ([92a3a7f](https://github.com/bucketeer-io/javascript-client-sdk/commit/92a3a7fb99f0ddacac62a3262035fac1efe19261))
+* remove unused `internal` BKTStorage ([#90](https://github.com/bucketeer-io/javascript-client-sdk/issues/90)) ([6d600dd](https://github.com/bucketeer-io/javascript-client-sdk/commit/6d600dd4998e2483d0c24aab28cc23bbddb9f33e))
+
+
+### Features
+
+* support Node.js environment ([#51](https://github.com/bucketeer-io/javascript-client-sdk/issues/51)) ([#81](https://github.com/bucketeer-io/javascript-client-sdk/issues/81)) ([c4f6e32](https://github.com/bucketeer-io/javascript-client-sdk/commit/c4f6e3265f367c46f901ef0ec737f7ecb8bf7f66))
+
+
+### Performance Improvements
+
+* improve the API response time ([#91](https://github.com/bucketeer-io/javascript-client-sdk/issues/91)) ([ae25249](https://github.com/bucketeer-io/javascript-client-sdk/commit/ae25249d0dbb502fc02e3a08e06e45e319f32be4))
+
 ## [2.0.2](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.0.1...v2.0.2) (2023-05-22)
 
 
