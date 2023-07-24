@@ -15,7 +15,10 @@ export interface EventStorage {
 }
 
 export class EventStorageImpl implements EventStorage {
-  constructor(public userId: string, public storage: BKTStorage<EventEntity>) {}
+  constructor(
+    public userId: string,
+    public storage: BKTStorage<EventEntity>,
+  ) {}
 
   add(event: Event): void {
     const entity = this.getInternal(this.userId)
