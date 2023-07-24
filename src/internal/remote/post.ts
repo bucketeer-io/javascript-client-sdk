@@ -24,7 +24,7 @@ export const postInternal = async (
     .finally(() => clearTimeout(id))
     .catch((e) => {
       if (e.name === 'AbortError') {
-        throw new TimeoutException('Timeout Error')
+        throw new TimeoutException(timeoutMillis, 'Timeout Error')
       } else {
         // convert network error to NetworkException
         throw new NetworkException(`Network Error: ${e.message}`)

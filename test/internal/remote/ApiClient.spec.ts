@@ -26,6 +26,8 @@ import { evaluationEvent1, metricsEvent1 } from '../../mocks/events'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
 import { setupServerAndListen } from '../../utils'
 import { SDK_VERSION } from '../../../src/internal/version'
+import { TimeoutException } from '../../../src/BKTExceptions'
+import { MetricsEventType } from '../../../src/internal/model/MetricsEventData'
 
 suite('internal/remote/ApiClient', () => {
   const endpoint = 'https://api.bucketeer.io'
@@ -139,33 +141,81 @@ suite('internal/remote/ApiClient', () => {
       expect(response.error.name).toBe('NetworkException')
     })
 
-    test('timeout error', async () => {
-      apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
-      server.use(
-        rest.post(`${endpoint}/get_evaluations`, async (_req, res, ctx) => {
-          return res(
-            ctx.delay(1000),
-            ctx.status(500),
-            ctx.body('{ "error": "super slow response"}'),
-          )
-        }),
-      )
+    suite('timeout error', async () => {
+      test('initial timeout', async () => {
+        apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
+        server.use(
+          rest.post(`${endpoint}/get_evaluations`, async (_req, res, ctx) => {
+            return res(
+              ctx.delay(1000),
+              ctx.status(500),
+              ctx.body('{ "error": "super slow response"}'),
+            )
+          }),
+        )
 
-      const response = await apiClient.getEvaluations({
-        user: user1,
-        userEvaluationsId: 'user_evaluation_id',
-        tag: 'feature_tag_value',
-        userEvaluationCondition: {
-          evaluatedAt: '0',
-          userAttributesUpdated: false,
-        },
+        const response = await apiClient.getEvaluations({
+          user: user1,
+          userEvaluationsId: 'user_evaluation_id',
+          tag: 'feature_tag_value',
+          userEvaluationCondition: {
+            evaluatedAt: '0',
+            userAttributesUpdated: false,
+          },
+        })
+
+        assert(response.type === 'failure')
+
+        expect(response.type).toBe('failure')
+        expect(response.featureTag).toBe('feature_tag_value')
+
+        const error = response.error
+
+        assert(error instanceof TimeoutException)
+
+        expect(error.name).toBe('TimeoutException')
+        expect(error.type).toBe(MetricsEventType.TimeoutError)
+        expect(error.timeoutMillis).toBe(200)
       })
 
-      assert(response.type === 'failure')
+      test('passig timeout value from getEvaluations', async () => {
+        apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
+        server.use(
+          rest.post(`${endpoint}/get_evaluations`, async (_req, res, ctx) => {
+            return res(
+              ctx.delay(1000),
+              ctx.status(500),
+              ctx.body('{ "error": "super slow response"}'),
+            )
+          }),
+        )
 
-      expect(response.type).toBe('failure')
-      expect(response.featureTag).toBe('feature_tag_value')
-      expect(response.error.name).toBe('TimeoutException')
+        const response = await apiClient.getEvaluations(
+          {
+            user: user1,
+            userEvaluationsId: 'user_evaluation_id',
+            tag: 'feature_tag_value',
+            userEvaluationCondition: {
+              evaluatedAt: '0',
+              userAttributesUpdated: false,
+            },
+          },
+          500,
+        )
+
+        assert(response.type === 'failure')
+
+        expect(response.type).toBe('failure')
+        expect(response.featureTag).toBe('feature_tag_value')
+
+        const error = response.error
+
+        assert(error instanceof TimeoutException)
+
+        expect(error.name).toBe('TimeoutException')
+        expect(error.type).toBe(MetricsEventType.TimeoutError)
+        expect(error.timeoutMillis).toBe(500)
+      })
     })
   })
 
@@ -263,7 +313,14 @@ suite('internal/remote/ApiClient', () => {
       assert(response.type === 'failure')
 
       expect(response.type).toBe('failure')
-      expect(response.error.name).toBe('TimeoutException')
+
+      const error = response.error
+
+      assert(error instanceof TimeoutException)
+
+      expect(error.name).toBe('TimeoutException')
+      expect(error.type).toBe(MetricsEventType.TimeoutError)
+      expect(error.timeoutMillis).toBe(200)
     })
   })
 })

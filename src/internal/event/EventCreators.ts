@@ -1,3 +1,4 @@
+import { BKTException, TimeoutException } from '../../BKTExceptions'
 import {
   EvaluationEvent,
   GoalEvent,
@@ -7,7 +8,6 @@ import {
 } from '../model/Event'
 import {
   ApiId,
-  ErrorMetricsEventType,
   LatencyMetricsEvent,
   MetricsEventData,
   MetricsEventType,
@@ -101,14 +101,21 @@ export const newSizeMetricsData = (
 
 export const newErrorMetricsData = (
   apiId: ApiId,
-  type: ErrorMetricsEventType,
+  error: BKTException,
   featureTag: string,
 ): MetricsEventData => {
-  return {
+  const data: MetricsEventData = {
     apiId,
     labels: { tag: featureTag },
-    '@type': type,
+    '@type': error.type ?? MetricsEventType.UnknownError,
   }
+
+  if (error.type === MetricsEventType.TimeoutError) {
+    const timeoutMillis = (error as TimeoutException).timeoutMillis
+    data.labels.timeout = (timeoutMillis / 1000).toString()
+  }
+
+  return data
 }
 
 export const newMetricsEvent = (
