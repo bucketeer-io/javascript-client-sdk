@@ -23,6 +23,7 @@ import {
   setupServerAndListen,
   getDefaultComponent,
   TestPlatformModule,
+  FakeClock,
 } from './utils'
 import fetch from 'cross-fetch'
 import { user1 } from './mocks/users'
@@ -45,12 +46,15 @@ suite('BKTClient', () => {
   let server: SetupServer
   let config: BKTConfig
   let component: DefaultComponent
+  let clock: FakeClock
 
   beforeAll(() => {
     server = setupServerAndListen()
   })
 
   beforeEach(() => {
+    clock = new FakeClock()
+
     config = defineBKTConfig({
       apiKey: 'api_key_value',
       apiEndpoint: 'https://api.bucketeer.io',
@@ -597,8 +601,8 @@ suite('BKTClient', () => {
     client.updateUserAttributes({ key: 'value' })
 
     expect(userHolder.get().data).toStrictEqual({ key: 'value' })
-    // updateUserAttibutes reset current userEvaluationsId so that the client can refresh evaluations
-    expect(storage.getCurrentEvaluationsId()).toBeNull()
+    expect(storage.getCurrentEvaluationsId()).toBe('user_evaluation_id_value')
+    expect(storage.getUserAttributesUpdated()).toBeTruthy()
   })
 
   suite('fetchEvaluations', async () => {
@@ -620,6 +624,9 @@ suite('BKTClient', () => {
               evaluations: {
                 id: 'user_evaluation_id_value',
                 evaluations: [evaluation1],
+                createdAt: clock.currentTimeMillis().toString(),
+                forceUpdate: false,
+                archivedFeatureIds: [],
               },
               userEvaluationsId: 'user_evaluation_id_value',
             }),
@@ -636,6 +643,9 @@ suite('BKTClient', () => {
               evaluations: {
                 id: 'user_evaluation_id_value_updated',
                 evaluations: [updatedEvaluation1],
+                createdAt: clock.currentTimeMillis().toString(),
+                forceUpdate: false,
+                archivedFeatureIds: [],
               },
               userEvaluationsId: 'user_evaluation_id_value_updated',
             }),
@@ -680,6 +690,9 @@ suite('BKTClient', () => {
               evaluations: {
                 id: 'user_evaluation_id_value',
                 evaluations: [evaluation1],
+                createdAt: clock.currentTimeMillis().toString(),
+                forceUpdate: false,
+                archivedFeatureIds: [],
               },
               userEvaluationsId: 'user_evaluation_id_value',
             }),

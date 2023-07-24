@@ -14,6 +14,7 @@ import {
   SizeMetricsEvent,
 } from '../model/MetricsEventData'
 import { SourceID } from '../model/SourceID'
+import { SDK_VERSION } from '../version'
 
 export const newMetadata = (
   appVersion: string,
@@ -34,7 +35,7 @@ export const newBaseEvent = (
   return {
     timestamp,
     sourceId: SourceID.JAVASCRIPT,
-    sdkVersion: `${__BKT_SDK_VERSION__}`,
+    sdkVersion: SDK_VERSION,
     metadata,
   }
 }

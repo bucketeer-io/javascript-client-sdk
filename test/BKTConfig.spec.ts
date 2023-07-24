@@ -55,15 +55,6 @@ suite('defineBKTConfig', () => {
     }).toThrowError('apiEndpoint is invalid')
   })
 
-  test('empty featureTag throws', () => {
-    expect(() => {
-      defineBKTConfig({
-        ...defaultConfig,
-        featureTag: '',
-      })
-    }).toThrowError('featureTag is required')
-  })
-
   test('empty appVersion throws', () => {
     expect(() => {
       defineBKTConfig({
@@ -113,5 +104,14 @@ suite('defineBKTConfig', () => {
         fetch: undefined,
       })
     }).toThrow(IllegalArgumentException)
+  })
+
+  test('explicitly passing undefined to featureTag results in empty string', () => {
+    const result = defineBKTConfig({
+      ...defaultConfig,
+      featureTag: undefined,
+    })
+
+    expect(result.featureTag).toBe('')
   })
 })

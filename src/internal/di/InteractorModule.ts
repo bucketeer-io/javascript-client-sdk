@@ -8,11 +8,17 @@ import { ApiClient } from '../remote/ApiClient'
 
 export class InteractorModule {
   evaluationInteractor(
+    featureTag: string,
     apiClient: ApiClient,
     evaluationStorage: EvaluationStorage,
     idGenerator: IdGenerator,
   ): EvaluationInteractor {
-    return new EvaluationInteractor(apiClient, evaluationStorage, idGenerator)
+    return new EvaluationInteractor(
+      featureTag,
+      apiClient,
+      evaluationStorage,
+      idGenerator,
+    )
   }
 
   eventInteractor(

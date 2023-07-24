@@ -6,9 +6,10 @@ import {
   afterEach,
   afterAll,
   beforeAll,
+  vi,
 } from 'vitest'
 import fetch from 'cross-fetch'
-import { rest } from 'msw'
+import { RestRequest, rest } from 'msw'
 import assert from 'assert'
 import { SetupServer } from 'msw/node'
 import { GetEvaluationsRequest } from '../../../src/internal/model/request/GetEvaluationsRequest'
@@ -24,6 +25,7 @@ import { RegisterEventsRequest } from '../../../src/internal/model/request/Regis
 import { evaluationEvent1, metricsEvent1 } from '../../mocks/events'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
 import { setupServerAndListen } from '../../utils'
+import { SDK_VERSION } from '../../../src/internal/version'
 
 suite('internal/remote/ApiClient', () => {
   const endpoint = 'https://api.bucketeer.io'
@@ -35,12 +37,7 @@ suite('internal/remote/ApiClient', () => {
   })
 
   beforeEach(() => {
-    apiClient = new ApiClientImpl(
-      endpoint,
-      'api_key_value',
-      'feature_tag_value',
-      fetch,
-    )
+    apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch)
   })
 
   afterEach(() => {
@@ -53,21 +50,18 @@ suite('internal/remote/ApiClient', () => {
 
   suite('getEvaluations', () => {
     test('success', async () => {
+      const requestInterceptor = vi.fn<
+        [RestRequest<GetEvaluationsRequest>],
+        void
+      >()
+
       server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
         >(`${endpoint}/get_evaluations`, async (req, res, ctx) => {
-          expect(req.headers.get('Authorization')).toBe('api_key_value')
-
-          const request = await req.json()
-          expect(request).toStrictEqual<GetEvaluationsRequest>({
-            tag: 'feature_tag_value',
-            user: user1,
-            userEvaluationsId: 'user_evaluation_id',
-            sourceId: SourceID.JAVASCRIPT,
-          })
+          requestInterceptor(req)
 
           return res(
             ctx.status(200),
@@ -80,10 +74,15 @@ suite('internal/remote/ApiClient', () => {
         }),
       )
 
-      const response = await apiClient.getEvaluations(
-        user1,
-        'user_evaluation_id',
-      )
+      const response = await apiClient.getEvaluations({
+        user: user1,
+        userEvaluationsId: 'user_evaluation_id',
+        tag: 'feature_tag_value',
+        userEvaluationCondition: {
+          evaluatedAt: '0',
+          userAttributesUpdated: false,
+        },
+      })
 
       assert(response.type === 'success')
 
@@ -95,6 +94,25 @@ suite('internal/remote/ApiClient', () => {
         evaluations: user1Evaluations,
         userEvaluationsId: 'user_evaluation_id',
       })
+
+      expect(requestInterceptor).toHaveBeenCalledTimes(1)
+
+      const request = requestInterceptor.mock.calls[0][0]
+
+      expect(request.headers.get('Authorization')).toBe('api_key_value')
+
+      const requestBody = await request.json()
+      expect(requestBody).toStrictEqual<GetEvaluationsRequest>({
+        tag: 'feature_tag_value',
+        user: user1,
+        userEvaluationsId: 'user_evaluation_id',
+        sourceId: SourceID.JAVASCRIPT,
+        sdkVersion: SDK_VERSION,
+        userEvaluationCondition: {
+          evaluatedAt: '0',
+          userAttributesUpdated: false,
+        },
+      })
     })
 
     test('network error', async () => {
@@ -104,10 +122,15 @@ suite('internal/remote/ApiClient', () => {
         }),
       )
 
-      const response = await apiClient.getEvaluations(
-        user1,
-        'user_evaluation_id',
-      )
+      const response = await apiClient.getEvaluations({
+        user: user1,
+        userEvaluationsId: 'user_evaluation_id',
+        tag: 'feature_tag_value',
+        userEvaluationCondition: {
+          evaluatedAt: '0',
+          userAttributesUpdated: false,
+        },
+      })
 
       assert(response.type === 'failure')
 
@@ -117,13 +140,7 @@ suite('internal/remote/ApiClient', () => {
     })
 
     test('timeout error', async () => {
-      apiClient = new ApiClientImpl(
-        endpoint,
-        'api_key_value',
-        'feature_tag_value',
-        fetch,
-        200,
-      )
+      apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
       server.use(
         rest.post(`${endpoint}/get_evaluations`, async (_req, res, ctx) => {
           return res(
@@ -134,10 +151,15 @@ suite('internal/remote/ApiClient', () => {
         }),
       )
 
-      const response = await apiClient.getEvaluations(
-        user1,
-        'user_evaluation_id',
-      )
+      const response = await apiClient.getEvaluations({
+        user: user1,
+        userEvaluationsId: 'user_evaluation_id',
+        tag: 'feature_tag_value',
+        userEvaluationCondition: {
+          evaluatedAt: '0',
+          userAttributesUpdated: false,
+        },
+      })
 
       assert(response.type === 'failure')
 
@@ -149,18 +171,18 @@ suite('internal/remote/ApiClient', () => {
 
   suite('registerEvents', () => {
     test('success', async () => {
+      const requestInterceptor = vi.fn<
+        [RestRequest<RegisterEventsRequest>],
+        void
+      >()
+
       server.use(
         rest.post<
           RegisterEventsRequest,
           Record<string, never>,
           RegisterEventsResponse
         >(`${endpoint}/register_events`, async (req, res, ctx) => {
-          expect(req.headers.get('Authorization')).toBe('api_key_value')
-
-          const request = await req.json()
-          expect(request).toStrictEqual<RegisterEventsRequest>({
-            events: [evaluationEvent1, metricsEvent1],
-          })
+          requestInterceptor(req)
 
           return res(
             ctx.status(200),
@@ -192,6 +214,15 @@ suite('internal/remote/ApiClient', () => {
           },
         },
       })
+
+      const request = requestInterceptor.mock.calls[0][0]
+      expect(request.headers.get('Authorization')).toBe('api_key_value')
+
+      const requestBody = await request.json()
+      expect(requestBody).toStrictEqual<RegisterEventsRequest>({
+        events: [evaluationEvent1, metricsEvent1],
+        sdkVersion: SDK_VERSION,
+      })
     })
 
     test('network error', async () => {
@@ -213,13 +244,7 @@ suite('internal/remote/ApiClient', () => {
     })
 
     test('timeout error', async () => {
-      apiClient = new ApiClientImpl(
-        endpoint,
-        'api_key_value',
-        'feature_tag_value',
-        fetch,
-        200,
-      )
+      apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
       server.use(
         rest.post(`${endpoint}/register_events`, async (_req, res, ctx) => {
           return res(

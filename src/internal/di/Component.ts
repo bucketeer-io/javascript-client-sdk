@@ -34,6 +34,7 @@ export class DefaultComponent implements Component {
   evaluationInteractor(): EvaluationInteractor {
     if (!this._evaluationInteractor) {
       this._evaluationInteractor = this.interactorModule.evaluationInteractor(
+        this.dataModule.config().featureTag,
         this.dataModule.apiClient(),
         this.dataModule.evaluationStorage(),
         this.platformModule.idGenerator(),

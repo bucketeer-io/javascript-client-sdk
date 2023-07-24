@@ -1,4 +1,4 @@
-import { rest } from 'msw'
+import { RestRequest, rest } from 'msw'
 import { SetupServer } from 'msw/node'
 import {
   expect,
@@ -26,8 +26,11 @@ import {
   evaluation3,
   user1Evaluations,
 } from '../../mocks/evaluations'
-import { EvaluationStorageImpl } from '../../../src/internal/evaluation/EvaluationStorage'
-import { setupServerAndListen } from '../../utils'
+import {
+  EvaluationEntity,
+  EvaluationStorageImpl,
+} from '../../../src/internal/evaluation/EvaluationStorage'
+import { FakeClock, setupServerAndListen } from '../../utils'
 import { NodePlatformModule } from '../../../src/internal/di/PlatformModule.node'
 
 suite('internal/evaluation/EvaluationInteractor', () => {
@@ -36,6 +39,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
   let component: DefaultComponent
   let interactor: EvaluationInteractor
   let evaluationStorage: EvaluationStorageImpl
+  let clock: FakeClock
 
   beforeAll(() => {
     server = setupServerAndListen()
@@ -58,6 +62,8 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     interactor = component.evaluationInteractor()
     evaluationStorage =
       component.dataModule.evaluationStorage() as EvaluationStorageImpl
+
+    clock = new FakeClock()
   })
 
   afterEach(() => {
@@ -80,7 +86,10 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           return res(
             ctx.status(200),
             ctx.json({
-              evaluations: user1Evaluations,
+              evaluations: {
+                ...user1Evaluations,
+                createdAt: clock.currentTimeMillis().toString(),
+              },
               userEvaluationsId: 'user_evaluation_id_value',
             }),
           )
@@ -100,13 +109,16 @@ suite('internal/evaluation/EvaluationInteractor', () => {
 
       const stored = evaluationStorage.storage.get()
 
-      expect(stored).toStrictEqual({
+      expect(stored).toStrictEqual<EvaluationEntity>({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value',
         evaluations: {
           [evaluation1.featureId]: evaluation1,
           [evaluation2.featureId]: evaluation2,
         },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: clock.currentTimeMillisCalls[0].toString(),
+        userAttributesUpdated: false,
       })
 
       expect(mockListener).toBeCalledTimes(1)
@@ -127,7 +139,10 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           return res.once(
             ctx.status(200),
             ctx.json({
-              evaluations: user1Evaluations,
+              evaluations: {
+                ...user1Evaluations,
+                createdAt: clock.currentTimeMillis().toString(),
+              },
               userEvaluationsId: 'user_evaluation_id_value',
             }),
           )
@@ -140,10 +155,11 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         >(`${config.apiEndpoint}/get_evaluations`, async (_req, res, ctx) => {
           return res.once(
             ctx.status(200),
-            ctx.json({
+            ctx.json<GetEvaluationsResponse>({
               evaluations: {
                 ...user1Evaluations,
                 evaluations: [newEvaluation],
+                createdAt: clock.currentTimeMillis().toString(),
               },
               userEvaluationsId: 'user_evaluation_id_value_updated',
             }),
@@ -168,28 +184,64 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       assert(result2.type === 'success')
 
       const stored = evaluationStorage.storage.get()
-      expect(stored).toStrictEqual({
+      expect(stored).toStrictEqual<EvaluationEntity>({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value_updated',
         evaluations: {
+          [user1Evaluations.evaluations[0].featureId]:
+            user1Evaluations.evaluations[0],
+          [user1Evaluations.evaluations[1].featureId]:
+            user1Evaluations.evaluations[1],
           [newEvaluation.featureId]: newEvaluation,
         },
+        evaluatedAt: clock.currentTimeMillisCalls[1].toString(),
+        currentFeatureTag: 'feature_tag_value',
+        userAttributesUpdated: false,
       })
 
       expect(mockListener).toBeCalledTimes(2)
     })
 
     test('update with no change', async () => {
+      const requestInterceptor = vi.fn<
+        [RestRequest<GetEvaluationsRequest>],
+        void
+      >()
+
       server.use(
         rest.post<
           GetEvaluationsRequest,
           Record<string, never>,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/get_evaluations`, async (req, res, ctx) => {
+          requestInterceptor(req)
           return res(
             ctx.status(200),
             ctx.json({
-              evaluations: user1Evaluations,
+              evaluations: {
+                ...user1Evaluations,
+                createdAt: clock.currentTimeMillis().toString(),
+              },
+              userEvaluationsId: 'user_evaluation_id_value',
+            }),
+          )
+        }),
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async (req, res, ctx) => {
+          requestInterceptor(req)
+          return res(
+            ctx.status(200),
+            ctx.json({
+              evaluations: {
+                id: '17388826713971171773',
+                evaluations: [],
+                archivedFeatureIds: [],
+                createdAt: clock.currentTimeMillis().toString(),
+                forceUpdate: false,
+              },
               userEvaluationsId: 'user_evaluation_id_value',
             }),
           )
@@ -206,16 +258,19 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       assert(result2.type === 'success')
 
       const stored = evaluationStorage.storage.get()
-      expect(stored).toStrictEqual({
+      expect(stored).toStrictEqual<EvaluationEntity>({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value',
         evaluations: {
           [evaluation1.featureId]: evaluation1,
           [evaluation2.featureId]: evaluation2,
         },
+        userAttributesUpdated: false,
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: clock.currentTimeMillisCalls[1].toString(),
       })
 
-      expect(mockListener).toBeCalledTimes(1)
+      expect(mockListener).toBeCalledTimes(2)
     })
   })
 
@@ -228,6 +283,9 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation1.featureId]: evaluation1,
           [evaluation2.featureId]: evaluation2,
         },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: '1234567890',
+        userAttributesUpdated: false,
       })
 
       const result = interactor.getLatest(evaluation1.featureId)
@@ -243,33 +301,14 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           [evaluation1.featureId]: evaluation1,
           [evaluation2.featureId]: evaluation2,
         },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: '1234567890',
+        userAttributesUpdated: false,
       })
 
       const result = interactor.getLatest(evaluation3.featureId)
 
       expect(result).toBeNull()
-    })
-  })
-
-  test('clearCurrentEvaluationsId', () => {
-    evaluationStorage.storage.set({
-      userId: user1.id,
-      currentEvaluationsId: 'user_evaluation_id_value',
-      evaluations: {
-        [evaluation1.featureId]: evaluation1,
-        [evaluation2.featureId]: evaluation2,
-      },
-    })
-
-    interactor.clearCurrentEvaluationsId()
-
-    expect(evaluationStorage.storage.get()).toStrictEqual({
-      userId: user1.id,
-      currentEvaluationsId: null,
-      evaluations: {
-        [evaluation1.featureId]: evaluation1,
-        [evaluation2.featureId]: evaluation2,
-      },
     })
   })
 
@@ -312,5 +351,185 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     interactor.clearUpdateListeners()
 
     expect(Object.keys(interactor.updateListeners)).toHaveLength(0)
+  })
+
+  suite('update', () => {
+    const evaluation1_updated = {
+      ...evaluation1,
+      variationValue: `${evaluation1.variationValue} updated`,
+    }
+    const evaluation2_updated = {
+      ...evaluation2,
+      variationValue: `${evaluation2.variationValue} updated`,
+    }
+
+    test('forceUpdate=true', async () => {
+      evaluationStorage.storage.set({
+        userId: user1.id,
+        currentEvaluationsId: 'user_evaluation_id_value',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+        },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: clock.currentTimeMillis().toString(),
+        userAttributesUpdated: false,
+      })
+
+      const mockListener = vi.fn<[], void>()
+
+      interactor.addUpdateListener(mockListener)
+
+      server.use(
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async (req, res, ctx) => {
+          return res(
+            ctx.status(200),
+            ctx.json({
+              evaluations: {
+                id: '17388826713971171773',
+                evaluations: [evaluation1_updated, evaluation2],
+                createdAt: clock.currentTimeMillis().toString(),
+                forceUpdate: false,
+                archivedFeatureIds: [],
+              },
+              userEvaluationsId: 'user_evaluation_id_value',
+            }),
+          )
+        }),
+      )
+
+      await interactor.fetch(user1)
+
+      // all values are updated
+      expect(evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
+        userId: user1.id,
+        currentEvaluationsId: 'user_evaluation_id_value',
+        evaluations: {
+          [evaluation1_updated.featureId]: evaluation1_updated,
+          [evaluation2.featureId]: evaluation2,
+        },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: clock.currentTimeMillisCalls[1].toString(),
+        userAttributesUpdated: false,
+      })
+
+      expect(mockListener).toBeCalledTimes(1)
+    })
+
+    test('upsert evaluations', async () => {
+      evaluationStorage.storage.set({
+        userId: user1.id,
+        currentEvaluationsId: 'user_evaluation_id_value',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+          [evaluation2.featureId]: evaluation2,
+        },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: clock.currentTimeMillis().toString(),
+        userAttributesUpdated: false,
+      })
+
+      const mockListener = vi.fn<[], void>()
+
+      interactor.addUpdateListener(mockListener)
+
+      server.use(
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async (req, res, ctx) => {
+          return res(
+            ctx.status(200),
+            ctx.json({
+              evaluations: {
+                id: '17388826713971171773',
+                evaluations: [evaluation2_updated],
+                createdAt: clock.currentTimeMillis().toString(),
+                forceUpdate: false,
+                archivedFeatureIds: [],
+              },
+              userEvaluationsId: 'user_evaluation_id_value',
+            }),
+          )
+        }),
+      )
+
+      await interactor.fetch(user1)
+
+      // evaluation1 still exists
+      expect(evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
+        userId: user1.id,
+        currentEvaluationsId: 'user_evaluation_id_value',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+          [evaluation2_updated.featureId]: evaluation2_updated,
+        },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: clock.currentTimeMillisCalls[1].toString(),
+        userAttributesUpdated: false,
+      })
+
+      expect(mockListener).toBeCalledTimes(1)
+    })
+
+    test('upsert - with archivedFeatureIds', async () => {
+      evaluationStorage.storage.set({
+        userId: user1.id,
+        currentEvaluationsId: 'user_evaluation_id_value',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+          [evaluation2.featureId]: evaluation2,
+        },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: clock.currentTimeMillis().toString(),
+        userAttributesUpdated: false,
+      })
+
+      const mockListener = vi.fn<[], void>()
+
+      interactor.addUpdateListener(mockListener)
+
+      server.use(
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async (req, res, ctx) => {
+          return res(
+            ctx.status(200),
+            ctx.json({
+              evaluations: {
+                id: '17388826713971171773',
+                evaluations: [evaluation1_updated],
+                createdAt: clock.currentTimeMillis().toString(),
+                forceUpdate: false,
+                archivedFeatureIds: [evaluation2.featureId],
+              },
+              userEvaluationsId: 'user_evaluation_id_value',
+            }),
+          )
+        }),
+      )
+
+      await interactor.fetch(user1)
+
+      // archived evaluation2 should be removed
+      expect(evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
+        userId: user1.id,
+        currentEvaluationsId: 'user_evaluation_id_value',
+        evaluations: {
+          [evaluation1_updated.featureId]: evaluation1_updated,
+        },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: clock.currentTimeMillisCalls[1].toString(),
+        userAttributesUpdated: false,
+      })
+
+      expect(mockListener).toBeCalledTimes(1)
+    })
   })
 })
