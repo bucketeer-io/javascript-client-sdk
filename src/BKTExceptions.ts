@@ -45,6 +45,12 @@ export class ServiceUnavailableException extends BKTBaseException {
 // network errors
 export class TimeoutException extends BKTBaseException {
   type?: ErrorMetricsEventType = MetricsEventType.TimeoutError
+  timeoutMillis: number
+
+  constructor(timeoutMillis: number, msg?: string) {
+    super(msg)
+    this.timeoutMillis = timeoutMillis
+  }
 }
 export class NetworkException extends BKTBaseException {
   type?: ErrorMetricsEventType = MetricsEventType.NetworkError

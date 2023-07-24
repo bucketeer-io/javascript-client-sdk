@@ -1,4 +1,4 @@
-import { BKTException } from '../../BKTExceptions'
+import { BKTException, TimeoutException } from '../../BKTExceptions'
 import { Clock } from '../Clock'
 import { IdGenerator } from '../IdGenerator'
 import { Evaluation } from '../model/Evaluation'
@@ -179,11 +179,7 @@ export class EventInteractor {
             newMetadata(this.appVersion, this.userAgent),
           ),
           {
-            event: newErrorMetricsData(
-              apiId,
-              error.type ?? MetricsEventType.UnknownError,
-              featureTag,
-            ),
+            event: newErrorMetricsData(apiId, error, featureTag),
           },
         ),
       },

@@ -17,6 +17,7 @@ import {
   BadRequestException,
   InternalServerErrorException,
   NetworkException,
+  TimeoutException,
   UnknownException,
 } from '../../../src/BKTExceptions'
 import { DefaultComponent } from '../../../src/internal/di/Component'
@@ -277,7 +278,12 @@ suite('internal/event/EventInteractor', () => {
       type: MetricsEventType.BadRequestError,
     },
     { error: new UnknownException(), type: MetricsEventType.UnknownError },
-  ])('trackFailure: $errr -> type: $type', ({ error, type }) => {
+    {
+      error: new TimeoutException(1500),
+      type: MetricsEventType.TimeoutError,
+      extraLabels: { timeout: '1.5' },
+    },
+  ])('trackFailure: $errr -> type: $type', ({ error, type, extraLabels }) => {
     const mockListener = vi.fn<[Event[]], void>()
     interactor.setEventUpdateListener(mockListener)
 
@@ -298,7 +304,7 @@ suite('internal/event/EventInteractor', () => {
           sdkVersion: __BKT_SDK_VERSION__,
           event: {
             apiId: ApiId.GET_EVALUATION,
-            labels: { tag: 'feature_tag_value' },
+            labels: { tag: 'feature_tag_value', ...extraLabels },
             '@type': type,
           },
         },
