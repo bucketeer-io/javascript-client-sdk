@@ -1,9 +1,9 @@
-import { BKTException, TimeoutException } from '../../BKTExceptions'
+import { BKTException } from '../../BKTExceptions'
 import { Clock } from '../Clock'
 import { IdGenerator } from '../IdGenerator'
 import { Evaluation } from '../model/Evaluation'
 import { EventType, Event, MetricsEvent } from '../model/Event'
-import { ApiId, MetricsEventType } from '../model/MetricsEventData'
+import { ApiId } from '../model/MetricsEventData'
 import { User } from '../model/User'
 import { ApiClient } from '../remote/ApiClient'
 import {

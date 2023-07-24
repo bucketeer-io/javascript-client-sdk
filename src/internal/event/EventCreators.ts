@@ -8,7 +8,6 @@ import {
 } from '../model/Event'
 import {
   ApiId,
-  ErrorMetricsEventType,
   LatencyMetricsEvent,
   MetricsEventData,
   MetricsEventType,
@@ -112,9 +111,8 @@ export const newErrorMetricsData = (
   }
 
   if (error.type === MetricsEventType.TimeoutError) {
-    data.labels.timeout = (
-      (error as TimeoutException).timeoutMillis / 1000
-    ).toString()
+    const timeoutMillis = (error as TimeoutException).timeoutMillis
+    data.labels.timeout = (timeoutMillis / 1000).toString()
   }
 
   return data
