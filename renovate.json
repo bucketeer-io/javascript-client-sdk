@@ -7,16 +7,26 @@
     ":pinDevDependencies",
     "schedule:monthly"
   ],
+  "labels": ["deps"],
   "lockFileMaintenance": {
     "enabled": true
   },
   "packageRules": [
     {
+      "managers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "labels": ["ci"],
+      "commitMessagePrefix": "ci:",
+      "commitMessageAction": "update",
+      "groupName": "github-actions"
+    },
+    {
       "matchPackagePatterns": ["*"],
       "matchUpdateTypes": ["minor", "patch"],
-      "commitMessagePrefix": "build(deps)",
+      "commitMessagePrefix": "build(deps):",
+      "commitMessageAction": "update",
       "groupName": "all non-major dependencies",
-      "groupSlug": "all-minor-patch",
+      "groupSlug": "all-minor-patch dependencies",
       "excludePackageNames": [
         "@vitest/browser",
         "@vitest/utils",
@@ -31,7 +41,8 @@
         "vitest",
         "webdriverio"
       ],
-      "commitMessagePrefix": "build(deps)",
+      "commitMessagePrefix": "build(deps):",
+      "commitMessageAction": "update",
       "groupName": "vitest"
     }
   ]
