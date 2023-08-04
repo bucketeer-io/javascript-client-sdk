@@ -62,7 +62,7 @@ suite('e2e/evaluations', () => {
         featureVersion: 5,
         userId: USER_ID,
         variationId: '87e0a1ef-a0cb-49da-8460-289948f117ba',
-        variationName: 'variation ',
+        variationName: 'variation 1',
         variationValue: 'value-1',
         reason: 'DEFAULT',
       })

@@ -9,6 +9,7 @@ expect.extend({
       actual.featureVersion === expected.featureVersion &&
       actual.userId === expected.userId &&
       actual.variationId === expected.variationId &&
+      actual.variationName === expected.variationName &&
       actual.variationValue === expected.variationValue &&
       actual.reason === expected.reason
 
