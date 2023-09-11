@@ -9,6 +9,7 @@ export default defineConfig({
     setupFiles: [],
     environment: 'happy-dom',
     browser: {
+      provider: 'webdriverio',
       enabled: true,
       name: 'chrome',
     },
