@@ -19,7 +19,7 @@ suite('defineBKTConfig', () => {
 
     expect(result).toStrictEqual({
       ...defaultConfig,
-      eventsFlushInterval: 60_000,
+      eventsFlushInterval: 30_000,
       eventsMaxQueueSize: 50,
       pollingInterval: 600_000,
       storageKeyPrefix: '',
@@ -70,7 +70,7 @@ suite('defineBKTConfig', () => {
       eventsFlushInterval: 10,
     })
 
-    expect(result.eventsFlushInterval).toBe(60_000)
+    expect(result.eventsFlushInterval).toBe(30_000)
   })
 
   test('sooner pollingInterval should be replaced with default value', () => {
