@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.1.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.1.0...v2.1.1) (2023-09-20)
+
+
+### Build System
+
+* **deps:** lock file maintenance ([#99](https://github.com/bucketeer-io/javascript-client-sdk/issues/99)) ([0556394](https://github.com/bucketeer-io/javascript-client-sdk/commit/0556394a32f681927615d0e3146e694d302b0b53))
+* **deps:** update all non-major dependencies ([#100](https://github.com/bucketeer-io/javascript-client-sdk/issues/100)) ([5066c2b](https://github.com/bucketeer-io/javascript-client-sdk/commit/5066c2b1d87bbd04b8d5b84b54af882b1002f63e))
+* **deps:** update all non-major dependencies ([#106](https://github.com/bucketeer-io/javascript-client-sdk/issues/106)) ([b8bba6b](https://github.com/bucketeer-io/javascript-client-sdk/commit/b8bba6b4c46c6ca7280e07df22d94611bb0dcbcb))
+* **deps:** update typescript-eslint monorepo to v6 ([#102](https://github.com/bucketeer-io/javascript-client-sdk/issues/102)) ([3989cd0](https://github.com/bucketeer-io/javascript-client-sdk/commit/3989cd06a919db02b4d44f34d16d43b2abef7f96))
+* **deps:** update vitest ([#101](https://github.com/bucketeer-io/javascript-client-sdk/issues/101)) ([a30fdc6](https://github.com/bucketeer-io/javascript-client-sdk/commit/a30fdc6acace764a366e5a0b98b51bf036463b51))
+* **deps:** update vitest ([#107](https://github.com/bucketeer-io/javascript-client-sdk/issues/107)) ([d8cc40d](https://github.com/bucketeer-io/javascript-client-sdk/commit/d8cc40d248a546ffd6ed76c8dbe270b6371fab4f))
+
+
+### Miscellaneous
+
+* change the event flush interval default setting ([#108](https://github.com/bucketeer-io/javascript-client-sdk/issues/108)) ([364e5bc](https://github.com/bucketeer-io/javascript-client-sdk/commit/364e5bc439da39f87c4fec9bd1a332199d296010))
+
 ## [2.1.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.0.2...v2.1.0) (2023-07-24)
 
 
