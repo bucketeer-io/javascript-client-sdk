@@ -9,7 +9,6 @@ permissions: {}
 
 jobs:
   release_please:
-
     permissions:
       contents: write
       pull-requests: write
@@ -18,7 +17,7 @@ jobs:
 
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
-      next_version: "${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}"
+      next_version: ${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}
 
     steps:
       - uses: google-github-actions/release-please-action@v3.7.13
@@ -34,7 +33,7 @@ jobs:
               {"type":"revert","section":"Reverts","hidden":false}
             ]
           release-type: node
-          package-name: "@bucketeer/js-client-sdk"
+          package-name: '@bucketeer/js-client-sdk'
 
   publish:
     needs: [release_please]
@@ -43,12 +42,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v2
 
       - name: Setup node env 🏗
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version-file: '.node-version'
           cache: 'pnpm'
