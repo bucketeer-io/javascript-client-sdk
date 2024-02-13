@@ -9,6 +9,7 @@ import {
   vi,
   beforeAll,
   afterAll,
+  describe,
 } from 'vitest'
 import fetch from 'cross-fetch'
 import { destroyBKTClient } from '../../../src/BKTClient'
@@ -130,7 +131,7 @@ suite('internal/scheduler/EventTask', () => {
   })
 
   test('stop should cancel timer', async () => {
-    test('start', async () => {
+    describe('start', async () => {
       let requestCount = 0
       server.use(
         rest.post<
