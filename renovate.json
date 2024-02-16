@@ -5,7 +5,6 @@
     "config:base",
     ":pinDependencies",
     ":pinDevDependencies",
-    "schedule": ["after 10am on the first day of the month"]
   ],
   "labels": ["deps"],
   "lockFileMaintenance": {
@@ -18,7 +17,8 @@
       "labels": ["ci"],
       "commitMessagePrefix": "ci:",
       "commitMessageAction": "update",
-      "groupName": "github-actions"
+      "groupName": "github-actions",
+      "schedule": ["after 10am on the first day of the month"]
     },
     {
       "matchPackagePatterns": ["*"],
@@ -27,6 +27,7 @@
       "commitMessageAction": "update",
       "groupName": "all non-major dependencies",
       "groupSlug": "all-minor-patch dependencies",
+      "schedule": ["after 10am on the first day of the month"],
       "excludePackageNames": [
         "@vitest/browser",
         "@vitest/utils",
@@ -43,7 +44,8 @@
       ],
       "commitMessagePrefix": "test(deps):",
       "commitMessageAction": "update",
-      "groupName": "vitest"
+      "groupName": "vitest",
+      "schedule": ["after 10am on the first day of the month"]
     }
   ]
 }
