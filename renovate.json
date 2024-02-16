@@ -6,6 +6,7 @@
     ":pinDependencies",
     ":pinDevDependencies",
   ],
+  "schedule": ["after 10am on the first day of the month"],
   "labels": ["deps"],
   "lockFileMaintenance": {
     "enabled": true
@@ -13,12 +14,10 @@
   "packageRules": [
     {
       "managers": ["github-actions"],
-      "matchUpdateTypes": ["minor", "patch", "digest"],
       "labels": ["ci"],
       "commitMessagePrefix": "ci:",
       "commitMessageAction": "update",
-      "groupName": "github-actions",
-      "schedule": ["after 10am on the first day of the month"]
+      "groupName": "github-actions"
     },
     {
       "matchPackagePatterns": ["*"],
@@ -27,7 +26,20 @@
       "commitMessageAction": "update",
       "groupName": "all non-major dependencies",
       "groupSlug": "all-minor-patch dependencies",
-      "schedule": ["after 10am on the first day of the month"],
+      "excludePackageNames": [
+        "@vitest/browser",
+        "@vitest/utils",
+        "vitest",
+        "webdriverio"
+      ]
+    },
+    {
+      "matchPackagePatterns": ["*"],
+      "matchUpdateTypes": ["major"],
+      "commitMessagePrefix": "build(deps):",
+      "commitMessageAction": "update",
+      "groupName": "all major dependencies",
+      "groupSlug": "all-major dependencies",
       "excludePackageNames": [
         "@vitest/browser",
         "@vitest/utils",
@@ -44,8 +56,7 @@
       ],
       "commitMessagePrefix": "test(deps):",
       "commitMessageAction": "update",
-      "groupName": "vitest",
-      "schedule": ["after 10am on the first day of the month"]
+      "groupName": "vitest"
     }
   ]
 }
