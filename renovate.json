@@ -5,7 +5,7 @@
     "config:base",
     ":pinDependencies",
     ":pinDevDependencies",
-    "schedule:monthly"
+    "schedule": ["after 10am on the first day of the month"]
   ],
   "labels": ["deps"],
   "lockFileMaintenance": {
@@ -41,7 +41,7 @@
         "vitest",
         "webdriverio"
       ],
-      "commitMessagePrefix": "build(deps):",
+      "commitMessagePrefix": "test(deps):",
       "commitMessageAction": "update",
       "groupName": "vitest"
     }
