@@ -34,6 +34,7 @@ jobs:
             ]
           release-type: node
           package-name: '@bucketeer/js-client-sdk'
+          token: ${{ secrets.WORKFLOW_TOKEN }} # We need to set the PAT so the update changelog docs page workflow can be triggered
 
   publish:
     needs: [release_please]
@@ -46,14 +47,14 @@ jobs:
 
       - uses: pnpm/action-setup@v2
 
-      - name: Setup node env 🏗
+      - name: Setup node env
         uses: actions/setup-node@v4
         with:
           node-version-file: '.node-version'
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install dependencies 👨🏻‍💻
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build SDK
