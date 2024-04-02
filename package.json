@@ -21,7 +21,8 @@
         "require": "./dist/main.cjs"
       },
       "default": {
-        "import": "./dist/main.browser.mjs"
+        "import": "./dist/main.browser.mjs",
+        "require": "./dist/main.browser.cjs"
       }
     }
   },
