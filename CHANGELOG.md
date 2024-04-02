@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.1.2](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.1.1...v2.1.2) (2024-04-02)
+
+
+### Build System
+
+* **deps:** lock file maintenance ([#109](https://github.com/bucketeer-io/javascript-client-sdk/issues/109)) ([d317be2](https://github.com/bucketeer-io/javascript-client-sdk/commit/d317be22bee9a30a366047e0415d1034194c0946))
+* **deps:** update all non-major dependencies ([#110](https://github.com/bucketeer-io/javascript-client-sdk/issues/110)) ([9ca51ef](https://github.com/bucketeer-io/javascript-client-sdk/commit/9ca51efb350a7f35f5ac71d872e3af8e3367b41c))
+* **deps:** update all non-major dependencies ([#128](https://github.com/bucketeer-io/javascript-client-sdk/issues/128)) ([30230c3](https://github.com/bucketeer-io/javascript-client-sdk/commit/30230c344126d60e82dd78e7ed98448648bdd59a))
+* **deps:** update all non-major dependencies ([#132](https://github.com/bucketeer-io/javascript-client-sdk/issues/132)) ([8e0b5f8](https://github.com/bucketeer-io/javascript-client-sdk/commit/8e0b5f807bf9328a784ec460c9e4738bae810912))
+* **deps:** update dependency webdriverio to v8.32.0 ([#111](https://github.com/bucketeer-io/javascript-client-sdk/issues/111)) ([62f3798](https://github.com/bucketeer-io/javascript-client-sdk/commit/62f3798d874b52ea08ec0ca75f1e03245b2063ae))
+* **deps:** update happy-dom and vite ([#123](https://github.com/bucketeer-io/javascript-client-sdk/issues/123)) ([e2dcf64](https://github.com/bucketeer-io/javascript-client-sdk/commit/e2dcf64363c3df8398230150dd083cee2965e6ce))
+
+
+### Bug Fixes
+
+* **package:** can not find module in CommonJS code with HTML/DOM emulation environment ([0b4fc38](https://github.com/bucketeer-io/javascript-client-sdk/commit/0b4fc38f62d48180492a138f52b022978f025b13))
+* **package:** detect module in CommonJS code with emulating browser ([#135](https://github.com/bucketeer-io/javascript-client-sdk/issues/135)) ([0b4fc38](https://github.com/bucketeer-io/javascript-client-sdk/commit/0b4fc38f62d48180492a138f52b022978f025b13))
+
 ## [2.1.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.1.0...v2.1.1) (2023-09-20)
 
 ### Miscellaneous
