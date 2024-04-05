@@ -13,15 +13,6 @@
   },
   "packageRules": [
     {
-      "managers": ["github-actions"],
-      "labels": ["ci"],
-      "commitMessagePrefix": "ci:",
-      "commitMessageAction": "update",
-      "groupName": "all github actions",
-      "groupSlug": "all-github-actions"
-    },
-    {
-      "matchPaths": ["package.json"],
       "matchPackagePatterns": ["*"],
       "matchUpdateTypes": ["minor", "patch"],
       "commitMessagePrefix": "build(deps):",
@@ -36,7 +27,6 @@
       ]
     },
     {
-      "matchPaths": ["package.json"],
       "matchPackagePatterns": ["*"],
       "matchUpdateTypes": ["major"],
       "commitMessagePrefix": "build(deps):",
@@ -61,6 +51,14 @@
       "commitMessageAction": "update",
       "groupName": "all test dependencies",
       "groupSlug": "all-test-dependencies"
+    },
+    {
+      "managers": ["github-actions"],
+      "labels": ["ci"],
+      "commitMessagePrefix": "ci:",
+      "commitMessageAction": "update",
+      "groupName": "all github actions",
+      "groupSlug": "all-github-actions"
     }
   ]
 }
