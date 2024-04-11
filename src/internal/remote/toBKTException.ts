@@ -7,6 +7,7 @@ import {
   InvalidHttpMethodException,
   NotFoundException,
   PayloadTooLargeException,
+  RedirectRequestException,
   ServiceUnavailableException,
   TimeoutException,
   UnauthorizedException,
@@ -58,7 +59,7 @@ export const toBKTException = async (
       return new ServiceUnavailableException(message ?? 'Service Unavailable')
     default:
       if (status >= 300 && status < 400) {
-        return new BadRequestException(message ?? 'Bad Request')
+        return new RedirectRequestException(message ?? 'Redirect Request')
       }
       return new UnknownException(
         `Unknown Error: ${response.status} ${
