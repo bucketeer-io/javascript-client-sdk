@@ -4,8 +4,11 @@ import {
   ClientClosedRequestException,
   ForbiddenException,
   InternalServerErrorException,
+  InvalidHttpMethodException,
   NotFoundException,
+  PayloadTooLargeException,
   ServiceUnavailableException,
+  TimeoutException,
   UnauthorizedException,
   UnknownException,
 } from '../../BKTExceptions'
@@ -25,7 +28,8 @@ export const toBKTException = async (
   })()
   const { message = responseText } = errorBody?.error ?? {}
 
-  switch (response.status) {
+  const status = response.status
+  switch (status) {
     case 400:
       return new BadRequestException(message ?? 'Bad Request')
     case 401:
@@ -34,6 +38,12 @@ export const toBKTException = async (
       return new ForbiddenException(message ?? 'Forbidden')
     case 404:
       return new NotFoundException(message ?? 'Feature Not Found')
+    case 405:
+      return new InvalidHttpMethodException(message ?? 'Invalid HTTP Method')
+    case 408:
+      return new TimeoutException(0, message ?? 'Timeout with status 408')
+    case 413:
+      return new PayloadTooLargeException(message ?? 'Payload Too Large')
     case 499:
       return new ClientClosedRequestException(
         message ?? 'Client Closed Request',
@@ -42,9 +52,14 @@ export const toBKTException = async (
       return new InternalServerErrorException(
         message ?? 'Internal Server Error',
       )
+    case 502:
     case 503:
+    case 504:
       return new ServiceUnavailableException(message ?? 'Service Unavailable')
     default:
+      if (status >= 300 && status < 400) {
+        return new BadRequestException(message ?? 'Bad Request')
+      }
       return new UnknownException(
         `Unknown Error: ${response.status} ${
           response.statusText

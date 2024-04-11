@@ -12,6 +12,11 @@ abstract class BKTBaseException extends Error {
   }
 }
 
+// server redirect 300..399
+export class RedirectRequestException extends BKTBaseException {
+  type?: ErrorMetricsEventType = MetricsEventType.BadRequestError
+}
+
 // server errors ---
 // 400: Bad Request
 export class BadRequestException extends BKTBaseException {
@@ -29,6 +34,14 @@ export class ForbiddenException extends BKTBaseException {
 export class NotFoundException extends BKTBaseException {
   type?: ErrorMetricsEventType = MetricsEventType.NotFoundError
 }
+// 405: Payload Too Large
+export class InvalidHttpMethodException extends BKTBaseException {
+  type?: ErrorMetricsEventType = MetricsEventType.InternalSdkError
+}
+// 413: invalidHttpMethod
+export class PayloadTooLargeException extends BKTBaseException {
+  type?: ErrorMetricsEventType = MetricsEventType.InternalSdkError
+}
 // 499: Client Closed Request
 export class ClientClosedRequestException extends BKTBaseException {
   type?: ErrorMetricsEventType = MetricsEventType.ClientClosedRequestError
@@ -37,7 +50,7 @@ export class ClientClosedRequestException extends BKTBaseException {
 export class InternalServerErrorException extends BKTBaseException {
   type?: ErrorMetricsEventType = MetricsEventType.InternalServerError
 }
-// 503: Service Unavailable
+// 502, 503, 504: Service Unavailable
 export class ServiceUnavailableException extends BKTBaseException {
   type?: ErrorMetricsEventType = MetricsEventType.ServiceUnavailableError
 }

@@ -1,3 +1,5 @@
+import { PayloadTooLargeException } from "../../BKTExceptions"
+
 export const ApiId = {
   UNKNOWN_API: 0,
   GET_EVALUATION: 1,
@@ -10,6 +12,8 @@ export const MetricsEventType = {
   LatencyMetrics:
     'type.googleapis.com/bucketeer.event.client.LatencyMetricsEvent',
   SizeMetrics: 'type.googleapis.com/bucketeer.event.client.SizeMetricsEvent',
+  RedirectRequestError:
+    'type.googleapis.com/bucketeer.event.client.RedirectionRequestExceptionEvent',
   BadRequestError:
     'type.googleapis.com/bucketeer.event.client.BadRequestErrorMetricsEvent',
   UnauthorizedError:
@@ -18,6 +22,8 @@ export const MetricsEventType = {
     'type.googleapis.com/bucketeer.event.client.ForbiddenErrorMetricsEvent',
   NotFoundError:
     'type.googleapis.com/bucketeer.event.client.NotFoundErrorMetricsEvent',
+  PayloadTooLargeError:
+    'type.googleapis.com/bucketeer.event.client.PayloadTooLargeExceptionEvent',
   ClientClosedRequestError:
     'type.googleapis.com/bucketeer.event.client.ClientClosedRequestErrorMetricsEvent',
   InternalServerError:
@@ -98,7 +104,7 @@ export interface InternalServerErrorMetricsEvent {
   '@type': (typeof MetricsEventType)['InternalServerError']
 }
 
-// 503: Service Unavailable
+// 502, 503, 504: Service Unavailable
 export interface ServiceUnavailableErrorMetricsEvent {
   apiId: ApiId
   labels: Record<string, string>
