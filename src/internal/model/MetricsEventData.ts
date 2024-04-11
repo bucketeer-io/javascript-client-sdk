@@ -1,5 +1,3 @@
-import { PayloadTooLargeException } from "../../BKTExceptions"
-
 export const ApiId = {
   UNKNOWN_API: 0,
   GET_EVALUATION: 1,
