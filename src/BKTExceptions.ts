@@ -14,7 +14,7 @@ abstract class BKTBaseException extends Error {
 
 // server redirect 300..399
 export class RedirectRequestException extends BKTBaseException {
-  type?: ErrorMetricsEventType = MetricsEventType.BadRequestError
+  type?: ErrorMetricsEventType = MetricsEventType.RedirectRequestError
 }
 
 // server errors ---
@@ -40,7 +40,7 @@ export class InvalidHttpMethodException extends BKTBaseException {
 }
 // 413: Payload Too Large
 export class PayloadTooLargeException extends BKTBaseException {
-  type?: ErrorMetricsEventType = MetricsEventType.InternalSdkError
+  type?: ErrorMetricsEventType = MetricsEventType.PayloadTooLargeError
 }
 // 499: Client Closed Request
 export class ClientClosedRequestException extends BKTBaseException {

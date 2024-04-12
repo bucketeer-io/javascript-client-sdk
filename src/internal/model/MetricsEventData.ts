@@ -60,6 +60,13 @@ export interface SizeMetricsEvent {
   '@type': (typeof MetricsEventType)['SizeMetrics']
 }
 
+export interface RedirectRequestMetricsEvent {
+  apiId: ApiId
+  labels: Record<string, string>
+  sizeByte: number
+  '@type': (typeof MetricsEventType)['RedirectRequestError']
+}
+
 // 400: Bad Request
 export interface BadRequestErrorMetricsEvent {
   apiId: ApiId
@@ -86,6 +93,13 @@ export interface NotFoundErrorMetricsEvent {
   apiId: ApiId
   labels: Record<string, string>
   '@type': (typeof MetricsEventType)['NotFoundError']
+}
+
+// 408: PayloadTooLargeError
+export interface PayloadTooLargeErrorMetricsEvent {
+  apiId: ApiId
+  labels: Record<string, string>
+  '@type': (typeof MetricsEventType)['PayloadTooLargeError']
 }
 
 // 499: Client Closed Request
@@ -147,3 +161,5 @@ export type MetricsEventData =
   | NetworkErrorMetricsEvent
   | InternalSdkErrorMetricsEvent
   | UnknownErrorMetricsEvent
+  | RedirectRequestMetricsEvent
+  | PayloadTooLargeErrorMetricsEvent
