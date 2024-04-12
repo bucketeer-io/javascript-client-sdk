@@ -34,11 +34,11 @@ export class ForbiddenException extends BKTBaseException {
 export class NotFoundException extends BKTBaseException {
   type?: ErrorMetricsEventType = MetricsEventType.NotFoundError
 }
-// 405: Payload Too Large
+// 405: InvalidHttpMethod
 export class InvalidHttpMethodException extends BKTBaseException {
   type?: ErrorMetricsEventType = MetricsEventType.InternalSdkError
 }
-// 413: invalidHttpMethod
+// 413: Payload Too Large
 export class PayloadTooLargeException extends BKTBaseException {
   type?: ErrorMetricsEventType = MetricsEventType.InternalSdkError
 }
@@ -89,3 +89,6 @@ export type BKTException =
   | IllegalArgumentException
   | IllegalStateException
   | UnknownException
+  | InvalidHttpMethodException
+  | PayloadTooLargeException
+  | RedirectRequestException
