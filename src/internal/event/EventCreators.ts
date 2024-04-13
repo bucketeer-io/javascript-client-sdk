@@ -1,4 +1,9 @@
-import { BKTException, RedirectRequestException, TimeoutException, UnknownException } from '../../BKTExceptions'
+import {
+  BKTException,
+  RedirectRequestException,
+  TimeoutException,
+  UnknownException,
+} from '../../BKTExceptions'
 import {
   EvaluationEvent,
   GoalEvent,
