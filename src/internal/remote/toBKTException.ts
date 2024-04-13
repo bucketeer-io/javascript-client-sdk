@@ -76,9 +76,7 @@ export const toBKTException = async (
         )
       }
       return new UnknownException(
-        `Unknown Error: ${response.status} ${
-          response.statusText
-        }, ${JSON.stringify(errorBody)}`,
+        `Unknown Error: ${response.status} ${response.statusText}, ${responseText} ,${JSON.stringify(errorBody)}`,
         response.status,
       )
   }
