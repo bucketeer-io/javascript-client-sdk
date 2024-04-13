@@ -122,15 +122,18 @@ export const newErrorMetricsData = (
 
   if (error.type === MetricsEventType.RedirectRequestError) {
     const redirectStatusCode = (error as RedirectRequestException).statusCode
-    data.labels.responseCode = redirectStatusCode.toString()
+    data.labels.response_code = redirectStatusCode.toString()
   }
 
   if (error.type === MetricsEventType.UnknownError) {
     const statusCode = (error as UnknownException).statusCode
+    const message = error.message
     if (statusCode !== undefined) {
-      data.labels.responseCode = statusCode.toString()
+      data.labels.response_code = statusCode.toString()
     }
-    data.labels.responseMessage = error.message
+    if (message.length > 0) {
+      data.labels.response_message = error.message
+    }
   }
 
   return data
