@@ -13,8 +13,19 @@ import {
   UnauthorizedException,
   UnknownException,
 } from '../../BKTExceptions'
+import { MetricsEventType } from '../model/MetricsEventData'
 import { ErrorResponse } from '../model/response/ErrorResponse'
 import { FetchResponseLike } from './fetch'
+
+export const copyTimeout = (
+  exception: BKTException,
+  timeoutMillis: number,
+): BKTException => {
+  if (exception.type === MetricsEventType.TimeoutError) {
+    return new TimeoutException(timeoutMillis, exception.message)
+  }
+  return exception
+}
 
 export const toBKTException = async (
   response: FetchResponseLike,
@@ -59,12 +70,16 @@ export const toBKTException = async (
       return new ServiceUnavailableException(message ?? 'Service Unavailable')
     default:
       if (status >= 300 && status < 400) {
-        return new RedirectRequestException(message ?? 'Redirect Request')
+        return new RedirectRequestException(
+          response.status,
+          message ?? 'Redirect Request',
+        )
       }
       return new UnknownException(
         `Unknown Error: ${response.status} ${
           response.statusText
         }, ${JSON.stringify(errorBody)}`,
+        response.status,
       )
   }
 }

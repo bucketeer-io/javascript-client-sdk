@@ -63,7 +63,6 @@ export interface SizeMetricsEvent {
 export interface RedirectRequestMetricsEvent {
   apiId: ApiId
   labels: Record<string, string>
-  sizeByte: number
   '@type': (typeof MetricsEventType)['RedirectRequestError']
 }
 

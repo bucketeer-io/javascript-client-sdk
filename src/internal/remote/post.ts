@@ -1,6 +1,6 @@
 import { NetworkException, TimeoutException } from '../../BKTExceptions'
 import { FetchLike, FetchRequestLike, FetchResponseLike } from './fetch'
-import { toBKTException } from './toBKTException'
+import { copyTimeout, toBKTException } from './toBKTException'
 
 export const postInternal = async (
   endpoint: string,
@@ -33,7 +33,7 @@ export const postInternal = async (
     .then(async (res) => {
       // convert non-200 status to BKTException
       if (!res.ok) {
-        const error = await toBKTException(res)
+        const error = copyTimeout(await toBKTException(res), timeoutMillis)
         throw error
       }
       return res

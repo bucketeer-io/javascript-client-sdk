@@ -15,6 +15,12 @@ abstract class BKTBaseException extends Error {
 // server redirect 300..399
 export class RedirectRequestException extends BKTBaseException {
   type?: ErrorMetricsEventType = MetricsEventType.RedirectRequestError
+  statusCode: number
+
+  constructor(statusCode: number, msg?: string) {
+    super(msg)
+    this.statusCode = statusCode
+  }
 }
 
 // server errors ---
@@ -74,7 +80,15 @@ export class IllegalArgumentException extends BKTBaseException {}
 export class IllegalStateException extends BKTBaseException {}
 
 // unknown errors
-export class UnknownException extends BKTBaseException {}
+export class UnknownException extends BKTBaseException {
+  type?: ErrorMetricsEventType = MetricsEventType.UnknownError
+  statusCode?: number
+
+  constructor(msg?: string, statusCode?: number) {
+    super(msg)
+    this.statusCode = statusCode
+  }
+}
 
 export type BKTException =
   | BadRequestException

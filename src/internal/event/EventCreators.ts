@@ -1,4 +1,4 @@
-import { BKTException, TimeoutException } from '../../BKTExceptions'
+import { BKTException, RedirectRequestException, TimeoutException, UnknownException } from '../../BKTExceptions'
 import {
   EvaluationEvent,
   GoalEvent,
@@ -113,6 +113,19 @@ export const newErrorMetricsData = (
   if (error.type === MetricsEventType.TimeoutError) {
     const timeoutMillis = (error as TimeoutException).timeoutMillis
     data.labels.timeout = (timeoutMillis / 1000).toString()
+  }
+
+  if (error.type === MetricsEventType.RedirectRequestError) {
+    const redirectStatusCode = (error as RedirectRequestException).statusCode
+    data.labels.responseCode = redirectStatusCode.toString()
+  }
+
+  if (error.type === MetricsEventType.UnknownError) {
+    const statusCode = (error as UnknownException).statusCode
+    if (statusCode !== undefined) {
+      data.labels.responseCode = statusCode.toString()
+    }
+    data.labels.responseMessage = error.message
   }
 
   return data
