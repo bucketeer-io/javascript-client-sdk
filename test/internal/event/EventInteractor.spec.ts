@@ -295,6 +295,13 @@ suite('internal/event/EventInteractor', () => {
       },
     },
     {
+      error: new UnknownException('Unknown Error'),
+      type: MetricsEventType.UnknownError,
+      extraLabels: {
+        error_message: 'Unknown Error',
+      },
+    },
+    {
       error: new TimeoutException(1500),
       type: MetricsEventType.TimeoutError,
       extraLabels: { timeout: '1.5' },
