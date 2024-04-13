@@ -132,7 +132,7 @@ export const newErrorMetricsData = (
       data.labels.response_code = statusCode.toString()
     }
     if (message.length > 0) {
-      data.labels.response_message = error.message
+      data.labels.error_message = error.message
     }
   }
 

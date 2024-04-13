@@ -17,6 +17,7 @@ import {
   BadRequestException,
   InternalServerErrorException,
   NetworkException,
+  RedirectRequestException,
   TimeoutException,
   UnknownException,
 } from '../../../src/BKTExceptions'
@@ -274,10 +275,25 @@ suite('internal/event/EventInteractor', () => {
 
   test.each([
     {
+      error: new RedirectRequestException(302, 'Redirect Request'),
+      type: MetricsEventType.RedirectRequestError,
+      extraLabels: { response_code: '302' },
+    },
+    {
       error: new BadRequestException(),
       type: MetricsEventType.BadRequestError,
     },
-    { error: new UnknownException(), type: MetricsEventType.UnknownError },
+    {
+      error: new UnknownException(
+        'Unknown Error: 505 false, Some Random Message ,null',
+        505,
+      ),
+      type: MetricsEventType.UnknownError,
+      extraLabels: {
+        response_code: '505',
+        error_message: 'Unknown Error: 505 false, Some Random Message ,null',
+      },
+    },
     {
       error: new TimeoutException(1500),
       type: MetricsEventType.TimeoutError,
