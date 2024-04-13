@@ -1,5 +1,8 @@
 import { suite, test, expect } from 'vitest'
-import { toBKTException } from '../src/internal/remote/toBKTException'
+import {
+  toBKTException,
+  copyTimeout,
+} from '../src/internal/remote/toBKTException'
 import {
   BadRequestException,
   ClientClosedRequestException,
@@ -129,5 +132,26 @@ suite('BKTException', () => {
     }
     const error = await toBKTException(sampleResponse)
     expect(error, 'error should match').toStrictEqual(expectedError)
+  })
+
+  test.each([
+    {
+      timeouts: 300,
+      inputError: new ServiceUnavailableException('Service Unavailable'),
+      expectedError: new ServiceUnavailableException('Service Unavailable'),
+    },
+    {
+      timeouts: 300,
+      inputError: new RedirectRequestException(300, 'Redirect Request'),
+      expectedError: new RedirectRequestException(300, 'Redirect Request'),
+    },
+    {
+      timeouts: 300,
+      inputError: new TimeoutException(0, 'Timeout with status 408'),
+      expectedError: new TimeoutException(300, 'Timeout with status 408'),
+    },
+  ])('copyTimeout', ({ timeouts, inputError, expectedError }) => {
+    const result = copyTimeout(inputError, timeouts)
+    expect(result, 'error should match').toStrictEqual(expectedError)
   })
 })
