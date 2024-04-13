@@ -94,7 +94,7 @@ export interface NotFoundErrorMetricsEvent {
   '@type': (typeof MetricsEventType)['NotFoundError']
 }
 
-// 408: PayloadTooLargeError
+// 413: PayloadTooLargeError
 export interface PayloadTooLargeErrorMetricsEvent {
   apiId: ApiId
   labels: Record<string, string>
