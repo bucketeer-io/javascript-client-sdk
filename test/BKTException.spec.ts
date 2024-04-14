@@ -1,7 +1,7 @@
 import { suite, test, expect } from 'vitest'
 import {
   toBKTException,
-  copyTimeout,
+  addTimeoutValueIfNeeded,
 } from '../src/internal/remote/toBKTException'
 import {
   BadRequestException,
@@ -150,8 +150,8 @@ suite('BKTException', () => {
       inputError: new TimeoutException(0, 'Timeout with status 408'),
       expectedError: new TimeoutException(300, 'Timeout with status 408'),
     },
-  ])('copyTimeout', ({ timeouts, inputError, expectedError }) => {
-    const result = copyTimeout(inputError, timeouts)
+  ])('addTimeoutValueIfNeeded', ({ timeouts, inputError, expectedError }) => {
+    const result = addTimeoutValueIfNeeded(inputError, timeouts)
     expect(result, 'error should match').toStrictEqual(expectedError)
   })
 })

@@ -17,7 +17,7 @@ import { MetricsEventType } from '../model/MetricsEventData'
 import { ErrorResponse } from '../model/response/ErrorResponse'
 import { FetchResponseLike } from './fetch'
 
-export const copyTimeout = (
+export const addTimeoutValueIfNeeded = (
   exception: BKTException,
   timeoutMillis: number,
 ): BKTException => {
