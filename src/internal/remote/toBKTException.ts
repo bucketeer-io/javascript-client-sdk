@@ -43,10 +43,7 @@ export const toBKTException = async (
   const status = response.status
   switch (true) {
     case status >= 300 && status < 400:
-      return new RedirectRequestException(
-        response.status,
-        message ?? 'Redirect Request',
-      )
+      return new RedirectRequestException(status, message ?? 'Redirect Request')
     case status == 400:
       return new BadRequestException(message ?? 'Bad Request')
     case status == 401:
@@ -73,8 +70,8 @@ export const toBKTException = async (
       return new ServiceUnavailableException(message ?? 'Service Unavailable')
     default:
       return new UnknownException(
-        `Unknown Error: ${response.status} ${response.statusText}, ${responseText} ,${JSON.stringify(errorBody)}`,
-        response.status,
+        `Unknown Error: ${status} ${response.statusText}, ${responseText} ,${JSON.stringify(errorBody)}`,
+        status,
       )
   }
 }
