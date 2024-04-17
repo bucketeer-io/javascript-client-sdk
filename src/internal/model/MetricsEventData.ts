@@ -10,6 +10,8 @@ export const MetricsEventType = {
   LatencyMetrics:
     'type.googleapis.com/bucketeer.event.client.LatencyMetricsEvent',
   SizeMetrics: 'type.googleapis.com/bucketeer.event.client.SizeMetricsEvent',
+  RedirectRequestError:
+    'type.googleapis.com/bucketeer.event.client.RedirectionRequestExceptionEvent',
   BadRequestError:
     'type.googleapis.com/bucketeer.event.client.BadRequestErrorMetricsEvent',
   UnauthorizedError:
@@ -18,6 +20,8 @@ export const MetricsEventType = {
     'type.googleapis.com/bucketeer.event.client.ForbiddenErrorMetricsEvent',
   NotFoundError:
     'type.googleapis.com/bucketeer.event.client.NotFoundErrorMetricsEvent',
+  PayloadTooLargeError:
+    'type.googleapis.com/bucketeer.event.client.PayloadTooLargeExceptionEvent',
   ClientClosedRequestError:
     'type.googleapis.com/bucketeer.event.client.ClientClosedRequestErrorMetricsEvent',
   InternalServerError:
@@ -56,6 +60,12 @@ export interface SizeMetricsEvent {
   '@type': (typeof MetricsEventType)['SizeMetrics']
 }
 
+export interface RedirectRequestMetricsEvent {
+  apiId: ApiId
+  labels: Record<string, string>
+  '@type': (typeof MetricsEventType)['RedirectRequestError']
+}
+
 // 400: Bad Request
 export interface BadRequestErrorMetricsEvent {
   apiId: ApiId
@@ -84,6 +94,13 @@ export interface NotFoundErrorMetricsEvent {
   '@type': (typeof MetricsEventType)['NotFoundError']
 }
 
+// 413: PayloadTooLargeError
+export interface PayloadTooLargeErrorMetricsEvent {
+  apiId: ApiId
+  labels: Record<string, string>
+  '@type': (typeof MetricsEventType)['PayloadTooLargeError']
+}
+
 // 499: Client Closed Request
 export interface ClientClosedRequestMetricsEvent {
   apiId: ApiId
@@ -98,7 +115,7 @@ export interface InternalServerErrorMetricsEvent {
   '@type': (typeof MetricsEventType)['InternalServerError']
 }
 
-// 503: Service Unavailable
+// 502, 503, 504: Service Unavailable
 export interface ServiceUnavailableErrorMetricsEvent {
   apiId: ApiId
   labels: Record<string, string>
@@ -143,3 +160,5 @@ export type MetricsEventData =
   | NetworkErrorMetricsEvent
   | InternalSdkErrorMetricsEvent
   | UnknownErrorMetricsEvent
+  | RedirectRequestMetricsEvent
+  | PayloadTooLargeErrorMetricsEvent
