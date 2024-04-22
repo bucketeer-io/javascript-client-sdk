@@ -272,6 +272,7 @@ suite('internal/remote/ApiClient', () => {
       expect(requestBody).toStrictEqual<RegisterEventsRequest>({
         events: [evaluationEvent1, metricsEvent1],
         sdkVersion: SDK_VERSION,
+        sourceId: SourceID.JAVASCRIPT,
       })
     })
 
