@@ -84,7 +84,11 @@ export class ApiClientImpl implements ApiClient {
   }
 
   async registerEvents(events: Event[]): Promise<RegisterEventsResult> {
-    const body: RegisterEventsRequest = { events, sdkVersion: SDK_VERSION }
+    const body: RegisterEventsRequest = {
+      events,
+      sdkVersion: SDK_VERSION,
+      sourceId: SourceID.JAVASCRIPT,
+    }
 
     try {
       const res = await postInternal(
