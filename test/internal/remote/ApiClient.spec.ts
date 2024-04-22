@@ -26,7 +26,7 @@ import { evaluationEvent1, metricsEvent1 } from '../../mocks/events'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
 import { setupServerAndListen } from '../../utils'
 import { SDK_VERSION } from '../../../src/internal/version'
-import { TimeoutException } from '../../../src/BKTExceptions'
+import { TimeoutException, UnknownException } from '../../../src/BKTExceptions'
 import { MetricsEventType } from '../../../src/internal/model/MetricsEventData'
 
 suite('internal/remote/ApiClient', () => {
@@ -322,6 +322,30 @@ suite('internal/remote/ApiClient', () => {
       expect(error.name).toBe('TimeoutException')
       expect(error.type).toBe(MetricsEventType.TimeoutError)
       expect(error.timeoutMillis).toBe(200)
+    })
+
+    test('response status okay with invaild JSON response', async () => {
+      apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
+      server.use(
+        rest.post(`${endpoint}/register_events`, async (_req, res, ctx) => {
+          return res(ctx.status(200), ctx.body('Text'))
+        }),
+      )
+
+      const response = await apiClient.registerEvents([
+        evaluationEvent1,
+        metricsEvent1,
+      ])
+
+      expect(response.type).toBe('failure')
+
+      const error = response.error
+
+      expect(error.name).toBe('UnknownException')
+      expect(error.type).toBe(MetricsEventType.UnknownError)
+
+      const unknownException = error as UnknownException
+      expect(unknownException.type).toBe(MetricsEventType.UnknownError)
     })
   })
 })
