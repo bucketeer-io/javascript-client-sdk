@@ -49,6 +49,7 @@ import {
 } from '../../utils'
 import { ErrorResponse } from '../../../src/internal/model/response/ErrorResponse'
 import { Clock } from '../../../src/internal/Clock'
+import { SDK_VERSION } from '../../../src/internal/version'
 
 class TestDataModule extends DataModule {
   clock(): Clock {
@@ -411,7 +412,8 @@ suite('internal/event/EventInteractor', () => {
         >(`${config.apiEndpoint}/register_events`, async (req, res, ctx) => {
           const body = (await req.json()) as RegisterEventsRequest
           expect(body.events).toHaveLength(3)
-
+          expect(body.sourceId).toEqual(SourceID.JAVASCRIPT)
+          expect(body.sdkVersion).toEqual(SDK_VERSION)
           return res(
             ctx.status(200),
             ctx.json({
