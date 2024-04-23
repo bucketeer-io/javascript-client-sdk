@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.1.3](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.1.2...v2.1.3) (2024-04-23)
+
+
+### Build System
+
+* **deps:** lock file maintenance ([#137](https://github.com/bucketeer-io/javascript-client-sdk/issues/137)) ([f7370bf](https://github.com/bucketeer-io/javascript-client-sdk/commit/f7370bf52a526a0ba541d2969606f8b69aeae741))
+
+
+### Miscellaneous
+
+* add the source ID to the register events API ([#142](https://github.com/bucketeer-io/javascript-client-sdk/issues/142)) ([f2e2791](https://github.com/bucketeer-io/javascript-client-sdk/commit/f2e27914d618e0b1dc19ac4e17f7fdabb0bfb006))
+* make e2e workflow dispatchable ([#140](https://github.com/bucketeer-io/javascript-client-sdk/issues/140)) ([c516820](https://github.com/bucketeer-io/javascript-client-sdk/commit/c516820b6b5ca852ed353915efab025a1a3af055))
+* update error metrics report ([#138](https://github.com/bucketeer-io/javascript-client-sdk/issues/138)) ([d4fcd16](https://github.com/bucketeer-io/javascript-client-sdk/commit/d4fcd16542f090f8dfc1584f8a5dcf8702faf750))
+
+
+### Bug Fixes
+
+* unable capture request error when got a response with status 200 and invalid JSON ([#141](https://github.com/bucketeer-io/javascript-client-sdk/issues/141)) ([0484fb8](https://github.com/bucketeer-io/javascript-client-sdk/commit/0484fb8a40b58272e48f4f6e3513390efaaa1d62))
+
 ## [2.1.2](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.1.1...v2.1.2) (2024-04-02)
 
 ### Build System
