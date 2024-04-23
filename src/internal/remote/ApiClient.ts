@@ -1,8 +1,8 @@
-import { BKTException } from '../../BKTExceptions'
+import { BKTException, UnknownException } from '../../BKTExceptions'
 import { GetEvaluationsRequest } from '../model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../model/response/GetEvaluationsResponse'
 import { SourceID } from '../model/SourceID'
-import { FetchLike, FetchRequestLike } from './fetch'
+import { FetchLike, FetchRequestLike, FetchResponseLike } from './fetch'
 import { postInternal } from './post'
 import {
   GetEvaluationsFailure,
@@ -72,7 +72,7 @@ export class ApiClientImpl implements ApiClient {
         sizeByte: contentLength,
         seconds: (finish - start) / 1000,
         featureTag: request.tag,
-        value: (await res.json()) as GetEvaluationsResponse,
+        value: await this.parseJSON<GetEvaluationsResponse>(res),
       } satisfies GetEvaluationsSuccess
     } catch (e) {
       return {
@@ -103,7 +103,7 @@ export class ApiClientImpl implements ApiClient {
       // so we can assume that the status code is 200 here.
       return {
         type: 'success',
-        value: (await res.json()) as RegisterEventsResponse,
+        value: await this.parseJSON<RegisterEventsResponse>(res),
       } satisfies RegisterEventsResult
     } catch (e) {
       return {
@@ -117,6 +117,18 @@ export class ApiClientImpl implements ApiClient {
     return {
       'Content-Type': 'application/json',
       Authorization: this.apiKey,
+    }
+  }
+
+  private async parseJSON<T>(response: FetchResponseLike): Promise<T> {
+    try {
+      const data = await response.json()
+      return data as T
+    } catch (error) {
+      throw new UnknownException(
+        `invaild JSON response: ${error}`,
+        response.status,
+      )
     }
   }
 }

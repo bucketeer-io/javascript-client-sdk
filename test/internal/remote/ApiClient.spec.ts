@@ -340,12 +340,12 @@ suite('internal/remote/ApiClient', () => {
       expect(response.type).toBe('failure')
 
       const error = response.error
-
       expect(error.name).toBe('UnknownException')
-      expect(error.type).toBe(MetricsEventType.UnknownError)
 
       const unknownException = error as UnknownException
       expect(unknownException.type).toBe(MetricsEventType.UnknownError)
+      expect(unknownException.statusCode).toBe(200)
+      expect(unknownException.message).contain('invaild JSON response')
     })
   })
 })
