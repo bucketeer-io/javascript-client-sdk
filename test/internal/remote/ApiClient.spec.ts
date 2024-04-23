@@ -324,7 +324,7 @@ suite('internal/remote/ApiClient', () => {
       expect(error.timeoutMillis).toBe(200)
     })
 
-    test('response status okay with invaild JSON response', async () => {
+    test('got a response with status 200 and invalid JSON', async () => {
       apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
       server.use(
         rest.post(`${endpoint}/register_events`, async (_req, res, ctx) => {
