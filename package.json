@@ -18,11 +18,13 @@
     ".": {
       "node": {
         "import": "./dist/main.mjs",
-        "require": "./dist/main.cjs"
+        "require": "./dist/main.cjs",
+        "types": "./dist/main.d.ts"
       },
       "default": {
         "import": "./dist/main.browser.mjs",
-        "require": "./dist/main.browser.cjs"
+        "require": "./dist/main.browser.cjs",
+        "types": "./dist/main.d.ts"
       }
     }
   },
