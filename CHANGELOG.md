@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.4](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.1.3...v2.1.4) (2024-05-16)
+
+
+### Build System
+
+* **deps:** lock file maintenance ([#143](https://github.com/bucketeer-io/javascript-client-sdk/issues/143)) ([6210b55](https://github.com/bucketeer-io/javascript-client-sdk/commit/6210b5514e668041d91cc91d0d698134ad7482d4))
+* **deps:** update all non-major dependencies ([#144](https://github.com/bucketeer-io/javascript-client-sdk/issues/144)) ([e11da43](https://github.com/bucketeer-io/javascript-client-sdk/commit/e11da431544d1239499ffcafd1d2c6547ca74131))
+
+
+### Bug Fixes
+
+* typescript cannot search the type definition ([#147](https://github.com/bucketeer-io/javascript-client-sdk/issues/147)) ([67dba67](https://github.com/bucketeer-io/javascript-client-sdk/commit/67dba67746c98d3ce6bafcae50b8b84bc7ebf2bf))
+
 ## [2.1.3](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.1.2...v2.1.3) (2024-04-23)
 
 
