@@ -20,7 +20,7 @@ jobs:
       next_version: ${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}
 
     steps:
-      - uses: google-github-actions/release-please-action@v3.7.13
+      - uses: google-github-actions/release-please-action@v4.1.1
         id: release
         with:
           changelog-types: |
