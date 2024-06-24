@@ -1,4 +1,4 @@
-import { BKTEvaluation } from './BKTEvaluation'
+import { BKTEvaluation, BKTEvaluationDetail } from './BKTEvaluation'
 import { BKTUser } from './BKTUser'
 import { Component } from './internal/di/Component'
 import { clearInstance, getInstance, setInstance } from './internal/instance'
@@ -17,6 +17,22 @@ export interface BKTClient {
   fetchEvaluations: (timeoutMillis?: number) => Promise<void>
   flush: () => Promise<void>
   evaluationDetails: (featureId: string) => BKTEvaluation | null
+  stringEvaluationDetails: (
+    featureId: string,
+    defaultValue: string,
+  ) => BKTEvaluationDetail<string> | null
+  numberEvaluationDetails: (
+    featureId: string,
+    defaultValue: number,
+  ) => BKTEvaluationDetail<number> | null
+  booleanEvaluationDetails: (
+    featureId: string,
+    defaultValue: boolean,
+  ) => BKTEvaluationDetail<boolean> | null
+  jsonEvaluationDetails: <T>(
+    featureId: string,
+    defaultValue: T,
+  ) => BKTEvaluationDetail<T> | null
   addEvaluationUpdateListener: (listener: () => void) => string
   removeEvaluationUpdateListener: (listenerId: string) => void
   clearEvaluationUpdateListeners: () => void
@@ -74,6 +90,31 @@ export class BKTClientImpl implements BKTClient {
     } catch (e) {
       return defaultValue
     }
+  }
+
+  stringEvaluationDetails(
+    _featureId: string,
+    _defaultValue: string,
+  ): BKTEvaluationDetail<string> | null {
+    return null
+  }
+  numberEvaluationDetails(
+    _featureId: string,
+    _defaultValue: number,
+  ): BKTEvaluationDetail<number> | null {
+    return null
+  }
+  booleanEvaluationDetails(
+    _featureId: string,
+    _defaultValue: boolean,
+  ): BKTEvaluationDetail<boolean> | null {
+    return null
+  }
+  jsonEvaluationDetails<T>(
+    _featureId: string,
+    _defaultValue: T,
+  ): BKTEvaluationDetail<T> | null {
+    return null
   }
 
   track(goalId: string, value = 0.0): void {
