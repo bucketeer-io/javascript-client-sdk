@@ -69,28 +69,28 @@ export class BKTClientImpl implements BKTClient {
   }
 
   stringVariationDetails(
-    _featureId: string,
-    _defaultValue: string,
+    featureId: string,
+    defaultValue: string,
   ): BKTEvaluationDetail<string> | null {
-    return null
+    return this.getVariationDetails(featureId, defaultValue)
   }
   numberVariationDetails(
-    _featureId: string,
-    _defaultValue: number,
+    featureId: string,
+    defaultValue: number,
   ): BKTEvaluationDetail<number> | null {
-    return null
+    return this.getVariationDetails(featureId, defaultValue)
   }
   booleanVariationDetails(
-    _featureId: string,
-    _defaultValue: boolean,
+    featureId: string,
+    defaultValue: boolean,
   ): BKTEvaluationDetail<boolean> | null {
-    return null
+    return this.getVariationDetails(featureId, defaultValue)
   }
   jsonVariationDetails<T>(
-    _featureId: string,
-    _defaultValue: T,
+    featureId: string,
+    defaultValue: T,
   ): BKTEvaluationDetail<T> | null {
-    return null
+    return this.getVariationDetails(featureId, defaultValue)
   }
 
   track(goalId: string, value = 0.0): void {
@@ -156,25 +156,6 @@ export class BKTClientImpl implements BKTClient {
     this.component.evaluationInteractor().clearUpdateListeners()
   }
 
-  private getVariationValue(featureId: string): string | null {
-    const raw = this.component.evaluationInteractor().getLatest(featureId)
-
-    const user = this.component.userHolder().get()
-    const featureTag = this.component.config().featureTag
-
-    if (raw) {
-      this.component
-        .eventInteractor()
-        .trackEvaluationEvent(featureTag, user, raw)
-    } else {
-      this.component
-        .eventInteractor()
-        .trackDefaultEvaluationEvent(featureTag, user, featureId)
-    }
-
-    return raw?.variationValue ?? null
-  }
-
   private getGenericVariationValue<T>(featureId: string, defaultValue: T): T {
     const raw = this.component.evaluationInteractor().getLatest(featureId)
     const user = this.component.userHolder().get()
@@ -202,6 +183,54 @@ export class BKTClientImpl implements BKTClient {
     }
 
     return result ?? defaultValue
+  }
+
+  private getVariationDetails<T>(
+    featureId: string,
+    defaultValue: T,
+  ): BKTEvaluationDetail<T> {
+    const raw = this.component.evaluationInteractor().getLatest(featureId)
+    const user = this.component.userHolder().get()
+    const featureTag = this.component.config().featureTag
+
+    const variationValue = raw?.variationValue
+
+    // Handle conversion based on the type of T
+    let result: T | null = null
+
+    if (variationValue !== undefined && variationValue !== null) {
+      if (variationValue !== undefined && variationValue !== null) {
+        result = convertToType<T>(variationValue, defaultValue)
+      }
+    }
+
+    if (raw && result) {
+      this.component
+        .eventInteractor()
+        .trackEvaluationEvent(featureTag, user, raw)
+      return {
+        featureId: raw.featureId,
+        featureVersion: raw.featureVersion,
+        userId: raw.userId,
+        variationId: raw.variationId,
+        variationName: raw.variationName,
+        variationValue: result,
+        reason: raw.reason.type,
+      } satisfies BKTEvaluationDetail<T>
+    } else {
+      this.component
+        .eventInteractor()
+        .trackDefaultEvaluationEvent(featureTag, user, featureId)
+      return {
+        featureId: featureId,
+        featureVersion: 0,
+        userId: user.id,
+        variationId: '',
+        variationName: '',
+        variationValue: result ?? defaultValue,
+        reason: 'CLIENT',
+      } satisfies BKTEvaluationDetail<T>
+    }
   }
 
   private scheduleTasks(): void {
