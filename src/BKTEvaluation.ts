@@ -16,7 +16,6 @@ export interface BKTEvaluation {
 }
 
 export interface BKTEvaluationDetail<T> {
-  readonly id: string
   readonly featureId: string
   readonly featureVersion: number
   readonly userId: string
