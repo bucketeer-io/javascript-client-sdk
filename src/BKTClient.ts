@@ -17,19 +17,19 @@ export interface BKTClient {
   fetchEvaluations: (timeoutMillis?: number) => Promise<void>
   flush: () => Promise<void>
   evaluationDetails: (featureId: string) => BKTEvaluation | null
-  stringEvaluationDetails: (
+  stringVariationDetails: (
     featureId: string,
     defaultValue: string,
   ) => BKTEvaluationDetail<string> | null
-  numberEvaluationDetails: (
+  numberVariationDetails: (
     featureId: string,
     defaultValue: number,
   ) => BKTEvaluationDetail<number> | null
-  booleanEvaluationDetails: (
+  booleanVariationDetails: (
     featureId: string,
     defaultValue: boolean,
   ) => BKTEvaluationDetail<boolean> | null
-  jsonEvaluationDetails: <T>(
+  jsonVariationDetails: <T>(
     featureId: string,
     defaultValue: T,
   ) => BKTEvaluationDetail<T> | null
@@ -49,68 +49,44 @@ export class BKTClientImpl implements BKTClient {
   }
 
   stringVariation(featureId: string, defaultValue: string): string {
-    const value = this.getVariationValue(featureId)
-    if (value === null) {
-      return defaultValue
-    }
+    const value = this.getGenericVariationValue(featureId, defaultValue)
     return value
   }
 
   numberVariation(featureId: string, defaultValue: number): number {
-    const value = this.getVariationValue(featureId)
-    if (value === null) {
-      return defaultValue
-    }
-    const result = Number(value)
-    if (Number.isNaN(result)) {
-      return defaultValue
-    }
-    return result
+    const value = this.getGenericVariationValue(featureId, defaultValue)
+    return value
   }
 
   booleanVariation(featureId: string, defaultValue: boolean): boolean {
-    const value = this.getVariationValue(featureId)
-    const result = value?.toLowerCase()
-    if (result === 'true') {
-      return true
-    } else if (result === 'false') {
-      return false
-    } else {
-      return defaultValue
-    }
+    const value = this.getGenericVariationValue(featureId, defaultValue)
+    return value
   }
 
   jsonVariation<T>(featureId: string, defaultValue: T): T {
-    const value = this.getVariationValue(featureId)
-    if (value === null) {
-      return defaultValue
-    }
-    try {
-      return JSON.parse(value)
-    } catch (e) {
-      return defaultValue
-    }
+    const value = this.getGenericVariationValue(featureId, defaultValue)
+    return value
   }
 
-  stringEvaluationDetails(
+  stringVariationDetails(
     _featureId: string,
     _defaultValue: string,
   ): BKTEvaluationDetail<string> | null {
     return null
   }
-  numberEvaluationDetails(
+  numberVariationDetails(
     _featureId: string,
     _defaultValue: number,
   ): BKTEvaluationDetail<number> | null {
     return null
   }
-  booleanEvaluationDetails(
+  booleanVariationDetails(
     _featureId: string,
     _defaultValue: boolean,
   ): BKTEvaluationDetail<boolean> | null {
     return null
   }
-  jsonEvaluationDetails<T>(
+  jsonVariationDetails<T>(
     _featureId: string,
     _defaultValue: T,
   ): BKTEvaluationDetail<T> | null {
@@ -199,6 +175,35 @@ export class BKTClientImpl implements BKTClient {
     return raw?.variationValue ?? null
   }
 
+  private getGenericVariationValue<T>(featureId: string, defaultValue: T): T {
+    const raw = this.component.evaluationInteractor().getLatest(featureId)
+    const user = this.component.userHolder().get()
+    const featureTag = this.component.config().featureTag
+
+    const variationValue = raw?.variationValue
+
+    // Handle conversion based on the type of T
+    let result: T | null = null
+
+    if (variationValue !== undefined && variationValue !== null) {
+      if (variationValue !== undefined && variationValue !== null) {
+        result = convertToType<T>(variationValue, defaultValue)
+      }
+    }
+
+    if (raw && result) {
+      this.component
+        .eventInteractor()
+        .trackEvaluationEvent(featureTag, user, raw)
+    } else {
+      this.component
+        .eventInteractor()
+        .trackDefaultEvaluationEvent(featureTag, user, featureId)
+    }
+
+    return result ?? defaultValue
+  }
+
   private scheduleTasks(): void {
     this.taskScheduler = new TaskScheduler(this.component)
     this.taskScheduler.start()
@@ -265,4 +270,29 @@ export const destroyBKTClient = (): void => {
     ;(client as BKTClientImpl).resetTasks()
   }
   clearInstance()
+}
+
+function convertToType<T>(value: string, testValueType: T): T | null {
+  try {
+    if (typeof testValueType === 'string') {
+      return value as T
+    } else if (typeof testValueType === 'number') {
+      const parsedNumber = parseFloat(value)
+      return isNaN(parsedNumber) ? null : (parsedNumber as T)
+    } else if (typeof testValueType === 'boolean') {
+      const lowcaseValue = value.toLowerCase()
+      if (lowcaseValue === 'true' || lowcaseValue === 'false') {
+        return (lowcaseValue === 'true') as T
+      } else {
+        return null
+      }
+    } else if (typeof testValueType === 'object') {
+      return JSON.parse(value) as T
+    } else {
+      return null
+    }
+  } catch (e) {
+    console.error('Conversion failed:', e)
+    return null
+  }
 }
