@@ -309,12 +309,14 @@ function convertToType<T>(value: string, testValueType: T): T | null {
     if (typeof testValueType === 'string') {
       return value as T
     } else if (typeof testValueType === 'number') {
-      const parsedNumber = parseFloat(value)
+      const parsedNumber = Number(value)
       return isNaN(parsedNumber) ? null : (parsedNumber as T)
     } else if (typeof testValueType === 'boolean') {
       const lowcaseValue = value.toLowerCase()
-      if (lowcaseValue === 'true' || lowcaseValue === 'false') {
-        return (lowcaseValue === 'true') as T
+      if (lowcaseValue === 'true') {
+        return true as T
+      } else if (lowcaseValue === 'false') {
+        return false as T
       } else {
         return null
       }
