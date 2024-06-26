@@ -1,3 +1,6 @@
+/**
+ * @deprecated use BKTEvaluationDetail<T> instead.
+ */
 export interface BKTEvaluation {
   readonly id: string
   readonly featureId: string
