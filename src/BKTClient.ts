@@ -125,6 +125,9 @@ export class BKTClientImpl implements BKTClient {
     }
   }
 
+  /**
+   * @deprecated use stringVariationDetails(featureId: string, defaultValue: string) instead.
+   */
   evaluationDetails(featureId: string): BKTEvaluation | null {
     const raw = this.component.evaluationInteractor().getLatest(featureId)
 
