@@ -49,22 +49,34 @@ export class BKTClientImpl implements BKTClient {
   }
 
   stringVariation(featureId: string, defaultValue: string): string {
-    const value = this.getGenericVariationValue(featureId, defaultValue)
+    const value = this.getVariationDetails(
+      featureId,
+      defaultValue,
+    ).variationValue
     return value
   }
 
   numberVariation(featureId: string, defaultValue: number): number {
-    const value = this.getGenericVariationValue(featureId, defaultValue)
+    const value = this.getVariationDetails(
+      featureId,
+      defaultValue,
+    ).variationValue
     return value
   }
 
   booleanVariation(featureId: string, defaultValue: boolean): boolean {
-    const value = this.getGenericVariationValue(featureId, defaultValue)
+    const value = this.getVariationDetails(
+      featureId,
+      defaultValue,
+    ).variationValue
     return value
   }
 
   jsonVariation<T>(featureId: string, defaultValue: T): T {
-    const value = this.getGenericVariationValue(featureId, defaultValue)
+    const value = this.getVariationDetails(
+      featureId,
+      defaultValue,
+    ).variationValue
     return value
   }
 
@@ -157,35 +169,6 @@ export class BKTClientImpl implements BKTClient {
 
   clearEvaluationUpdateListeners() {
     this.component.evaluationInteractor().clearUpdateListeners()
-  }
-
-  private getGenericVariationValue<T>(featureId: string, defaultValue: T): T {
-    const raw = this.component.evaluationInteractor().getLatest(featureId)
-    const user = this.component.userHolder().get()
-    const featureTag = this.component.config().featureTag
-
-    const variationValue = raw?.variationValue
-
-    // Handle conversion based on the type of T
-    let result: T | null = null
-
-    if (variationValue !== undefined && variationValue !== null) {
-      if (variationValue !== undefined && variationValue !== null) {
-        result = convertToType<T>(variationValue, defaultValue)
-      }
-    }
-
-    if (raw && result) {
-      this.component
-        .eventInteractor()
-        .trackEvaluationEvent(featureTag, user, raw)
-    } else {
-      this.component
-        .eventInteractor()
-        .trackDefaultEvaluationEvent(featureTag, user, featureId)
-    }
-
-    return result ?? defaultValue
   }
 
   private getVariationDetails<T>(
