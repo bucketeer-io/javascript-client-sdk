@@ -190,7 +190,7 @@ export class BKTClientImpl implements BKTClient {
       }
     }
 
-    if (raw && result) {
+    if (raw !== null && result !== null) {
       this.component
         .eventInteractor()
         .trackEvaluationEvent(featureTag, user, raw)
@@ -207,15 +207,8 @@ export class BKTClientImpl implements BKTClient {
       this.component
         .eventInteractor()
         .trackDefaultEvaluationEvent(featureTag, user, featureId)
-      return {
-        featureId: featureId,
-        featureVersion: 0,
-        userId: user.id,
-        variationId: '',
-        variationName: '',
-        variationValue: result ?? defaultValue,
-        reason: 'CLIENT',
-      } satisfies BKTEvaluationDetail<T>
+
+      return newDefaultBKTEvaluationDetails(user.id, featureId, defaultValue)
     }
   }
 
@@ -312,4 +305,20 @@ function convertToType<T>(value: string, testValueType: T): T | null {
     console.error('Conversion failed:', e)
     return null
   }
+}
+
+export const newDefaultBKTEvaluationDetails = <T>(
+  userId: string,
+  featureId: string,
+  defaultValue: T,
+): BKTEvaluationDetail<T> => {
+  return {
+    featureId: featureId,
+    featureVersion: 0,
+    userId: userId,
+    variationId: '',
+    variationName: '',
+    variationValue: defaultValue,
+    reason: 'CLIENT',
+  } satisfies BKTEvaluationDetail<T>
 }
