@@ -186,7 +186,7 @@ export class BKTClientImpl implements BKTClient {
 
     if (variationValue !== undefined && variationValue !== null) {
       if (variationValue !== undefined && variationValue !== null) {
-        result = convertToType<T>(variationValue, defaultValue)
+        result = convertRawValueToType<T>(variationValue, defaultValue)
       }
     }
 
@@ -280,7 +280,10 @@ export const destroyBKTClient = (): void => {
   clearInstance()
 }
 
-function convertToType<T>(value: string, testValueType: T): T | null {
+export const convertRawValueToType = <T>(
+  value: string,
+  testValueType: T,
+): T | null => {
   try {
     if (typeof testValueType === 'string') {
       return value as T

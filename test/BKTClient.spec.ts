@@ -1138,6 +1138,238 @@ suite('BKTClient', () => {
         reason: 'CLIENT',
       } satisfies BKTEvaluationDetails<object>)
     })
+
+    test('numVariationDetails', async () => {
+      const featureId = 'numVariationDetails'
+      const mockStringEvaluation = buildEvaluation('1', featureId)
+
+      server.use(
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+          return res.once(
+            ctx.status(200),
+            ctx.json({
+              evaluations: {
+                ...user1Evaluations,
+                evaluations: [mockStringEvaluation],
+              },
+              userEvaluationsId: 'user_evaluation_id_value',
+            }),
+          )
+        }),
+        rest.post<
+          RegisterEventsRequest,
+          Record<string, never>,
+          RegisterEventsResponse
+        >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+          return res(ctx.status(200), ctx.json({}))
+        }),
+      )
+
+      await initializeBKTClientInternal(component, 1000)
+
+      const client = getBKTClient()
+      assert(client !== null)
+      expect(client.numberVariationDetails(featureId, 2)).toStrictEqual({
+        featureId: mockStringEvaluation.featureId,
+        featureVersion: mockStringEvaluation.featureVersion,
+        userId: mockStringEvaluation.userId,
+        variationId: mockStringEvaluation.variationId,
+        variationName: mockStringEvaluation.variationName,
+        variationValue: 1,
+        reason: mockStringEvaluation.reason.type,
+      } satisfies BKTEvaluationDetails<number>)
+
+      expect(client.stringVariationDetails(featureId, '')).toStrictEqual({
+        featureId: featureId,
+        featureVersion: mockStringEvaluation.featureVersion,
+        userId: mockStringEvaluation.userId,
+        variationId: mockStringEvaluation.variationId,
+        variationName: mockStringEvaluation.variationName,
+        variationValue: '1',
+        reason: mockStringEvaluation.reason.type,
+      } satisfies BKTEvaluationDetails<string>)
+
+      expect(client.booleanVariationDetails(featureId, true)).toStrictEqual({
+        featureId: featureId,
+        featureVersion: 0,
+        userId: mockStringEvaluation.userId,
+        variationId: '',
+        variationName: '',
+        variationValue: true,
+        reason: 'CLIENT',
+      } satisfies BKTEvaluationDetails<boolean>)
+
+      expect(
+        client.jsonVariationDetails(featureId, { key: 'value11' }),
+      ).toStrictEqual({
+        featureId: featureId,
+        featureVersion: 0,
+        userId: mockStringEvaluation.userId,
+        variationId: '',
+        variationName: '',
+        variationValue: { key: 'value11' },
+        reason: 'CLIENT',
+      } satisfies BKTEvaluationDetails<object>)
+    })
+
+    // test('booleanVariationDetails', async () => {
+    //   const featureId = 'booleanVariationDetails'
+    //   const mockStringEvaluation = buildEvaluation('true', featureId)
+
+    //   server.use(
+    //     rest.post<
+    //       GetEvaluationsRequest,
+    //       Record<string, never>,
+    //       GetEvaluationsResponse
+    //     >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+    //       return res.once(
+    //         ctx.status(200),
+    //         ctx.json({
+    //           evaluations: {
+    //             ...user1Evaluations,
+    //             evaluations: [mockStringEvaluation],
+    //           },
+    //           userEvaluationsId: 'user_evaluation_id_value',
+    //         }),
+    //       )
+    //     }),
+    //     rest.post<
+    //       RegisterEventsRequest,
+    //       Record<string, never>,
+    //       RegisterEventsResponse
+    //     >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+    //       return res(ctx.status(200), ctx.json({}))
+    //     }),
+    //   )
+
+    //   await initializeBKTClientInternal(component, 1000)
+
+    //   const client = getBKTClient()
+    //   assert(client !== null)
+    //   expect(client.booleanVariationDetails(featureId, false)).toStrictEqual({
+    //     featureId: mockStringEvaluation.featureId,
+    //     featureVersion: mockStringEvaluation.featureVersion,
+    //     userId: mockStringEvaluation.userId,
+    //     variationId: mockStringEvaluation.variationId,
+    //     variationName: mockStringEvaluation.variationName,
+    //     variationValue: true,
+    //     reason: 'CLIENT',
+    //   } satisfies BKTEvaluationDetails<boolean>)
+
+    //   expect(client.stringVariationDetails(featureId, '')).toStrictEqual({
+    //     featureId: featureId,
+    //     featureVersion: 0,
+    //     userId: mockStringEvaluation.userId,
+    //     variationId: '',
+    //     variationName: '',
+    //     variationValue: 'true',
+    //     reason: 'CLIENT',
+    //   } satisfies BKTEvaluationDetails<string>)
+
+    //   expect(client.numberVariationDetails(featureId, 1)).toStrictEqual({
+    //     featureId: featureId,
+    //     featureVersion: 0,
+    //     userId: mockStringEvaluation.userId,
+    //     variationId: '',
+    //     variationName: '',
+    //     variationValue: 1,
+    //     reason: 'CLIENT',
+    //   } satisfies BKTEvaluationDetails<number>)
+
+    //   expect(
+    //     client.jsonVariationDetails(featureId, { key: 'value11' }),
+    //   ).toStrictEqual({
+    //     featureId: featureId,
+    //     featureVersion: 0,
+    //     userId: mockStringEvaluation.userId,
+    //     variationId: '',
+    //     variationName: '',
+    //     variationValue: { key: 'value11' },
+    //     reason: 'CLIENT',
+    //   } satisfies BKTEvaluationDetails<object>)
+    // })
+
+    // test('jsonVariationDetails', async () => {
+    //   const featureId = 'jsonVariationDetails'
+    //   const mockStringEvaluation = buildEvaluation(
+    //     '{"key1": "value1"}',
+    //     featureId,
+    //   )
+
+    //   server.use(
+    //     rest.post<
+    //       GetEvaluationsRequest,
+    //       Record<string, never>,
+    //       GetEvaluationsResponse
+    //     >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+    //       return res.once(
+    //         ctx.status(200),
+    //         ctx.json({
+    //           evaluations: {
+    //             ...user1Evaluations,
+    //             evaluations: [mockStringEvaluation],
+    //           },
+    //           userEvaluationsId: 'user_evaluation_id_value',
+    //         }),
+    //       )
+    //     }),
+    //     rest.post<
+    //       RegisterEventsRequest,
+    //       Record<string, never>,
+    //       RegisterEventsResponse
+    //     >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+    //       return res(ctx.status(200), ctx.json({}))
+    //     }),
+    //   )
+
+    //   await initializeBKTClientInternal(component, 1000)
+
+    //   const client = getBKTClient()
+    //   assert(client !== null)
+    //   expect(client.jsonVariationDetails(featureId, false)).toStrictEqual({
+    //     featureId: mockStringEvaluation.featureId,
+    //     featureVersion: mockStringEvaluation.featureVersion,
+    //     userId: mockStringEvaluation.userId,
+    //     variationId: mockStringEvaluation.variationId,
+    //     variationName: mockStringEvaluation.variationName,
+    //     variationValue: { key1: 'value1' },
+    //     reason: 'CLIENT',
+    //   } satisfies BKTEvaluationDetails<object>)
+
+    //   expect(client.stringVariationDetails(featureId, '')).toStrictEqual({
+    //     featureId: featureId,
+    //     featureVersion: 0,
+    //     userId: mockStringEvaluation.userId,
+    //     variationId: '',
+    //     variationName: '',
+    //     variationValue: '{"key1": "value1"}',
+    //     reason: 'CLIENT',
+    //   } satisfies BKTEvaluationDetails<string>)
+
+    //   expect(client.numberVariationDetails(featureId, 1)).toStrictEqual({
+    //     featureId: featureId,
+    //     featureVersion: 0,
+    //     userId: mockStringEvaluation.userId,
+    //     variationId: '',
+    //     variationName: '',
+    //     variationValue: 1,
+    //     reason: 'CLIENT',
+    //   } satisfies BKTEvaluationDetails<number>)
+
+    //   expect(client.booleanVariationDetails(featureId, true)).toStrictEqual({
+    //     featureId: featureId,
+    //     featureVersion: 0,
+    //     userId: mockStringEvaluation.userId,
+    //     variationId: '',
+    //     variationName: '',
+    //     variationValue: true,
+    //     reason: 'CLIENT',
+    //   } satisfies BKTEvaluationDetails<boolean>)
+    // })
   })
 })
 
