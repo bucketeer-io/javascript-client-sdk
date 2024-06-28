@@ -913,7 +913,7 @@ function buildEvaluation(value: string): Evaluation {
   }
 }
 
-suite('booleanDefaultBKTEvaluationDetails', () => {
+suite('newDefaultBKTEvaluationDetails', () => {
   test.each([
     ['default true', true],
     ['default false', false],
@@ -935,9 +935,7 @@ suite('booleanDefaultBKTEvaluationDetails', () => {
       reason: 'CLIENT',
     })
   })
-})
 
-suite('numberDefaultBKTEvaluationDetails', () => {
   test.each([
     ['default 1', 1],
     ['default 2.0', 2.0],
@@ -960,9 +958,7 @@ suite('numberDefaultBKTEvaluationDetails', () => {
       reason: 'CLIENT',
     })
   })
-})
 
-suite('stringDefaultBKTEvaluationDetails', () => {
   test.each([
     ['default 1', '1'],
     ['default 2.0', '2.0'],
@@ -985,9 +981,7 @@ suite('stringDefaultBKTEvaluationDetails', () => {
       reason: 'CLIENT',
     })
   })
-})
 
-suite('jsonDefaultBKTEvaluationDetails', () => {
   test.each([
     ['default 1', '{"key": "value"}'],
     ['default 2.0', '{}'],
