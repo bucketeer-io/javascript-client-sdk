@@ -35,7 +35,10 @@ import {
 } from '../src/BKTExceptions'
 import { Evaluation } from '../src/internal/model/Evaluation'
 import { EventType } from '../src/internal/model/Event'
-import { BKTEvaluation } from '../src/BKTEvaluation'
+import {
+  BKTEvaluation,
+  BKTEvaluationDetail as BKTEvaluationDetails,
+} from '../src/BKTEvaluation'
 import { ErrorResponse } from '../src/internal/model/response/ErrorResponse'
 import { RegisterEventsRequest } from '../src/internal/model/request/RegisterEventsRequest'
 import { RegisterEventsResponse } from '../src/internal/model/response/RegisterEventsResponse'
@@ -896,12 +899,255 @@ suite('BKTClient', () => {
       expect(client.evaluationDetails('non_existent_feature_id')).toBeNull()
     })
   })
+
+  suite('newDefaultBKTEvaluationDetails', () => {
+    test.each([
+      ['default true', true],
+      ['default false', false],
+    ])('value=%s, default=%s', (_value: string, defaultValue: boolean) => {
+      const userId = '1'
+      const featureId = 'featureId'
+      const actualEvaluationDetails = newDefaultBKTEvaluationDetails(
+        userId,
+        featureId,
+        defaultValue,
+      )
+      expect(actualEvaluationDetails).toStrictEqual({
+        featureId: featureId,
+        featureVersion: 0,
+        userId: userId,
+        variationId: '',
+        variationName: '',
+        variationValue: defaultValue,
+        reason: 'CLIENT',
+      })
+    })
+
+    test.each([
+      ['default 1', 1],
+      ['default 2.0', 2.0],
+    ])('value=%s, default=%s', (_value: string, defaultValue: number) => {
+      const userId = '1'
+      const featureId = 'featureId'
+      const actualEvaluationDetails = newDefaultBKTEvaluationDetails(
+        userId,
+        featureId,
+        defaultValue,
+      )
+      expect(actualEvaluationDetails.variationValue).toBe(defaultValue)
+      expect(actualEvaluationDetails).toStrictEqual({
+        featureId: featureId,
+        featureVersion: 0,
+        userId: userId,
+        variationId: '',
+        variationName: '',
+        variationValue: defaultValue,
+        reason: 'CLIENT',
+      })
+    })
+
+    test.each([
+      ['default 1', '1'],
+      ['default 2.0', '2.0'],
+    ])('value=%s, default=%s', (_value: string, defaultValue: string) => {
+      const userId = '1'
+      const featureId = 'featureId'
+      const actualEvaluationDetails = newDefaultBKTEvaluationDetails(
+        userId,
+        featureId,
+        defaultValue,
+      )
+      expect(actualEvaluationDetails.variationValue).toBe(defaultValue)
+      expect(actualEvaluationDetails).toStrictEqual({
+        featureId: featureId,
+        featureVersion: 0,
+        userId: userId,
+        variationId: '',
+        variationName: '',
+        variationValue: defaultValue,
+        reason: 'CLIENT',
+      })
+    })
+
+    test.each([
+      ['default 1', '{"key": "value"}'],
+      ['default 2.0', '{}'],
+    ])('value=%s, default=%s', (_value: string, defaultValueString: string) => {
+      const defaultValue = JSON.parse(defaultValueString)
+      const userId = '1'
+      const featureId = 'featureId'
+      const actualEvaluationDetails = newDefaultBKTEvaluationDetails(
+        userId,
+        featureId,
+        defaultValue,
+      )
+      expect(JSON.stringify(actualEvaluationDetails.variationValue)).toBe(
+        JSON.stringify(defaultValue),
+      )
+      expect(actualEvaluationDetails).toStrictEqual({
+        featureId: featureId,
+        featureVersion: 0,
+        userId: userId,
+        variationId: '',
+        variationName: '',
+        variationValue: defaultValue,
+        reason: 'CLIENT',
+      })
+    })
+  })
+
+  suite('BKTEvaluationDetails', () => {
+    test('BKTEvaluationDetailsDefaultValue', async () => {
+      server.use(
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+          return res.once(
+            ctx.status(200),
+            ctx.json({
+              evaluations: {
+                ...user1Evaluations,
+                evaluations: [],
+              },
+              userEvaluationsId: 'user_evaluation_id_value',
+            }),
+          )
+        }),
+        rest.post<
+          RegisterEventsRequest,
+          Record<string, never>,
+          RegisterEventsResponse
+        >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+          return res(ctx.status(200), ctx.json({}))
+        }),
+      )
+
+      await initializeBKTClientInternal(component, 1000)
+
+      const client = getBKTClient()
+      const userId = 'user_id_1'
+      const featureId = 'feature_id_value'
+      assert(client !== null)
+
+      expect(
+        client.stringVariationDetails(featureId, 'default1'),
+      ).toStrictEqual(
+        newDefaultBKTEvaluationDetails(userId, featureId, 'default1'),
+      )
+
+      expect(client.numberVariationDetails(featureId, 22)).toStrictEqual(
+        newDefaultBKTEvaluationDetails(userId, featureId, 22.0),
+      )
+
+      expect(client.booleanVariationDetails(featureId, true)).toStrictEqual(
+        newDefaultBKTEvaluationDetails(userId, featureId, true),
+      )
+
+      expect(client.booleanVariationDetails(featureId, false)).toStrictEqual(
+        newDefaultBKTEvaluationDetails(userId, featureId, false),
+      )
+
+      expect(
+        client.jsonVariationDetails(featureId, { key: 'value22' }),
+      ).toStrictEqual(
+        newDefaultBKTEvaluationDetails(userId, featureId, { key: 'value22' }),
+      )
+
+      expect(
+        client.jsonVariationDetails(featureId, { key: 'value' }),
+      ).not.toStrictEqual(
+        newDefaultBKTEvaluationDetails(userId, featureId, { key: 'value22' }),
+      )
+    })
+
+    test('stringVariationDetails', async () => {
+      const featureId = 'stringVariationDetails'
+      const mockStringEvaluation = buildEvaluation('default', featureId)
+
+      server.use(
+        rest.post<
+          GetEvaluationsRequest,
+          Record<string, never>,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+          return res.once(
+            ctx.status(200),
+            ctx.json({
+              evaluations: {
+                ...user1Evaluations,
+                evaluations: [mockStringEvaluation],
+              },
+              userEvaluationsId: 'user_evaluation_id_value',
+            }),
+          )
+        }),
+        rest.post<
+          RegisterEventsRequest,
+          Record<string, never>,
+          RegisterEventsResponse
+        >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+          return res(ctx.status(200), ctx.json({}))
+        }),
+      )
+
+      await initializeBKTClientInternal(component, 1000)
+
+      const client = getBKTClient()
+      assert(client !== null)
+      expect(client.stringVariationDetails(featureId, '')).toStrictEqual({
+        featureId: mockStringEvaluation.featureId,
+        featureVersion: mockStringEvaluation.featureVersion,
+        userId: mockStringEvaluation.userId,
+        variationId: mockStringEvaluation.variationId,
+        variationName: mockStringEvaluation.variationName,
+        variationValue: mockStringEvaluation.variationValue,
+        reason: 'CLIENT',
+      } satisfies BKTEvaluationDetails<string>)
+
+      expect(client.numberVariationDetails(featureId, 1)).toStrictEqual({
+        featureId: featureId,
+        featureVersion: 0,
+        userId: mockStringEvaluation.userId,
+        variationId: '',
+        variationName: '',
+        variationValue: 1,
+        reason: 'CLIENT',
+      } satisfies BKTEvaluationDetails<number>)
+
+      expect(client.booleanVariationDetails(featureId, true)).toStrictEqual({
+        featureId: featureId,
+        featureVersion: 0,
+        userId: mockStringEvaluation.userId,
+        variationId: '',
+        variationName: '',
+        variationValue: true,
+        reason: 'CLIENT',
+      } satisfies BKTEvaluationDetails<boolean>)
+
+      expect(
+        client.jsonVariationDetails(featureId, { key: 'value11' }),
+      ).toStrictEqual({
+        featureId: featureId,
+        featureVersion: 0,
+        userId: mockStringEvaluation.userId,
+        variationId: '',
+        variationName: '',
+        variationValue: { key: 'value11' },
+        reason: 'CLIENT',
+      } satisfies BKTEvaluationDetails<object>)
+    })
+  })
 })
 
-function buildEvaluation(value: string): Evaluation {
+function buildEvaluation(
+  value: string,
+  featureId: string = 'feature_id_value',
+): Evaluation {
   return {
     id: 'evaluation_id_value',
-    featureId: 'feature_id_value',
+    featureId: featureId,
     featureVersion: 1,
     userId: user1.id,
     variationId: 'variation_id_value',
@@ -912,99 +1158,3 @@ function buildEvaluation(value: string): Evaluation {
     },
   }
 }
-
-suite('newDefaultBKTEvaluationDetails', () => {
-  test.each([
-    ['default true', true],
-    ['default false', false],
-  ])('value=%s, default=%s', (_value: string, defaultValue: boolean) => {
-    const userId = '1'
-    const featureId = 'featureId'
-    const actualEvaluationDetails = newDefaultBKTEvaluationDetails(
-      userId,
-      featureId,
-      defaultValue,
-    )
-    expect(actualEvaluationDetails).toStrictEqual({
-      featureId: featureId,
-      featureVersion: 0,
-      userId: userId,
-      variationId: '',
-      variationName: '',
-      variationValue: defaultValue,
-      reason: 'CLIENT',
-    })
-  })
-
-  test.each([
-    ['default 1', 1],
-    ['default 2.0', 2.0],
-  ])('value=%s, default=%s', (_value: string, defaultValue: number) => {
-    const userId = '1'
-    const featureId = 'featureId'
-    const actualEvaluationDetails = newDefaultBKTEvaluationDetails(
-      userId,
-      featureId,
-      defaultValue,
-    )
-    expect(actualEvaluationDetails.variationValue).toBe(defaultValue)
-    expect(actualEvaluationDetails).toStrictEqual({
-      featureId: featureId,
-      featureVersion: 0,
-      userId: userId,
-      variationId: '',
-      variationName: '',
-      variationValue: defaultValue,
-      reason: 'CLIENT',
-    })
-  })
-
-  test.each([
-    ['default 1', '1'],
-    ['default 2.0', '2.0'],
-  ])('value=%s, default=%s', (_value: string, defaultValue: string) => {
-    const userId = '1'
-    const featureId = 'featureId'
-    const actualEvaluationDetails = newDefaultBKTEvaluationDetails(
-      userId,
-      featureId,
-      defaultValue,
-    )
-    expect(actualEvaluationDetails.variationValue).toBe(defaultValue)
-    expect(actualEvaluationDetails).toStrictEqual({
-      featureId: featureId,
-      featureVersion: 0,
-      userId: userId,
-      variationId: '',
-      variationName: '',
-      variationValue: defaultValue,
-      reason: 'CLIENT',
-    })
-  })
-
-  test.each([
-    ['default 1', '{"key": "value"}'],
-    ['default 2.0', '{}'],
-  ])('value=%s, default=%s', (_value: string, defaultValueString: string) => {
-    const defaultValue = JSON.parse(defaultValueString)
-    const userId = '1'
-    const featureId = 'featureId'
-    const actualEvaluationDetails = newDefaultBKTEvaluationDetails(
-      userId,
-      featureId,
-      defaultValue,
-    )
-    expect(JSON.stringify(actualEvaluationDetails.variationValue)).toBe(
-      JSON.stringify(defaultValue),
-    )
-    expect(actualEvaluationDetails).toStrictEqual({
-      featureId: featureId,
-      featureVersion: 0,
-      userId: userId,
-      variationId: '',
-      variationName: '',
-      variationValue: defaultValue,
-      reason: 'CLIENT',
-    })
-  })
-})
