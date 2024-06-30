@@ -38,6 +38,16 @@ export interface BKTClient {
   clearEvaluationUpdateListeners: () => void
 }
 
+// type OnlyPlainObject<T> = T extends
+//   | string
+//   | number
+//   | boolean
+//   | null
+//   | undefined
+//   | []
+//   ? never
+//   : T
+
 export class BKTClientImpl implements BKTClient {
   taskScheduler: TaskScheduler | null = null
 
