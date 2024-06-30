@@ -288,9 +288,13 @@ export const convertRawValueToType = <T>(
     if (typeof testValueType === 'string') {
       return value as T
     } else if (typeof testValueType === 'number') {
+      assetNonBlankString(value)
+
       const parsedNumber = Number(value)
       return isNaN(parsedNumber) ? null : (parsedNumber as T)
     } else if (typeof testValueType === 'boolean') {
+      assetNonBlankString(value)
+
       const lowcaseValue = value.toLowerCase()
       if (lowcaseValue === 'true') {
         return true as T
@@ -300,7 +304,9 @@ export const convertRawValueToType = <T>(
         return null
       }
     } else if (typeof testValueType === 'object') {
-      return JSON.parse(value) as T
+      assetNonBlankString(value)
+
+      return safeJsonParse(value) as T
     } else {
       return null
     }
@@ -308,6 +314,27 @@ export const convertRawValueToType = <T>(
     console.error('Conversion failed:', e)
     return null
   }
+}
+
+function assetNonBlankString(input: string) {
+  if (input.replaceAll(' ', '').length == 0) {
+    throw new Error('Only JSON objects are allowed')
+  }
+}
+
+function safeJsonParse(input: string) {
+  const nonObjectTypes = ['number', 'string', 'boolean', 'null']
+  const parsed = JSON.parse(input)
+
+  if (
+    nonObjectTypes.includes(typeof parsed) ||
+    parsed === null ||
+    Array.isArray(parsed)
+  ) {
+    throw new Error('Only JSON objects are allowed')
+  }
+
+  return parsed
 }
 
 export const newDefaultBKTEvaluationDetails = <T>(
