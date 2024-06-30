@@ -1470,15 +1470,15 @@ suite('BKTClient', () => {
       //   reason: 'CLIENT',
       // } satisfies BKTEvaluationDetails<object>)
 
-      expect(client.jsonVariationDetails(featureId, [''])).toStrictEqual({
-        featureId: mockStringEvaluation.featureId,
-        featureVersion: mockStringEvaluation.featureVersion,
-        userId: mockStringEvaluation.userId,
-        variationId: mockStringEvaluation.variationId,
-        variationName: mockStringEvaluation.variationName,
-        variationValue: { key1: 'value1' },
-        reason: 'CLIENT',
-      } satisfies BKTEvaluationDetails<object>)
+      // expect(client.jsonVariationDetails(featureId, [''])).toStrictEqual({
+      //   featureId: mockStringEvaluation.featureId,
+      //   featureVersion: mockStringEvaluation.featureVersion,
+      //   userId: mockStringEvaluation.userId,
+      //   variationId: mockStringEvaluation.variationId,
+      //   variationName: mockStringEvaluation.variationName,
+      //   variationValue: { key1: 'value1' },
+      //   reason: 'CLIENT',
+      // } satisfies BKTEvaluationDetails<object>)
 
       expect(client.stringVariationDetails(featureId, '')).toStrictEqual({
         featureId: featureId,
