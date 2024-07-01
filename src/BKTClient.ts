@@ -20,19 +20,19 @@ export interface BKTClient {
   stringVariationDetails: (
     featureId: string,
     defaultValue: string,
-  ) => BKTEvaluationDetail<string> | null
+  ) => BKTEvaluationDetail<string>
   numberVariationDetails: (
     featureId: string,
     defaultValue: number,
-  ) => BKTEvaluationDetail<number> | null
+  ) => BKTEvaluationDetail<number>
   booleanVariationDetails: (
     featureId: string,
     defaultValue: boolean,
-  ) => BKTEvaluationDetail<boolean> | null
+  ) => BKTEvaluationDetail<boolean>
   jsonVariationDetails: <T>(
     featureId: string,
     defaultValue: ExcludePrimitiveTypes<T>,
-  ) => BKTEvaluationDetail<T> | null
+  ) => BKTEvaluationDetail<T>
   addEvaluationUpdateListener: (listener: () => void) => string
   removeEvaluationUpdateListener: (listenerId: string) => void
   clearEvaluationUpdateListeners: () => void
@@ -92,25 +92,25 @@ export class BKTClientImpl implements BKTClient {
   stringVariationDetails(
     featureId: string,
     defaultValue: string,
-  ): BKTEvaluationDetail<string> | null {
+  ): BKTEvaluationDetail<string> {
     return this.getVariationDetails(featureId, defaultValue)
   }
   numberVariationDetails(
     featureId: string,
     defaultValue: number,
-  ): BKTEvaluationDetail<number> | null {
+  ): BKTEvaluationDetail<number> {
     return this.getVariationDetails(featureId, defaultValue)
   }
   booleanVariationDetails(
     featureId: string,
     defaultValue: boolean,
-  ): BKTEvaluationDetail<boolean> | null {
+  ): BKTEvaluationDetail<boolean> {
     return this.getVariationDetails(featureId, defaultValue)
   }
   jsonVariationDetails<T>(
     featureId: string,
     defaultValue: T,
-  ): BKTEvaluationDetail<T> | null {
+  ): BKTEvaluationDetail<T> {
     return this.getVariationDetails(featureId, defaultValue)
   }
 
