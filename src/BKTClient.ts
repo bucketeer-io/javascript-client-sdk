@@ -29,23 +29,24 @@ export interface BKTClient {
     featureId: string,
     defaultValue: boolean,
   ) => BKTEvaluationDetail<boolean>
-  jsonVariationDetails: <T>(
+  jsonVariationDetails: (
     featureId: string,
-    defaultValue: ExcludePrimitiveTypes<T>,
-  ) => BKTEvaluationDetail<T>
+    defaultValue: BKTJsonValue,
+  ) => BKTEvaluationDetail<BKTJsonValue>
   addEvaluationUpdateListener: (listener: () => void) => string
   removeEvaluationUpdateListener: (listenerId: string) => void
   clearEvaluationUpdateListeners: () => void
 }
 
-type ExcludePrimitiveTypes<T> = T extends
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  ? never
-  : T
+export type BKTPrimitiveValue = null | boolean | string | number
+export type BKTJsonObject = {
+  [key: string]: BKTJsonValue
+}
+export type BKTJsonArray = BKTJsonValue[]
+/**
+ * Represents a JSON node value.
+ */
+export type BKTJsonValue = BKTPrimitiveValue | BKTJsonObject | BKTJsonArray
 
 export class BKTClientImpl implements BKTClient {
   taskScheduler: TaskScheduler | null = null
