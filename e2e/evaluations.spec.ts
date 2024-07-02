@@ -239,7 +239,7 @@ suite('e2e/evaluations', () => {
         reason: 'DEFAULT',
       })
 
-      const evaluationDetails = client.jsonVariationDetails(
+      const evaluationDetails = client.objectVariationDetails(
         FEATURE_ID_BOOLEAN,
         {},
       )
