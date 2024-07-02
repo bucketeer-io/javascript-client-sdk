@@ -194,7 +194,7 @@ suite('e2e/BKTClientTest', () => {
       const javascript = client.evaluationDetails('feature-js-e2e-string')
       expect(javascript).not.toBeNull()
 
-      const javascriptEvaluationDetails = client.jsonVariationDetails(
+      const javascriptEvaluationDetails = client.objectVariationDetails(
         'feature-js-e2e-string',
         {},
       )
@@ -204,7 +204,7 @@ suite('e2e/BKTClientTest', () => {
       const android = client.evaluationDetails('feature-android-e2e-string')
       expect(android).not.toBeNull()
 
-      const androidEvaluationDetails = client.jsonVariationDetails(
+      const androidEvaluationDetails = client.objectVariationDetails(
         'feature-android-e2e-string',
         {},
       )
@@ -213,7 +213,7 @@ suite('e2e/BKTClientTest', () => {
       const golang = client.evaluationDetails('feature-go-server-e2e-1')
       expect(golang).not.toBeNull()
 
-      const golangEvaluationDetails = client.jsonVariationDetails(
+      const golangEvaluationDetails = client.objectVariationDetails(
         'feature-go-server-e2e-1',
         {},
       )

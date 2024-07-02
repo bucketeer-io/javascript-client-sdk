@@ -10,12 +10,23 @@ export interface BKTClient {
   stringVariation: (featureId: string, defaultValue: string) => string
   numberVariation: (featureId: string, defaultValue: number) => number
   booleanVariation: (featureId: string, defaultValue: boolean) => boolean
+  /**
+   * @deprecated use objectVariation(featureId: string, defaultValue: BKTJsonValue) instead.
+   */
   jsonVariation: <T>(featureId: string, defaultValue: T) => T
+  objectVariation: (
+    featureId: string,
+    defaultValue: BKTJsonValue,
+  ) => BKTJsonValue
+
   track: (goalId: string, value: number) => void
   currentUser: () => BKTUser
   updateUserAttributes: (attributes: Record<string, string>) => void
   fetchEvaluations: (timeoutMillis?: number) => Promise<void>
   flush: () => Promise<void>
+  /**
+   * @deprecated use stringVariationDetails(featureId: string, defaultValue: string) instead.
+   */
   evaluationDetails: (featureId: string) => BKTEvaluation | null
   stringVariationDetails: (
     featureId: string,
@@ -29,7 +40,7 @@ export interface BKTClient {
     featureId: string,
     defaultValue: boolean,
   ) => BKTEvaluationDetail<boolean>
-  jsonVariationDetails: (
+  objectVariationDetails: (
     featureId: string,
     defaultValue: BKTJsonValue,
   ) => BKTEvaluationDetail<BKTJsonValue>
@@ -83,7 +94,19 @@ export class BKTClientImpl implements BKTClient {
   }
 
   jsonVariation<T>(featureId: string, defaultValue: T): T {
-    const value = this.getVariationDetails(
+    const value = this.getVariationValue(featureId)
+    if (value === null) {
+      return defaultValue
+    }
+    try {
+      return JSON.parse(value)
+    } catch (e) {
+      return defaultValue
+    }
+  }
+
+  objectVariation(featureId: string, defaultValue: BKTJsonValue): BKTJsonValue {
+    const value = this.objectVariationDetails(
       featureId,
       defaultValue,
     ).variationValue
@@ -94,25 +117,44 @@ export class BKTClientImpl implements BKTClient {
     featureId: string,
     defaultValue: string,
   ): BKTEvaluationDetail<string> {
-    return this.getVariationDetails(featureId, defaultValue)
+    return this.getVariationDetailsTEST(
+      featureId,
+      defaultValue,
+      defaultTransformer,
+    )
   }
+
   numberVariationDetails(
     featureId: string,
     defaultValue: number,
   ): BKTEvaluationDetail<number> {
-    return this.getVariationDetails(featureId, defaultValue)
+    return this.getVariationDetailsTEST(
+      featureId,
+      defaultValue,
+      stringToNumberTransformer,
+    )
   }
+
   booleanVariationDetails(
     featureId: string,
     defaultValue: boolean,
   ): BKTEvaluationDetail<boolean> {
-    return this.getVariationDetails(featureId, defaultValue)
+    return this.getVariationDetailsTEST(
+      featureId,
+      defaultValue,
+      stringToBoolTransformer,
+    )
   }
-  jsonVariationDetails<T>(
+
+  objectVariationDetails(
     featureId: string,
-    defaultValue: T,
-  ): BKTEvaluationDetail<T> {
-    return this.getVariationDetails(featureId, defaultValue)
+    defaultValue: BKTJsonValue,
+  ): BKTEvaluationDetail<BKTJsonValue> {
+    return this.getVariationDetailsTEST(
+      featureId,
+      defaultValue,
+      stringToObjectTransformer,
+    )
   }
 
   track(goalId: string, value = 0.0): void {
@@ -147,9 +189,6 @@ export class BKTClientImpl implements BKTClient {
     }
   }
 
-  /**
-   * @deprecated use stringVariationDetails(featureId: string, defaultValue: string) instead.
-   */
   evaluationDetails(featureId: string): BKTEvaluation | null {
     const raw = this.component.evaluationInteractor().getLatest(featureId)
 
@@ -179,6 +218,67 @@ export class BKTClientImpl implements BKTClient {
 
   clearEvaluationUpdateListeners() {
     this.component.evaluationInteractor().clearUpdateListeners()
+  }
+
+  private getVariationValue(featureId: string): string | null {
+    const raw = this.component.evaluationInteractor().getLatest(featureId)
+
+    const user = this.component.userHolder().get()
+    const featureTag = this.component.config().featureTag
+
+    if (raw) {
+      this.component
+        .eventInteractor()
+        .trackEvaluationEvent(featureTag, user, raw)
+    } else {
+      this.component
+        .eventInteractor()
+        .trackDefaultEvaluationEvent(featureTag, user, featureId)
+    }
+
+    return raw?.variationValue ?? null
+  }
+
+  private getVariationDetailsTEST<T>(
+    featureId: string,
+    defaultValue: T,
+    transformer: RawValueTransformer<T>,
+  ): BKTEvaluationDetail<T> {
+    const raw = this.component.evaluationInteractor().getLatest(featureId)
+    const user = this.component.userHolder().get()
+    const featureTag = this.component.config().featureTag
+
+    const variationValue = raw?.variationValue
+
+    // Handle conversion based on the type of T
+    let result: T | null = null
+
+    if (variationValue !== undefined && variationValue !== null) {
+      if (variationValue !== undefined && variationValue !== null) {
+        result = transformer(variationValue)
+      }
+    }
+
+    if (raw !== null && result !== null) {
+      this.component
+        .eventInteractor()
+        .trackEvaluationEvent(featureTag, user, raw)
+      return {
+        featureId: raw.featureId,
+        featureVersion: raw.featureVersion,
+        userId: raw.userId,
+        variationId: raw.variationId,
+        variationName: raw.variationName,
+        variationValue: result,
+        reason: raw.reason.type,
+      } satisfies BKTEvaluationDetail<T>
+    } else {
+      this.component
+        .eventInteractor()
+        .trackDefaultEvaluationEvent(featureTag, user, featureId)
+
+      return newDefaultBKTEvaluationDetails(user.id, featureId, defaultValue)
+    }
   }
 
   private getVariationDetails<T>(
@@ -341,7 +441,7 @@ function safeJsonParse(input: string) {
     parsed === null ||
     Array.isArray(parsed)
   ) {
-    throw new Error('Only JSON objects are allowed')
+    throw new Error('Only JSON objects or array are allowed')
   }
 
   return parsed
@@ -361,4 +461,39 @@ export const newDefaultBKTEvaluationDetails = <T>(
     variationValue: defaultValue,
     reason: 'CLIENT',
   } satisfies BKTEvaluationDetail<T>
+}
+
+type RawValueTransformer<T> = (input: string) => T | null
+
+const defaultTransformer: RawValueTransformer<string> = (input: string) => input
+
+const stringToBoolTransformer: RawValueTransformer<boolean> = (
+  input: string,
+) => {
+  assetNonBlankString(input)
+
+  const lowcaseValue = input.toLowerCase()
+  if (lowcaseValue === 'true') {
+    return true
+  } else if (lowcaseValue === 'false') {
+    return false
+  } else {
+    return null
+  }
+}
+
+const stringToNumberTransformer: RawValueTransformer<number> = (
+  input: string,
+) => {
+  assetNonBlankString(input)
+
+  const parsedNumber = Number(input)
+  return isNaN(parsedNumber) ? null : parsedNumber
+}
+
+const stringToObjectTransformer: RawValueTransformer<BKTJsonValue> = (
+  input: string,
+) => {
+  assetNonBlankString(input)
+  return safeJsonParse(input)
 }
