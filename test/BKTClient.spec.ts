@@ -446,10 +446,10 @@ suite('BKTClient', () => {
 
     test.each([
       [JSON_VALUE, {}, JSON.parse(JSON_VALUE)],
-      ['true', JSON.parse(JSON_VALUE), JSON.parse(JSON_VALUE)],
-      ['true', {}, {}],
+      ['true', JSON.parse(JSON_VALUE), true],
+      ['true', {}, true],
       ['not bool', {}, {}],
-      ['1', {}, {}],
+      ['1', {}, 1],
       ['{}', {}, {}],
     ])(
       'value=%s, default=%s, actual=%s',
