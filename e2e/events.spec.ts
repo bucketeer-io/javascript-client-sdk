@@ -87,6 +87,9 @@ suite('e2e/events', () => {
     expect(client.jsonVariation(FEATURE_ID_JSON, '')).toStrictEqual({
       key: 'value-1',
     })
+    expect(client.objectVariation(FEATURE_ID_JSON, '')).toStrictEqual({
+      key: 'value-1',
+    })
 
     const component = getDefaultComponent(client)
 

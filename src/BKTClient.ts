@@ -6,6 +6,16 @@ import { ApiId } from './internal/model/MetricsEventData'
 import { TaskScheduler } from './internal/scheduler/TaskScheduler'
 import { toBKTUser } from './internal/UserHolder'
 
+export type BKTPrimitiveValue = null | boolean | string | number
+export type BKTJsonObject = {
+  [key: string]: BKTJsonValue
+}
+export type BKTJsonArray = BKTJsonValue[]
+/**
+ * Represents a JSON node value.
+ */
+export type BKTJsonValue = BKTPrimitiveValue | BKTJsonObject | BKTJsonArray
+
 export interface BKTClient {
   stringVariation: (featureId: string, defaultValue: string) => string
   numberVariation: (featureId: string, defaultValue: number) => number
@@ -40,6 +50,16 @@ export interface BKTClient {
     featureId: string,
     defaultValue: boolean,
   ) => BKTEvaluationDetail<boolean>
+  /**
+   * Retrieves the evaluation details for a given feature based on its ID.
+   *
+   * @param featureId - The unique identifier for the feature.
+   * @param defaultValue - The default value to return if no result is found. This value should be of type `BKTJsonValue`.
+   *
+   * @returns An object of type `BKTEvaluationDetail<BKTJsonValue>` containing the evaluation details.
+   *
+   * Note: The returned value will be either a BKTJsonObject or a BKTJsonArray. If no result is found, it will return the provided `defaultValue`, which can be of any type within `BKTJsonValue`.
+   */
   objectVariationDetails: (
     featureId: string,
     defaultValue: BKTJsonValue,
@@ -48,16 +68,6 @@ export interface BKTClient {
   removeEvaluationUpdateListener: (listenerId: string) => void
   clearEvaluationUpdateListeners: () => void
 }
-
-export type BKTPrimitiveValue = null | boolean | string | number
-export type BKTJsonObject = {
-  [key: string]: BKTJsonValue
-}
-export type BKTJsonArray = BKTJsonValue[]
-/**
- * Represents a JSON node value.
- */
-export type BKTJsonValue = BKTPrimitiveValue | BKTJsonObject | BKTJsonArray
 
 export class BKTClientImpl implements BKTClient {
   taskScheduler: TaskScheduler | null = null
@@ -70,27 +80,15 @@ export class BKTClientImpl implements BKTClient {
   }
 
   stringVariation(featureId: string, defaultValue: string): string {
-    const value = this.getVariationDetails(
-      featureId,
-      defaultValue,
-    ).variationValue
-    return value
+    return this.stringVariationDetails(featureId, defaultValue).variationValue
   }
 
   numberVariation(featureId: string, defaultValue: number): number {
-    const value = this.getVariationDetails(
-      featureId,
-      defaultValue,
-    ).variationValue
-    return value
+    return this.numberVariationDetails(featureId, defaultValue).variationValue
   }
 
   booleanVariation(featureId: string, defaultValue: boolean): boolean {
-    const value = this.getVariationDetails(
-      featureId,
-      defaultValue,
-    ).variationValue
-    return value
+    return this.booleanVariationDetails(featureId, defaultValue).variationValue
   }
 
   jsonVariation<T>(featureId: string, defaultValue: T): T {
@@ -117,18 +115,14 @@ export class BKTClientImpl implements BKTClient {
     featureId: string,
     defaultValue: string,
   ): BKTEvaluationDetail<string> {
-    return this.getVariationDetailsTEST(
-      featureId,
-      defaultValue,
-      defaultTransformer,
-    )
+    return this.getVariationDetails(featureId, defaultValue, defaultTransformer)
   }
 
   numberVariationDetails(
     featureId: string,
     defaultValue: number,
   ): BKTEvaluationDetail<number> {
-    return this.getVariationDetailsTEST(
+    return this.getVariationDetails(
       featureId,
       defaultValue,
       stringToNumberTransformer,
@@ -139,7 +133,7 @@ export class BKTClientImpl implements BKTClient {
     featureId: string,
     defaultValue: boolean,
   ): BKTEvaluationDetail<boolean> {
-    return this.getVariationDetailsTEST(
+    return this.getVariationDetails(
       featureId,
       defaultValue,
       stringToBoolTransformer,
@@ -150,7 +144,7 @@ export class BKTClientImpl implements BKTClient {
     featureId: string,
     defaultValue: BKTJsonValue,
   ): BKTEvaluationDetail<BKTJsonValue> {
-    return this.getVariationDetailsTEST(
+    return this.getVariationDetails(
       featureId,
       defaultValue,
       stringToObjectTransformer,
@@ -239,7 +233,7 @@ export class BKTClientImpl implements BKTClient {
     return raw?.variationValue ?? null
   }
 
-  private getVariationDetailsTEST<T>(
+  private getVariationDetails<T extends BKTJsonValue>(
     featureId: string,
     defaultValue: T,
     transformer: RawValueTransformer<T>,
@@ -260,47 +254,6 @@ export class BKTClientImpl implements BKTClient {
         } catch (err) {
           result = null
         }
-      }
-    }
-
-    if (raw !== null && result !== null) {
-      this.component
-        .eventInteractor()
-        .trackEvaluationEvent(featureTag, user, raw)
-      return {
-        featureId: raw.featureId,
-        featureVersion: raw.featureVersion,
-        userId: raw.userId,
-        variationId: raw.variationId,
-        variationName: raw.variationName,
-        variationValue: result,
-        reason: raw.reason.type,
-      } satisfies BKTEvaluationDetail<T>
-    } else {
-      this.component
-        .eventInteractor()
-        .trackDefaultEvaluationEvent(featureTag, user, featureId)
-
-      return newDefaultBKTEvaluationDetails(user.id, featureId, defaultValue)
-    }
-  }
-
-  private getVariationDetails<T>(
-    featureId: string,
-    defaultValue: T,
-  ): BKTEvaluationDetail<T> {
-    const raw = this.component.evaluationInteractor().getLatest(featureId)
-    const user = this.component.userHolder().get()
-    const featureTag = this.component.config().featureTag
-
-    const variationValue = raw?.variationValue
-
-    // Handle conversion based on the type of T
-    let result: T | null = null
-
-    if (variationValue !== undefined && variationValue !== null) {
-      if (variationValue !== undefined && variationValue !== null) {
-        result = convertRawValueToType<T>(variationValue, defaultValue)
       }
     }
 
@@ -440,11 +393,7 @@ function safeJsonParse(input: string) {
   const nonObjectTypes = ['number', 'string', 'boolean', 'null']
   const parsed = JSON.parse(input)
 
-  if (
-    nonObjectTypes.includes(typeof parsed) ||
-    parsed === null ||
-    Array.isArray(parsed)
-  ) {
+  if (nonObjectTypes.includes(typeof parsed) || parsed === null) {
     throw new Error('Only JSON objects or array are allowed')
   }
 

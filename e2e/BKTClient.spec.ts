@@ -194,30 +194,30 @@ suite('e2e/BKTClientTest', () => {
       const javascript = client.evaluationDetails('feature-js-e2e-string')
       expect(javascript).not.toBeNull()
 
-      const javascriptEvaluationDetails = client.objectVariationDetails(
+      const javascriptEvaluationDetails = client.stringVariationDetails(
         'feature-js-e2e-string',
-        {},
+        '',
       )
-      expect(javascriptEvaluationDetails.variationValue).not.toStrictEqual({})
+      expect(javascriptEvaluationDetails.variationValue).not.toEqual('')
 
       // can retrieve evaluations for other featureTag
       const android = client.evaluationDetails('feature-android-e2e-string')
       expect(android).not.toBeNull()
 
-      const androidEvaluationDetails = client.objectVariationDetails(
+      const androidEvaluationDetails = client.stringVariationDetails(
         'feature-android-e2e-string',
-        {},
+        '',
       )
-      expect(androidEvaluationDetails.variationValue).not.toStrictEqual({})
+      expect(androidEvaluationDetails.variationValue).not.toStrictEqual('')
 
       const golang = client.evaluationDetails('feature-go-server-e2e-1')
       expect(golang).not.toBeNull()
 
-      const golangEvaluationDetails = client.objectVariationDetails(
+      const golangEvaluationDetails = client.stringVariationDetails(
         'feature-go-server-e2e-1',
-        {},
+        '',
       )
-      expect(golangEvaluationDetails.variationValue).not.toStrictEqual({})
+      expect(golangEvaluationDetails.variationValue).not.toStrictEqual('')
     })
   })
 })
