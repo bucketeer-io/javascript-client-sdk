@@ -350,42 +350,6 @@ export const destroyBKTClient = (): void => {
   clearInstance()
 }
 
-export const convertRawValueToType = <T>(
-  value: string,
-  testValueType: T,
-): T | null => {
-  try {
-    if (typeof testValueType === 'string') {
-      return value as T
-    } else if (typeof testValueType === 'number') {
-      assetNonBlankString(value)
-
-      const parsedNumber = Number(value)
-      return isNaN(parsedNumber) ? null : (parsedNumber as T)
-    } else if (typeof testValueType === 'boolean') {
-      assetNonBlankString(value)
-
-      const lowcaseValue = value.toLowerCase()
-      if (lowcaseValue === 'true') {
-        return true as T
-      } else if (lowcaseValue === 'false') {
-        return false as T
-      } else {
-        return null
-      }
-    } else if (typeof testValueType === 'object') {
-      assetNonBlankString(value)
-
-      return safeJsonParse(value) as T
-    } else {
-      return null
-    }
-  } catch (e) {
-    console.error('Conversion failed:', e)
-    return null
-  }
-}
-
 function assetNonBlankString(input: string) {
   if (input.replaceAll(' ', '').length == 0) {
     throw new Error('Only JSON objects are allowed')
