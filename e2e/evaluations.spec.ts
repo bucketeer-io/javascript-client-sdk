@@ -220,6 +220,9 @@ suite('e2e/evaluations', () => {
       expect(client.jsonVariation(FEATURE_ID_JSON, '')).toStrictEqual({
         key: 'value-1',
       })
+      expect(client.objectVariation(FEATURE_ID_JSON, '')).toStrictEqual({
+        key: 'value-1',
+      })
     })
 
     test('detail', () => {
