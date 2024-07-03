@@ -531,6 +531,14 @@ suite('BKTClient', () => {
       ['1', {}, {}],
       ['{}', {}, {}],
       ['[{"key": "value"}]', {}, [{ key: 'value' }]],
+      ['', {}, {}],
+      ['', 'default', 'default'],
+      [' ', 1, 1],
+      ['', true, true],
+      ['true', {}, {}],
+      ['1', 'default', 'default'],
+      ['false', 1, 1],
+      ['2', true, true],
     ])(
       'value=%s, default=%s, actual=%s',
       async (value, defaultValue, actual) => {
@@ -1078,7 +1086,7 @@ suite('BKTClient', () => {
     })
   })
 
-  suite('convertRawValueToType', () => {
+  suite('RawValueTransformer', () => {
     test.each([
       ['default true', 'default'],
       ['default false', 'default'],
