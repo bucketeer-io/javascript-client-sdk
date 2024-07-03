@@ -195,9 +195,9 @@ suite('e2e/evaluations', () => {
         reason: 'DEFAULT',
       })
 
-      const evaluationDetails = client.numberVariationDetails(
+      const evaluationDetails = client.booleanVariationDetails(
         FEATURE_ID_BOOLEAN,
-        0,
+        false,
       )
       expect(evaluationDetails).toStrictEqual({
         featureId: FEATURE_ID_BOOLEAN,
@@ -240,7 +240,7 @@ suite('e2e/evaluations', () => {
       })
 
       const evaluationDetails = client.objectVariationDetails(
-        FEATURE_ID_BOOLEAN,
+        FEATURE_ID_JSON,
         {},
       )
       expect(evaluationDetails).toStrictEqual({
