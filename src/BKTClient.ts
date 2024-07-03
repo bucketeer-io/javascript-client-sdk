@@ -255,7 +255,11 @@ export class BKTClientImpl implements BKTClient {
 
     if (variationValue !== undefined && variationValue !== null) {
       if (variationValue !== undefined && variationValue !== null) {
-        result = transformer(variationValue)
+        try {
+          result = transformer(variationValue)
+        } catch (err) {
+          result = null
+        }
       }
     }
 
@@ -486,7 +490,6 @@ const stringToNumberTransformer: RawValueTransformer<number> = (
   input: string,
 ) => {
   assetNonBlankString(input)
-
   const parsedNumber = Number(input)
   return isNaN(parsedNumber) ? null : parsedNumber
 }
