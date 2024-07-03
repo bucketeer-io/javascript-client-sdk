@@ -12,7 +12,6 @@ import {
 } from 'vitest'
 import {
   BKTJsonValue,
-  convertRawValueToType,
   destroyBKTClient,
   getBKTClient,
   initializeBKTClientInternal,
@@ -1072,115 +1071,6 @@ suite('BKTClient', () => {
         reason: 'CLIENT',
       })
     })
-  })
-
-  suite('convertRawValueToType', () => {
-    test.each([
-      ['default true', 'default'],
-      ['default false', 'default'],
-      ['', 'default'],
-      [' ', 'default'],
-      ['1', 'default'],
-      ['12', 'default'],
-      ['[]', 'default'],
-    ])(
-      'convertRawValueToType<string> value=%s, testValue=%s',
-      (variationValue: string, testValue: string) => {
-        const testValueType = testValue
-        let result: string | null = null
-        result = convertRawValueToType<string>(variationValue, testValueType)
-        expect(result).toStrictEqual(variationValue)
-      },
-    )
-
-    test.each([
-      ['default true', null, true],
-      ['default false', null, true],
-      ['', null, true],
-      [' ', null, true],
-      ['1', null, true],
-      ['12', null, true],
-      ['1.0', null, true],
-      ['12.0', null, true],
-      ['true', true, true],
-      ['false', false, true],
-      ['[]', null, true],
-      ['{}', null, true],
-      ['{"key1": "value1"}', null, true],
-    ])(
-      'convertRawValueToType<boolean> value=%s, expected=%s, testValue=%s',
-      (
-        variationValue: string,
-        expected: boolean | null,
-        testValue: boolean,
-      ) => {
-        const testValueType = testValue
-        let result: boolean | null = null
-        result = convertRawValueToType<boolean>(variationValue, testValueType)
-        expect(result).toStrictEqual(expected)
-      },
-    )
-
-    test.each([
-      ['default true', null, 1],
-      ['default false', null, 1],
-      ['', null, 1],
-      [' ', null, 2],
-      ['1', 1, 1],
-      ['12', 12, 1],
-      ['1.0', 1, 1],
-      ['12.0', 12, 1],
-      ['true', null, 1],
-      ['false', null, 1],
-      ['{}', null, 1],
-      ['[]', null, 1],
-      ['{"key1": "value1"}', null, 1],
-    ])(
-      'convertRawValueToType<number> value=%s, expected=%s, testValue=%s',
-      (variationValue: string, expected: number | null, testValue: number) => {
-        const testValueType = testValue
-        let result: number | null = null
-        result = convertRawValueToType<number>(variationValue, testValueType)
-        expect(result).toStrictEqual(expected)
-      },
-    )
-
-    test.each([
-      ['default true', null, { key1: 'value1' }],
-      ['default false', null, { key2: 'value1' }],
-      ['', null, { key1: 'value12' }],
-      [' ', null, { key1: 'value1222' }],
-      ['1', null, {}],
-      ['12', null, {}],
-      ['1.0', null, {}],
-      ['12.0', null, {}],
-      [
-        'true',
-        null,
-        { key222: 'value1', key122: 'value1333', key121: 'value13333' },
-      ],
-      ['false', null, {}],
-      ['[]', [], { key133: 'value1' }],
-      ['{}', {}, { key122: 'value1333', key121: 'value13333' }],
-      [
-        '{"key1": "value1"}',
-        { key1: 'value1' },
-        { key1: 'value1', key2: 'value1', key3: 'value1' },
-      ],
-      [
-        JSON.stringify({ key1: 'value1', key2: 'value1', key3: 'value1' }),
-        { key1: 'value1', key2: 'value1', key3: 'value1' },
-        { key1: 'value1' },
-      ],
-    ])(
-      'convertRawValueToType<object> value=%s, expected=%s, testValue=%s',
-      (variationValue: string, expected: object | null, testValue: object) => {
-        const testValueType = testValue
-        let result: object | null = null
-        result = convertRawValueToType<object>(variationValue, testValueType)
-        expect(result).toStrictEqual(expected)
-      },
-    )
   })
 
   suite('BKTEvaluationDetails', () => {
