@@ -1,4 +1,7 @@
-import { BKTEvaluation, BKTEvaluationDetail as BKTEvaluationDetails } from './BKTEvaluation'
+import {
+  BKTEvaluation,
+  BKTEvaluationDetail as BKTEvaluationDetails,
+} from './BKTEvaluation'
 import { BKTUser } from './BKTUser'
 import { Component } from './internal/di/Component'
 import { clearInstance, getInstance, setInstance } from './internal/instance'
@@ -347,6 +350,42 @@ export const destroyBKTClient = (): void => {
   clearInstance()
 }
 
+export const convertRawValueToType = <T>(
+  value: string,
+  testValueType: T,
+): T | null => {
+  try {
+    if (typeof testValueType === 'string') {
+      return value as T
+    } else if (typeof testValueType === 'number') {
+      assetNonBlankString(value)
+
+      const parsedNumber = Number(value)
+      return isNaN(parsedNumber) ? null : (parsedNumber as T)
+    } else if (typeof testValueType === 'boolean') {
+      assetNonBlankString(value)
+
+      const lowcaseValue = value.toLowerCase()
+      if (lowcaseValue === 'true') {
+        return true as T
+      } else if (lowcaseValue === 'false') {
+        return false as T
+      } else {
+        return null
+      }
+    } else if (typeof testValueType === 'object') {
+      assetNonBlankString(value)
+
+      return safeJsonParse(value) as T
+    } else {
+      return null
+    }
+  } catch (e) {
+    console.error('Conversion failed:', e)
+    return null
+  }
+}
+
 function assetNonBlankString(input: string) {
   if (input.replaceAll(' ', '').length == 0) {
     throw new Error('Only JSON objects are allowed')
@@ -364,7 +403,7 @@ function safeJsonParse(input: string) {
   return parsed
 }
 
-export const newDefaultBKTEvaluationDetails = <T>(
+export const newDefaultBKTEvaluationDetails = <T extends BKTJsonValue>(
   userId: string,
   featureId: string,
   defaultValue: T,
@@ -380,11 +419,13 @@ export const newDefaultBKTEvaluationDetails = <T>(
   } satisfies BKTEvaluationDetails<T>
 }
 
-type RawValueTransformer<T> = (input: string) => T | null
+export type RawValueTransformer<T> = (input: string) => T | null
 
-const defaultTransformer: RawValueTransformer<string> = (input: string) => input
+export const defaultTransformer: RawValueTransformer<string> = (
+  input: string,
+) => input
 
-const stringToBoolTransformer: RawValueTransformer<boolean> = (
+export const stringToBoolTransformer: RawValueTransformer<boolean> = (
   input: string,
 ) => {
   assetNonBlankString(input)
@@ -399,7 +440,7 @@ const stringToBoolTransformer: RawValueTransformer<boolean> = (
   }
 }
 
-const stringToNumberTransformer: RawValueTransformer<number> = (
+export const stringToNumberTransformer: RawValueTransformer<number> = (
   input: string,
 ) => {
   assetNonBlankString(input)
@@ -407,7 +448,7 @@ const stringToNumberTransformer: RawValueTransformer<number> = (
   return isNaN(parsedNumber) ? null : parsedNumber
 }
 
-const stringToObjectTransformer: RawValueTransformer<BKTJsonValue> = (
+export const stringToObjectTransformer: RawValueTransformer<BKTJsonValue> = (
   input: string,
 ) => {
   assetNonBlankString(input)

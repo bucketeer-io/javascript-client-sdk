@@ -12,10 +12,15 @@ import {
 } from 'vitest'
 import {
   BKTJsonValue,
+  convertRawValueToType,
+  defaultTransformer,
   destroyBKTClient,
   getBKTClient,
   initializeBKTClientInternal,
   newDefaultBKTEvaluationDetails,
+  stringToBoolTransformer,
+  stringToNumberTransformer,
+  stringToObjectTransformer,
 } from '../src/BKTClient'
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { GetEvaluationsRequest } from '../src/internal/model/request/GetEvaluationsRequest'
@@ -1071,6 +1076,127 @@ suite('BKTClient', () => {
         reason: 'CLIENT',
       })
     })
+  })
+
+  suite('convertRawValueToType', () => {
+    test.each([
+      ['default true', 'default'],
+      ['default false', 'default'],
+      ['', 'default'],
+      [' ', 'default'],
+      ['1', 'default'],
+      ['12', 'default'],
+      ['[]', 'default'],
+    ])(
+      'convertRawValueToType<string> value=%s, testValue=%s',
+      (variationValue: string, _testValue: string) => {
+        let result: string | null = null
+        const transformer = defaultTransformer
+        result = transformer(variationValue)
+        expect(result).toStrictEqual(variationValue)
+      },
+    )
+
+    test.each([
+      ['default true', null, true],
+      ['default false', null, true],
+      ['', null, true],
+      [' ', null, true],
+      ['1', null, true],
+      ['12', null, true],
+      ['1.0', null, true],
+      ['12.0', null, true],
+      ['true', true, true],
+      ['false', false, true],
+      ['[]', null, true],
+      ['{}', null, true],
+      ['{"key1": "value1"}', null, true],
+    ])(
+      'convertRawValueToType<boolean> value=%s, expected=%s, testValue=%s',
+      (
+        variationValue: string,
+        expected: boolean | null,
+        _testValue: boolean,
+      ) => {
+        let result: boolean | null = null
+        try {
+          const transformer = stringToBoolTransformer
+          result = transformer(variationValue)
+          expect(result).toStrictEqual(expected)
+        } catch (err) {
+          expect(expected).toStrictEqual(null)
+        }
+      },
+    )
+
+    test.each([
+      ['default true', null, 1],
+      ['default false', null, 1],
+      ['', null, 1],
+      [' ', null, 2],
+      ['1', 1, 1],
+      ['12', 12, 1],
+      ['1.0', 1, 1],
+      ['12.0', 12, 1],
+      ['true', null, 1],
+      ['false', null, 1],
+      ['{}', null, 1],
+      ['[]', null, 1],
+      ['{"key1": "value1"}', null, 1],
+    ])(
+      'convertRawValueToType<number> value=%s, expected=%s, testValue=%s',
+      (variationValue: string, expected: number | null, _testValue: number) => {
+        let result: number | null = null
+        try {
+          const transformer = stringToNumberTransformer
+          result = transformer(variationValue)
+          expect(result).toStrictEqual(expected)
+        } catch (err) {
+          expect(expected).toStrictEqual(null)
+        }
+      },
+    )
+
+    test.each([
+      ['default true', null, { key1: 'value1' }],
+      ['default false', null, { key2: 'value1' }],
+      ['', null, { key1: 'value12' }],
+      [' ', null, { key1: 'value1222' }],
+      ['1', null, {}],
+      ['12', null, {}],
+      ['1.0', null, {}],
+      ['12.0', null, {}],
+      [
+        'true',
+        null,
+        { key222: 'value1', key122: 'value1333', key121: 'value13333' },
+      ],
+      ['false', null, {}],
+      ['[]', [], { key133: 'value1' }],
+      ['{}', {}, { key122: 'value1333', key121: 'value13333' }],
+      [
+        '{"key1": "value1"}',
+        { key1: 'value1' },
+        { key1: 'value1', key2: 'value1', key3: 'value1' },
+      ],
+      [
+        JSON.stringify({ key1: 'value1', key2: 'value1', key3: 'value1' }),
+        { key1: 'value1', key2: 'value1', key3: 'value1' },
+        { key1: 'value1' },
+      ],
+    ])(
+      'convertRawValueToType<object> value=%s, expected=%s, testValue=%s',
+      (variationValue: string, expected: object | null, _testValue: object) => {
+        let result: BKTJsonValue | null = null
+        try {
+          const transformer = stringToObjectTransformer
+          result = transformer(variationValue)
+          expect(result).toStrictEqual(expected)
+        } catch (err) {
+          expect(expected).toStrictEqual(null)
+        }
+      },
+    )
   })
 
   suite('BKTEvaluationDetails', () => {
