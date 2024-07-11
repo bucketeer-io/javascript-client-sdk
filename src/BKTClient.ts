@@ -338,7 +338,7 @@ function assetNonBlankString(input: string) {
   }
 }
 
-function safeJsonParse(input: string) {
+function parseJsonObjectOrArray(input: string) {
   const nonObjectTypes = ['number', 'string', 'boolean', 'null']
   const parsed = JSON.parse(input)
 
@@ -398,5 +398,5 @@ export const stringToObjectTransformer: RawValueTransformer<BKTJsonValue> = (
   input: string,
 ) => {
   assetNonBlankString(input)
-  return safeJsonParse(input)
+  return parseJsonObjectOrArray(input)
 }
