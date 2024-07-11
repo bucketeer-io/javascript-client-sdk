@@ -23,14 +23,8 @@ export interface BKTClient {
   stringVariation: (featureId: string, defaultValue: string) => string
   numberVariation: (featureId: string, defaultValue: number) => number
   booleanVariation: (featureId: string, defaultValue: boolean) => boolean
-  /**
-   * @deprecated use objectVariation(featureId: string, defaultValue: BKTJsonValue) instead.
-   */
-  jsonVariation: <T>(featureId: string, defaultValue: T) => T
-  objectVariation: (
-    featureId: string,
-    defaultValue: BKTJsonValue,
-  ) => BKTJsonValue
+
+  jsonVariation: (featureId: string, defaultValue: BKTJsonValue) => BKTJsonValue
 
   track: (goalId: string, value: number) => void
   currentUser: () => BKTUser
@@ -63,7 +57,7 @@ export interface BKTClient {
    *
    * Note: The returned value will be either a BKTJsonObject or a BKTJsonArray. If no result is found, it will return the provided `defaultValue`, which can be of any type within `BKTJsonValue`.
    */
-  objectVariationDetails: (
+  jsonVariationDetails: (
     featureId: string,
     defaultValue: BKTJsonValue,
   ) => BKTEvaluationDetails<BKTJsonValue>
@@ -94,20 +88,8 @@ export class BKTClientImpl implements BKTClient {
     return this.booleanVariationDetails(featureId, defaultValue).variationValue
   }
 
-  jsonVariation<T>(featureId: string, defaultValue: T): T {
-    const value = this.getVariationValue(featureId)
-    if (value === null) {
-      return defaultValue
-    }
-    try {
-      return JSON.parse(value)
-    } catch (e) {
-      return defaultValue
-    }
-  }
-
-  objectVariation(featureId: string, defaultValue: BKTJsonValue): BKTJsonValue {
-    const value = this.objectVariationDetails(
+  jsonVariation(featureId: string, defaultValue: BKTJsonValue): BKTJsonValue {
+    const value = this.jsonVariationDetails(
       featureId,
       defaultValue,
     ).variationValue
@@ -143,7 +125,7 @@ export class BKTClientImpl implements BKTClient {
     )
   }
 
-  objectVariationDetails(
+  jsonVariationDetails(
     featureId: string,
     defaultValue: BKTJsonValue,
   ): BKTEvaluationDetails<BKTJsonValue> {
