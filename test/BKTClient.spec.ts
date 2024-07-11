@@ -12,7 +12,6 @@ import {
 } from 'vitest'
 import {
   BKTJsonValue,
-  convertRawValueToType,
   defaultTransformer,
   destroyBKTClient,
   getBKTClient,
