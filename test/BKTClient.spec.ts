@@ -12,14 +12,14 @@ import {
 } from 'vitest'
 import {
   BKTJsonValue,
-  defaultTransformer,
+  defaultStringToTypeConverter,
   destroyBKTClient,
   getBKTClient,
   initializeBKTClientInternal,
   newDefaultBKTEvaluationDetails,
-  stringToBoolTransformer,
-  stringToNumberTransformer,
-  stringToObjectTransformer,
+  stringToBoolConverter,
+  stringToNumberConverter,
+  stringToObjectConverter,
 } from '../src/BKTClient'
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { GetEvaluationsRequest } from '../src/internal/model/request/GetEvaluationsRequest'
@@ -1037,7 +1037,7 @@ suite('BKTClient', () => {
       'convertRawValueToType<string> value=%s, testValue=%s',
       (variationValue: string, _testValue: string) => {
         let result: string | null = null
-        const transformer = defaultTransformer
+        const transformer = defaultStringToTypeConverter
         result = transformer(variationValue)
         expect(result).toStrictEqual(variationValue)
       },
@@ -1066,7 +1066,7 @@ suite('BKTClient', () => {
       ) => {
         let result: boolean | null = null
         try {
-          const transformer = stringToBoolTransformer
+          const transformer = stringToBoolConverter
           result = transformer(variationValue)
           expect(result).toStrictEqual(expected)
         } catch (err) {
@@ -1094,7 +1094,7 @@ suite('BKTClient', () => {
       (variationValue: string, expected: number | null, _testValue: number) => {
         let result: number | null = null
         try {
-          const transformer = stringToNumberTransformer
+          const transformer = stringToNumberConverter
           result = transformer(variationValue)
           expect(result).toStrictEqual(expected)
         } catch (err) {
@@ -1135,7 +1135,7 @@ suite('BKTClient', () => {
       (variationValue: string, expected: object | null, _testValue: object) => {
         let result: BKTJsonValue | null = null
         try {
-          const transformer = stringToObjectTransformer
+          const transformer = stringToObjectConverter
           result = transformer(variationValue)
           expect(result).toStrictEqual(expected)
         } catch (err) {

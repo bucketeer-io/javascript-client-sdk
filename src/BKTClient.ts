@@ -100,7 +100,11 @@ export class BKTClientImpl implements BKTClient {
     featureId: string,
     defaultValue: string,
   ): BKTEvaluationDetails<string> {
-    return this.getVariationDetails(featureId, defaultValue, defaultTransformer)
+    return this.getVariationDetails(
+      featureId,
+      defaultValue,
+      defaultStringToTypeConverter,
+    )
   }
 
   numberVariationDetails(
@@ -110,7 +114,7 @@ export class BKTClientImpl implements BKTClient {
     return this.getVariationDetails(
       featureId,
       defaultValue,
-      stringToNumberTransformer,
+      stringToNumberConverter,
     )
   }
 
@@ -121,7 +125,7 @@ export class BKTClientImpl implements BKTClient {
     return this.getVariationDetails(
       featureId,
       defaultValue,
-      stringToBoolTransformer,
+      stringToBoolConverter,
     )
   }
 
@@ -132,7 +136,7 @@ export class BKTClientImpl implements BKTClient {
     return this.getVariationDetails(
       featureId,
       defaultValue,
-      stringToObjectTransformer,
+      stringToObjectConverter,
     )
   }
 
@@ -221,7 +225,7 @@ export class BKTClientImpl implements BKTClient {
   private getVariationDetails<T extends BKTJsonValue>(
     featureId: string,
     defaultValue: T,
-    transformer: RawValueTransformer<T>,
+    typeConverter: StringToTypeConverter<T>,
   ): BKTEvaluationDetails<T> {
     const raw = this.component.evaluationInteractor().getLatest(featureId)
     const user = this.component.userHolder().get()
@@ -235,7 +239,7 @@ export class BKTClientImpl implements BKTClient {
     if (variationValue !== undefined && variationValue !== null) {
       if (variationValue !== undefined && variationValue !== null) {
         try {
-          result = transformer(variationValue)
+          result = typeConverter(variationValue)
         } catch (err) {
           result = null
         }
@@ -365,13 +369,13 @@ export const newDefaultBKTEvaluationDetails = <T extends BKTJsonValue>(
   } satisfies BKTEvaluationDetails<T>
 }
 
-export type RawValueTransformer<T> = (input: string) => T | null
+export type StringToTypeConverter<T> = (input: string) => T | null
 
-export const defaultTransformer: RawValueTransformer<string> = (
+export const defaultStringToTypeConverter: StringToTypeConverter<string> = (
   input: string,
 ) => input
 
-export const stringToBoolTransformer: RawValueTransformer<boolean> = (
+export const stringToBoolConverter: StringToTypeConverter<boolean> = (
   input: string,
 ) => {
   assetNonBlankString(input)
@@ -386,7 +390,7 @@ export const stringToBoolTransformer: RawValueTransformer<boolean> = (
   }
 }
 
-export const stringToNumberTransformer: RawValueTransformer<number> = (
+export const stringToNumberConverter: StringToTypeConverter<number> = (
   input: string,
 ) => {
   assetNonBlankString(input)
@@ -394,7 +398,7 @@ export const stringToNumberTransformer: RawValueTransformer<number> = (
   return isNaN(parsedNumber) ? null : parsedNumber
 }
 
-export const stringToObjectTransformer: RawValueTransformer<BKTJsonValue> = (
+export const stringToObjectConverter: StringToTypeConverter<BKTJsonValue> = (
   input: string,
 ) => {
   assetNonBlankString(input)
