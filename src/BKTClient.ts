@@ -203,7 +203,6 @@ export class BKTClientImpl implements BKTClient {
     this.component.evaluationInteractor().clearUpdateListeners()
   }
 
-
   private getVariationDetails<T extends BKTJsonValue>(
     featureId: string,
     defaultValue: T,
