@@ -8,6 +8,7 @@ import { clearInstance, getInstance, setInstance } from './internal/instance'
 import { ApiId } from './internal/model/MetricsEventData'
 import { TaskScheduler } from './internal/scheduler/TaskScheduler'
 import { toBKTUser } from './internal/UserHolder'
+import { BKTJsonValue } from './JsonTypes'
 
 export interface BKTClient {
   stringVariation: (featureId: string, defaultValue: string) => string
