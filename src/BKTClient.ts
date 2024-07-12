@@ -318,7 +318,7 @@ export const destroyBKTClient = (): void => {
 }
 
 function assetNonBlankString(input: string) {
-  if (input.replaceAll(' ', '').length == 0) {
+  if (input.trim().length == 0) {
     throw new Error('Input string must be non-blank')
   }
 }
