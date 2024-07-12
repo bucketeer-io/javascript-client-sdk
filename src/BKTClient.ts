@@ -9,16 +9,6 @@ import { ApiId } from './internal/model/MetricsEventData'
 import { TaskScheduler } from './internal/scheduler/TaskScheduler'
 import { toBKTUser } from './internal/UserHolder'
 
-export type BKTPrimitiveValue = null | boolean | string | number
-export type BKTJsonObject = {
-  [key: string]: BKTJsonValue
-}
-export type BKTJsonArray = BKTJsonValue[]
-/**
- * Represents a JSON node value.
- */
-export type BKTJsonValue = BKTPrimitiveValue | BKTJsonObject | BKTJsonArray
-
 export interface BKTClient {
   stringVariation: (featureId: string, defaultValue: string) => string
   numberVariation: (featureId: string, defaultValue: number) => number
