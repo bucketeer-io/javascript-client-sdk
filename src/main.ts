@@ -13,6 +13,12 @@ export { defineBKTUser } from './BKTUser'
 export type { BKTClient } from './BKTClient'
 export { getBKTClient, destroyBKTClient } from './BKTClient'
 export type {
+  BKTJsonValue,
+  BKTJsonArray,
+  BKTJsonObject,
+  BKTJsonPrimitive,
+} from './JsonTypes'
+export type {
   BKTStorage,
   BrowserLocalStorage,
   InMemoryStorage,

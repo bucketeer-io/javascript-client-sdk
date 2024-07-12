@@ -1,4 +1,4 @@
-import { BKTJsonValue } from './BKTClient'
+import { BKTJsonValue } from './JsonTypes'
 
 /**
  * @deprecated use BKTEvaluationDetail<T> instead.
