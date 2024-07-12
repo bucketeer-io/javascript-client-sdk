@@ -36,8 +36,8 @@
     "test:browser": "vitest --config ./vitest-browser.config.ts --dir test",
     "test:node": "vitest --config ./vitest-node.config.ts --dir test",
     "test:e2e": "vitest --config ./vitest-e2e.config.ts --dir e2e",
-    "lint": "eslint --ext .ts,.js,.cjs .",
-    "lint:fix": "eslint --ext .ts,.js,.cjs --fix .",
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix .",
     "example:serve": "pnpm exec unbuild && pnpm --filter example serve"
   },
   "devDependencies": {
@@ -57,6 +57,7 @@
     "msw": "2.3.1",
     "prettier": "3.3.2",
     "typescript": "5.5.3",
+    "typescript-eslint": "^7.16.0",
     "unbuild": "2.0.0",
     "vitest": "1.6.0",
     "webdriverio": "8.39.0"
