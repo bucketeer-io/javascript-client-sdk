@@ -376,4 +376,3 @@ export const stringToObjectConverter: StringToTypeConverter<BKTJsonValue> = (
   assetNonBlankString(input)
   return parseJsonObjectOrArray(input)
 }
-
