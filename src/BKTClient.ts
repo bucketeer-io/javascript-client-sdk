@@ -203,24 +203,6 @@ export class BKTClientImpl implements BKTClient {
     this.component.evaluationInteractor().clearUpdateListeners()
   }
 
-  private getVariationValue(featureId: string): string | null {
-    const raw = this.component.evaluationInteractor().getLatest(featureId)
-
-    const user = this.component.userHolder().get()
-    const featureTag = this.component.config().featureTag
-
-    if (raw) {
-      this.component
-        .eventInteractor()
-        .trackEvaluationEvent(featureTag, user, raw)
-    } else {
-      this.component
-        .eventInteractor()
-        .trackDefaultEvaluationEvent(featureTag, user, featureId)
-    }
-
-    return raw?.variationValue ?? null
-  }
 
   private getVariationDetails<T extends BKTJsonValue>(
     featureId: string,
