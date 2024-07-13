@@ -1,5 +1,5 @@
 import assert from 'assert'
-import { rest } from 'msw'
+import { HttpResponse, http } from 'msw'
 import { SetupServer } from 'msw/node'
 import fetch from 'cross-fetch'
 import {
@@ -405,21 +405,16 @@ suite('internal/event/EventInteractor', () => {
   suite('sendEvents', () => {
     test('success', async () => {
       server.use(
-        rest.post<
-          RegisterEventsRequest,
+        http.post<
           Record<string, never>,
+          RegisterEventsRequest,
           RegisterEventsResponse
-        >(`${config.apiEndpoint}/register_events`, async (req, res, ctx) => {
-          const body = (await req.json()) as RegisterEventsRequest
+          >(`${config.apiEndpoint}/register_events`, async ({ request }) => {
+          const body = await request.json()
           expect(body.events).toHaveLength(3)
           expect(body.sourceId).toEqual(SourceID.JAVASCRIPT)
           expect(body.sdkVersion).toEqual(SDK_VERSION)
-          return res(
-            ctx.status(200),
-            ctx.json({
-              errors: {},
-            }),
-          )
+          return HttpResponse.json({errors: {}})
         }),
       )
 
@@ -453,29 +448,25 @@ suite('internal/event/EventInteractor', () => {
 
     test('success - some events are failed', async () => {
       server.use(
-        rest.post<
-          RegisterEventsRequest,
+        http.post<
           Record<string, never>,
+          RegisterEventsRequest,
           RegisterEventsResponse
-        >(`${config.apiEndpoint}/register_events`, async (req, res, ctx) => {
-          const body = (await req.json()) as RegisterEventsRequest
+          >(`${config.apiEndpoint}/register_events`, async ({ request }) => {
+          const body = await request.json()
           expect(body.events).toHaveLength(3)
-
-          return res(
-            ctx.status(200),
-            ctx.json({
-              errors: {
-                [idGenerator.calls[0]]: {
-                  retriable: true,
-                  message: 'error',
-                },
-                [idGenerator.calls[2]]: {
-                  retriable: false,
-                  message: 'error',
-                },
+          return HttpResponse.json({
+            errors: {
+              [idGenerator.calls[0]]: {
+                retriable: true,
+                message: 'error',
               },
-            }),
-          )
+              [idGenerator.calls[2]]: {
+                retriable: false,
+                message: 'error',
+              },
+            },
+          })
         }),
       )
 
@@ -504,18 +495,19 @@ suite('internal/event/EventInteractor', () => {
 
     test('failure', async () => {
       server.use(
-        rest.post<RegisterEventsRequest, Record<string, never>, ErrorResponse>(
+        http.post<
+          Record<string, never>,
+          RegisterEventsRequest,
+          ErrorResponse
+        >(
           `${config.apiEndpoint}/register_events`,
-          async (_req, res, ctx) => {
-            return res(
-              ctx.status(400),
-              ctx.json<ErrorResponse>({
-                error: {
-                  code: 400,
-                  message: '400 error',
-                },
-              }),
-            )
+          async () => {
+            return HttpResponse.json({
+              error: {
+                code: 400,
+                message: '400 error',
+              },
+              }, { status: 400 })
           },
         ),
       )
@@ -556,20 +548,14 @@ suite('internal/event/EventInteractor', () => {
 
     test('force=true', async () => {
       server.use(
-        rest.post<
-          RegisterEventsRequest,
+        http.post<
           Record<string, never>,
+          RegisterEventsRequest,
           RegisterEventsResponse
-        >(`${config.apiEndpoint}/register_events`, async (req, res, ctx) => {
-          const body = (await req.json()) as RegisterEventsRequest
+        >(`${config.apiEndpoint}/register_events`, async ({request}) => {
+          const body = await request.json()
           expect(body.events).toHaveLength(2)
-
-          return res(
-            ctx.status(200),
-            ctx.json({
-              errors: {},
-            }),
-          )
+          return HttpResponse.json({ errors: {} })
         }),
       )
 

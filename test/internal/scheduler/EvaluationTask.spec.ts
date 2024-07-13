@@ -1,4 +1,4 @@
-import { rest } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { SetupServer } from 'msw/node'
 import {
   beforeEach,
@@ -69,18 +69,16 @@ suite('internal/scheduler/EventTask', () => {
   test('start', async () => {
     let requestCount = 0
     server.use(
-      rest.post<
-        GetEvaluationsRequest,
+      http.post<
         Record<string, never>,
+        GetEvaluationsRequest,
         GetEvaluationsResponse
-      >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+      >(`${config.apiEndpoint}/get_evaluations`, () => {
         requestCount++
-        return res(
-          ctx.json({
-            evaluations: user1Evaluations,
-            userEvaluationsId: 'user_evaluation_id_value',
-          }),
-        )
+        return HttpResponse.json({
+          evaluations: user1Evaluations,
+          userEvaluationsId: 'user_evaluation_id_value',
+        })
       }),
     )
 
@@ -95,18 +93,16 @@ suite('internal/scheduler/EventTask', () => {
   test('stop should cancel timer', async () => {
     let requestCount = 0
     server.use(
-      rest.post<
-        GetEvaluationsRequest,
+      http.post<
         Record<string, never>,
+        GetEvaluationsRequest,
         GetEvaluationsResponse
-      >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+      >(`${config.apiEndpoint}/get_evaluations`, () => {
         requestCount++
-        return res(
-          ctx.json({
-            evaluations: user1Evaluations,
-            userEvaluationsId: 'user_evaluation_id_value',
-          }),
-        )
+        return HttpResponse.json({
+          evaluations: user1Evaluations,
+          userEvaluationsId: 'user_evaluation_id_value',
+        })
       }),
     )
 
@@ -128,13 +124,9 @@ suite('internal/scheduler/EventTask', () => {
     test('should back to normal interval after maxRetryCount', async () => {
       let requestCount = 0
       server.use(
-        rest.post<
-          GetEvaluationsRequest,
-          Record<string, never>,
-          GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
+        http.post(`${config.apiEndpoint}/get_evaluations`, () => {
           requestCount++
-          return res(ctx.status(500))
+          return HttpResponse.error()
         }),
       )
 
@@ -194,32 +186,29 @@ suite('internal/scheduler/EventTask', () => {
 
     test('should back to normal interval after successful request', async () => {
       server.use(
-        rest.post<
-          GetEvaluationsRequest,
+        http.post<
           Record<string, never>,
-          GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
-          return res.once(ctx.status(500))
-        }),
-        rest.post<
           GetEvaluationsRequest,
-          Record<string, never>,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
-          return res.once(ctx.status(500))
-        }),
-        rest.post<
+        >(`${config.apiEndpoint}/get_evaluations`, () => {
+          return HttpResponse.json(null, { status: 500 })
+        }, { once: true }),
+        http.post<
+          Record<string, never>,
           GetEvaluationsRequest,
-          Record<string, never>,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, (_req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.json({
-              evaluations: user1Evaluations,
-              userEvaluationsId: 'user_evaluation_id_value',
-            }),
-          )
+        >(`${config.apiEndpoint}/get_evaluations`, () => {
+          return HttpResponse.json(null, { status: 500 })
+        }, {once: true}),
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
         }),
       )
 

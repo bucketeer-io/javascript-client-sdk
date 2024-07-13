@@ -1,4 +1,4 @@
-import { RestRequest, rest } from 'msw'
+import { HttpResponse, StrictRequest, http } from 'msw'
 import { SetupServer } from 'msw/node'
 import {
   expect,
@@ -78,21 +78,18 @@ suite('internal/evaluation/EvaluationInteractor', () => {
   suite('fetch', () => {
     test('initial load', async () => {
       server.use(
-        rest.post<
-          GetEvaluationsRequest,
+        http.post<
           Record<string, never>,
+          GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async (_req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.json({
-              evaluations: {
-                ...user1Evaluations,
-                createdAt: clock.currentTimeMillis().toString(),
-              },
-              userEvaluationsId: 'user_evaluation_id_value',
-            }),
-          )
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          return HttpResponse.json({
+            evaluations: {
+              ...user1Evaluations,
+              createdAt: clock.currentTimeMillis().toString(),
+            },
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
         }),
       )
 
@@ -131,40 +128,34 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       }
       server.use(
         // initial request
-        rest.post<
-          GetEvaluationsRequest,
+        http.post<
           Record<string, never>,
+          GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async (_req, res, ctx) => {
-          return res.once(
-            ctx.status(200),
-            ctx.json({
-              evaluations: {
-                ...user1Evaluations,
-                createdAt: clock.currentTimeMillis().toString(),
-              },
-              userEvaluationsId: 'user_evaluation_id_value',
-            }),
-          )
-        }),
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          return HttpResponse.json({
+            evaluations: {
+              ...user1Evaluations,
+              createdAt: clock.currentTimeMillis().toString(),
+            },
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }, { once: true }),
         // second request
-        rest.post<
-          GetEvaluationsRequest,
+        http.post<
           Record<string, never>,
+          GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async (_req, res, ctx) => {
-          return res.once(
-            ctx.status(200),
-            ctx.json<GetEvaluationsResponse>({
-              evaluations: {
-                ...user1Evaluations,
-                evaluations: [newEvaluation],
-                createdAt: clock.currentTimeMillis().toString(),
-              },
-              userEvaluationsId: 'user_evaluation_id_value_updated',
-            }),
-          )
-        }),
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          return HttpResponse.json({
+            evaluations: {
+              ...user1Evaluations,
+              evaluations: [newEvaluation],
+              createdAt: clock.currentTimeMillis().toString(),
+            },
+            userEvaluationsId: 'user_evaluation_id_value_updated',
+          })
+        }, { once: true }),
       )
 
       const mockListener = vi.fn<[], void>()
@@ -204,47 +195,41 @@ suite('internal/evaluation/EvaluationInteractor', () => {
 
     test('update with no change', async () => {
       const requestInterceptor = vi.fn<
-        [RestRequest<GetEvaluationsRequest>],
+        [StrictRequest<GetEvaluationsRequest>],
         void
       >()
 
       server.use(
-        rest.post<
-          GetEvaluationsRequest,
+        http.post<
           Record<string, never>,
+          GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async (req, res, ctx) => {
-          requestInterceptor(req)
-          return res(
-            ctx.status(200),
-            ctx.json({
-              evaluations: {
-                ...user1Evaluations,
-                createdAt: clock.currentTimeMillis().toString(),
-              },
-              userEvaluationsId: 'user_evaluation_id_value',
-            }),
-          )
+        >(`${config.apiEndpoint}/get_evaluations`, async ({request}) => {
+          requestInterceptor(request)
+          return HttpResponse.json({
+            evaluations: {
+              ...user1Evaluations,
+              createdAt: clock.currentTimeMillis().toString(),
+            },
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
         }),
-        rest.post<
-          GetEvaluationsRequest,
+        http.post<
           Record<string, never>,
+          GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async (req, res, ctx) => {
-          requestInterceptor(req)
-          return res(
-            ctx.status(200),
-            ctx.json({
-              evaluations: {
-                id: '17388826713971171773',
-                evaluations: [],
-                archivedFeatureIds: [],
-                createdAt: clock.currentTimeMillis().toString(),
-                forceUpdate: false,
-              },
-              userEvaluationsId: 'user_evaluation_id_value',
-            }),
-          )
+        >(`${config.apiEndpoint}/get_evaluations`, async ({request}) => {
+          requestInterceptor(request)
+          return HttpResponse.json({
+            evaluations: {
+              id: '17388826713971171773',
+              evaluations: [],
+              archivedFeatureIds: [],
+              createdAt: clock.currentTimeMillis().toString(),
+              forceUpdate: false,
+            },
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
         }),
       )
 
@@ -380,24 +365,21 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       interactor.addUpdateListener(mockListener)
 
       server.use(
-        rest.post<
-          GetEvaluationsRequest,
+        http.post<
           Record<string, never>,
+          GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async (req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.json({
-              evaluations: {
-                id: '17388826713971171773',
-                evaluations: [evaluation1_updated, evaluation2],
-                createdAt: clock.currentTimeMillis().toString(),
-                forceUpdate: false,
-                archivedFeatureIds: [],
-              },
-              userEvaluationsId: 'user_evaluation_id_value',
-            }),
-          )
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          return HttpResponse.json({
+            evaluations: {
+              id: '17388826713971171773',
+              evaluations: [evaluation1_updated, evaluation2],
+              createdAt: clock.currentTimeMillis().toString(),
+              forceUpdate: false,
+              archivedFeatureIds: [],
+            },
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
         }),
       )
 
@@ -437,24 +419,21 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       interactor.addUpdateListener(mockListener)
 
       server.use(
-        rest.post<
-          GetEvaluationsRequest,
+        http.post<
           Record<string, never>,
+          GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async (req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.json({
-              evaluations: {
-                id: '17388826713971171773',
-                evaluations: [evaluation2_updated],
-                createdAt: clock.currentTimeMillis().toString(),
-                forceUpdate: false,
-                archivedFeatureIds: [],
-              },
-              userEvaluationsId: 'user_evaluation_id_value',
-            }),
-          )
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          return HttpResponse.json({
+            evaluations: {
+              id: '17388826713971171773',
+              evaluations: [evaluation2_updated],
+              createdAt: clock.currentTimeMillis().toString(),
+              forceUpdate: false,
+              archivedFeatureIds: [],
+            },
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
         }),
       )
 
@@ -494,24 +473,21 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       interactor.addUpdateListener(mockListener)
 
       server.use(
-        rest.post<
-          GetEvaluationsRequest,
+        http.post<
           Record<string, never>,
+          GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async (req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.json({
-              evaluations: {
-                id: '17388826713971171773',
-                evaluations: [evaluation1_updated],
-                createdAt: clock.currentTimeMillis().toString(),
-                forceUpdate: false,
-                archivedFeatureIds: [evaluation2.featureId],
-              },
-              userEvaluationsId: 'user_evaluation_id_value',
-            }),
-          )
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          return HttpResponse.json({
+            evaluations: {
+              id: '17388826713971171773',
+              evaluations: [evaluation1_updated],
+              createdAt: clock.currentTimeMillis().toString(),
+              forceUpdate: false,
+              archivedFeatureIds: [evaluation2.featureId],
+            },
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
         }),
       )
 

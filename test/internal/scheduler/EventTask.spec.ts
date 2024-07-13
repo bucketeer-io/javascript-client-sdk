@@ -1,4 +1,4 @@
-import { rest } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { SetupServer } from 'msw/node'
 import {
   beforeEach,
@@ -69,13 +69,13 @@ suite('internal/scheduler/EventTask', () => {
   test('start', async () => {
     let requestCount = 0
     server.use(
-      rest.post<
-        RegisterEventsRequest,
+      http.post<
         Record<string, never>,
+        RegisterEventsRequest,
         RegisterEventsResponse
-      >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/register_events`, () => {
         requestCount++
-        return res(ctx.status(200), ctx.json({}))
+        return HttpResponse.json({})
       }),
     )
 
@@ -103,13 +103,13 @@ suite('internal/scheduler/EventTask', () => {
     let requestCount = 0
 
     server.use(
-      rest.post<
-        RegisterEventsRequest,
+      http.post<
         Record<string, never>,
+        RegisterEventsRequest,
         RegisterEventsResponse
-      >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/register_events`, () => {
         requestCount++
-        return res(ctx.status(200), ctx.json({}))
+        return HttpResponse.json({})
       }),
     )
 
@@ -134,13 +134,13 @@ suite('internal/scheduler/EventTask', () => {
     describe('start', async () => {
       let requestCount = 0
       server.use(
-        rest.post<
-          RegisterEventsRequest,
+        http.post<
           Record<string, never>,
+          RegisterEventsRequest,
           RegisterEventsResponse
-        >(`${config.apiEndpoint}/register_events`, (_req, res, ctx) => {
+        >(`${config.apiEndpoint}/register_events`, () => {
           requestCount++
-          return res(ctx.status(200), ctx.json({}))
+        return HttpResponse.json({})
         }),
       )
 
