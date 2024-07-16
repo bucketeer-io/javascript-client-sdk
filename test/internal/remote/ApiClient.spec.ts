@@ -9,7 +9,7 @@ import {
   vi,
 } from 'vitest'
 import fetch from 'cross-fetch'
-import { RestRequest, rest } from 'msw'
+import { HttpResponse, http, delay, StrictRequest } from 'msw'
 import assert from 'assert'
 import { SetupServer } from 'msw/node'
 import { GetEvaluationsRequest } from '../../../src/internal/model/request/GetEvaluationsRequest'
@@ -53,25 +53,22 @@ suite('internal/remote/ApiClient', () => {
   suite('getEvaluations', () => {
     test('success', async () => {
       const requestInterceptor = vi.fn<
-        [RestRequest<GetEvaluationsRequest>],
+        [StrictRequest<GetEvaluationsRequest>],
         void
       >()
 
       server.use(
-        rest.post<
-          GetEvaluationsRequest,
+        http.post<
           Record<string, never>,
+          GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${endpoint}/get_evaluations`, async (req, res, ctx) => {
-          requestInterceptor(req)
-
-          return res(
-            ctx.status(200),
-            ctx.set('Content-Length', '10'),
-            ctx.json({
+        >(`${endpoint}/get_evaluations`, async ({request}) => {
+          requestInterceptor(request)
+          return HttpResponse.json({
               evaluations: user1Evaluations,
               userEvaluationsId: 'user_evaluation_id',
-            }),
+            },
+            { headers: { 'Content-Length': '10' } }
           )
         }),
       )
@@ -119,8 +116,8 @@ suite('internal/remote/ApiClient', () => {
 
     test('network error', async () => {
       server.use(
-        rest.post(`${endpoint}/get_evaluations`, (_req, res, _ctx) => {
-          return res.networkError('network error')
+        http.post(`${endpoint}/get_evaluations`, () => {
+          return HttpResponse.error()
         }),
       )
 
@@ -145,12 +142,9 @@ suite('internal/remote/ApiClient', () => {
       test('initial timeout', async () => {
         apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
         server.use(
-          rest.post(`${endpoint}/get_evaluations`, async (_req, res, ctx) => {
-            return res(
-              ctx.delay(1000),
-              ctx.status(500),
-              ctx.body('{ "error": "super slow response"}'),
-            )
+          http.post(`${endpoint}/get_evaluations`, async () => {
+            await delay(1000)
+            return HttpResponse.json({ 'error': 'super slow response'}, { status: 500 })
           }),
         )
 
@@ -169,7 +163,7 @@ suite('internal/remote/ApiClient', () => {
         expect(response.type).toBe('failure')
         expect(response.featureTag).toBe('feature_tag_value')
 
-        const error = response.error
+        const error = response.error || null
 
         assert(error instanceof TimeoutException)
 
@@ -181,12 +175,9 @@ suite('internal/remote/ApiClient', () => {
       test('passig timeout value from getEvaluations', async () => {
         apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
         server.use(
-          rest.post(`${endpoint}/get_evaluations`, async (_req, res, ctx) => {
-            return res(
-              ctx.delay(1000),
-              ctx.status(500),
-              ctx.body('{ "error": "super slow response"}'),
-            )
+          http.post(`${endpoint}/get_evaluations`, async () => {
+            await delay(1000)
+            return HttpResponse.json({ 'error': 'super slow response'}, { status: 500 })
           }),
         )
 
@@ -222,30 +213,24 @@ suite('internal/remote/ApiClient', () => {
   suite('registerEvents', () => {
     test('success', async () => {
       const requestInterceptor = vi.fn<
-        [RestRequest<RegisterEventsRequest>],
+        [StrictRequest<RegisterEventsRequest>],
         void
       >()
 
       server.use(
-        rest.post<
-          RegisterEventsRequest,
+        http.post<
           Record<string, never>,
+          RegisterEventsRequest,
           RegisterEventsResponse
-        >(`${endpoint}/register_events`, async (req, res, ctx) => {
-          requestInterceptor(req)
-
-          return res(
-            ctx.status(200),
-            ctx.set('Content-Length', '10'),
-            ctx.json<RegisterEventsResponse>({
-              errors: {
-                [evaluationEvent1.id]: {
-                  retriable: true,
-                  message: 'error',
-                },
+          >(`${endpoint}/register_events`, async ({ request }) => {
+          requestInterceptor(request)
+          return HttpResponse.json({
+            errors: {
+              [evaluationEvent1.id]: {
+                retriable: true,
+                message: 'error',
               },
-            }),
-          )
+            }})
         }),
       )
 
@@ -278,8 +263,8 @@ suite('internal/remote/ApiClient', () => {
 
     test('network error', async () => {
       server.use(
-        rest.post(`${endpoint}/register_events`, (_req, res, _ctx) => {
-          return res.networkError('network error')
+        http.post(`${endpoint}/register_events`, () => {
+          return HttpResponse.error()
         }),
       )
 
@@ -297,12 +282,9 @@ suite('internal/remote/ApiClient', () => {
     test('timeout error', async () => {
       apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
       server.use(
-        rest.post(`${endpoint}/register_events`, async (_req, res, ctx) => {
-          return res(
-            ctx.delay(1000),
-            ctx.status(500),
-            ctx.body('{ "error": "super slow response"}'),
-          )
+        http.post(`${endpoint}/register_events`, async () => {
+          await delay(1000)
+          return HttpResponse.json({ 'error': 'super slow response'}, { status: 500 })
         }),
       )
 
@@ -327,8 +309,8 @@ suite('internal/remote/ApiClient', () => {
     test('got a response with status 200 and invalid JSON', async () => {
       apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
       server.use(
-        rest.post(`${endpoint}/register_events`, async (_req, res, ctx) => {
-          return res(ctx.status(200), ctx.body('Text'))
+        http.post(`${endpoint}/register_events`, async () => {
+          return HttpResponse.text('Text')
         }),
       )
 
