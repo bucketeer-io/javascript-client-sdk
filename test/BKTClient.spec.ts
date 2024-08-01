@@ -27,7 +27,6 @@ import {
 } from './utils'
 import fetch from 'cross-fetch'
 import { user1 } from './mocks/users'
-import { toBKTUser } from '../src/internal/UserHolder'
 import {
   InternalServerErrorException,
   TimeoutException,
@@ -66,7 +65,7 @@ suite('BKTClient', () => {
 
     component = new DefaultComponent(
       new TestPlatformModule(),
-      new DataModule(toBKTUser(user1), config),
+      new DataModule(user1, config),
       new InteractorModule(),
     )
   })
@@ -117,13 +116,17 @@ suite('BKTClient', () => {
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async () => {
-          await delay(1000)
-          return HttpResponse.json({
-            evaluations: user1Evaluations,
-            userEvaluationsId: 'user_evaluation_id_value',
-          })
-        }, {once: true}),
+        >(
+          `${config.apiEndpoint}/get_evaluations`,
+          async () => {
+            await delay(1000)
+            return HttpResponse.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            })
+          },
+          { once: true },
+        ),
       )
 
       await expect(async () => {
@@ -292,16 +295,20 @@ suite('BKTClient', () => {
             Record<string, never>,
             GetEvaluationsRequest,
             GetEvaluationsResponse
-          >(`${config.apiEndpoint}/get_evaluations`, () => {
-            return HttpResponse.json({
-              evaluations: {
-                ...user1Evaluations,
-                evaluations: [buildEvaluation(value)],
-              },
-              userEvaluationsId: 'user_evaluation_id_value',
+          >(
+            `${config.apiEndpoint}/get_evaluations`,
+            () => {
+              return HttpResponse.json({
+                evaluations: {
+                  ...user1Evaluations,
+                  evaluations: [buildEvaluation(value)],
+                },
+                userEvaluationsId: 'user_evaluation_id_value',
               })
-          }, { once: true }),
-        http.post<
+            },
+            { once: true },
+          ),
+          http.post<
             Record<string, never>,
             RegisterEventsRequest,
             RegisterEventsResponse
@@ -328,12 +335,16 @@ suite('BKTClient', () => {
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, () => {
-          return HttpResponse.json({
-            evaluations: user1Evaluations,
-            userEvaluationsId: 'user_evaluation_id_value',
-          })
-        }, {once: true}),
+        >(
+          `${config.apiEndpoint}/get_evaluations`,
+          () => {
+            return HttpResponse.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            })
+          },
+          { once: true },
+        ),
         http.post<
           Record<string, never>,
           RegisterEventsRequest,
@@ -372,15 +383,19 @@ suite('BKTClient', () => {
             Record<string, never>,
             GetEvaluationsRequest,
             GetEvaluationsResponse
-          >(`${config.apiEndpoint}/get_evaluations`, () => {
-            return HttpResponse.json({
-              evaluations: {
-                ...user1Evaluations,
-                evaluations: [buildEvaluation(value)],
-              },
-              userEvaluationsId: 'user_evaluation_id_value',
-            })
-          }, { once: true }),
+          >(
+            `${config.apiEndpoint}/get_evaluations`,
+            () => {
+              return HttpResponse.json({
+                evaluations: {
+                  ...user1Evaluations,
+                  evaluations: [buildEvaluation(value)],
+                },
+                userEvaluationsId: 'user_evaluation_id_value',
+              })
+            },
+            { once: true },
+          ),
           http.post<
             Record<string, never>,
             RegisterEventsRequest,
@@ -423,15 +438,19 @@ suite('BKTClient', () => {
             Record<string, never>,
             GetEvaluationsRequest,
             GetEvaluationsResponse
-          >(`${config.apiEndpoint}/get_evaluations`, () => {
-            return HttpResponse.json({
-              evaluations: {
-                ...user1Evaluations,
-                evaluations: [buildEvaluation(value)],
-              },
-              userEvaluationsId: 'user_evaluation_id_value',
-            })
-          }, { once: true }),
+          >(
+            `${config.apiEndpoint}/get_evaluations`,
+            () => {
+              return HttpResponse.json({
+                evaluations: {
+                  ...user1Evaluations,
+                  evaluations: [buildEvaluation(value)],
+                },
+                userEvaluationsId: 'user_evaluation_id_value',
+              })
+            },
+            { once: true },
+          ),
           http.post<
             Record<string, never>,
             RegisterEventsRequest,
@@ -463,12 +482,16 @@ suite('BKTClient', () => {
         Record<string, never>,
         GetEvaluationsRequest,
         GetEvaluationsResponse
-      >(`${config.apiEndpoint}/get_evaluations`, () => {
-        return HttpResponse.json({
-          evaluations: user1Evaluations,
-          userEvaluationsId: 'user_evaluation_id_value',
-        })
-      }, { once: true }),
+      >(
+        `${config.apiEndpoint}/get_evaluations`,
+        () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        },
+        { once: true },
+      ),
       http.post<
         Record<string, never>,
         RegisterEventsRequest,
@@ -502,12 +525,16 @@ suite('BKTClient', () => {
         Record<string, never>,
         GetEvaluationsRequest,
         GetEvaluationsResponse
-      >(`${config.apiEndpoint}/get_evaluations`, () => {
-        return HttpResponse.json({
-          evaluations: user1Evaluations,
-          userEvaluationsId: 'user_evaluation_id_value',
-        })
-      }, { once: true }),
+      >(
+        `${config.apiEndpoint}/get_evaluations`,
+        () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        },
+        { once: true },
+      ),
     )
 
     await initializeBKTClientInternal(component, 1000)
@@ -518,7 +545,9 @@ suite('BKTClient', () => {
 
     expect(client.currentUser()).toStrictEqual({
       id: 'user_id_1',
-      attributes: {},
+      attributes: {
+        age: '28',
+      },
     })
   })
 
@@ -528,12 +557,16 @@ suite('BKTClient', () => {
         Record<string, never>,
         GetEvaluationsRequest,
         GetEvaluationsResponse
-      >(`${config.apiEndpoint}/get_evaluations`, () => {
-        return HttpResponse.json({
-          evaluations: user1Evaluations,
-          userEvaluationsId: 'user_evaluation_id_value',
-        })
-      }, { once: true }),
+      >(
+        `${config.apiEndpoint}/get_evaluations`,
+        () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        },
+        { once: true },
+      ),
       http.post<
         Record<string, never>,
         RegisterEventsRequest,
@@ -552,7 +585,7 @@ suite('BKTClient', () => {
     const userHolder = getDefaultComponent(client).userHolder()
     const storage = getDefaultComponent(client).dataModule.evaluationStorage()
 
-    expect(userHolder.get().data).toBeUndefined()
+    expect(userHolder.get().data).toStrictEqual({ age: '28' })
     expect(storage.getCurrentEvaluationsId()).toBe('user_evaluation_id_value')
 
     client.updateUserAttributes({ key: 'value' })
@@ -574,34 +607,42 @@ suite('BKTClient', () => {
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, () => {
-          return HttpResponse.json({
-            evaluations: {
-              id: 'user_evaluation_id_value',
-              evaluations: [evaluation1],
-              createdAt: clock.currentTimeMillis().toString(),
-              forceUpdate: false,
-              archivedFeatureIds: [],
-            },
-            userEvaluationsId: 'user_evaluation_id_value',
-          })
-        }, {once: true}),
+        >(
+          `${config.apiEndpoint}/get_evaluations`,
+          () => {
+            return HttpResponse.json({
+              evaluations: {
+                id: 'user_evaluation_id_value',
+                evaluations: [evaluation1],
+                createdAt: clock.currentTimeMillis().toString(),
+                forceUpdate: false,
+                archivedFeatureIds: [],
+              },
+              userEvaluationsId: 'user_evaluation_id_value',
+            })
+          },
+          { once: true },
+        ),
         http.post<
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, () => {
-          return HttpResponse.json({
-            evaluations: {
-              id: 'user_evaluation_id_value_updated',
-              evaluations: [updatedEvaluation1],
-              createdAt: clock.currentTimeMillis().toString(),
-              forceUpdate: false,
-              archivedFeatureIds: [],
-            },
-            userEvaluationsId: 'user_evaluation_id_value_updated',
-          })
-        }, {once: true}),
+        >(
+          `${config.apiEndpoint}/get_evaluations`,
+          () => {
+            return HttpResponse.json({
+              evaluations: {
+                id: 'user_evaluation_id_value_updated',
+                evaluations: [updatedEvaluation1],
+                createdAt: clock.currentTimeMillis().toString(),
+                forceUpdate: false,
+                archivedFeatureIds: [],
+              },
+              userEvaluationsId: 'user_evaluation_id_value_updated',
+            })
+          },
+          { once: true },
+        ),
         http.post<
           Record<string, never>,
           RegisterEventsRequest,
@@ -634,32 +675,37 @@ suite('BKTClient', () => {
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, () => {
-          return HttpResponse.json({
-            evaluations: {
-              id: 'user_evaluation_id_value',
-              evaluations: [evaluation1],
-              createdAt: clock.currentTimeMillis().toString(),
-              forceUpdate: false,
-              archivedFeatureIds: [],
-            },
-            userEvaluationsId: 'user_evaluation_id_value',
-          })
-        }, {once: true}),
-        http.post<
-          Record<string, never>,
-          GetEvaluationsRequest,
-          ErrorResponse
         >(
           `${config.apiEndpoint}/get_evaluations`,
           () => {
             return HttpResponse.json({
+              evaluations: {
+                id: 'user_evaluation_id_value',
+                evaluations: [evaluation1],
+                createdAt: clock.currentTimeMillis().toString(),
+                forceUpdate: false,
+                archivedFeatureIds: [],
+              },
+              userEvaluationsId: 'user_evaluation_id_value',
+            })
+          },
+          { once: true },
+        ),
+        http.post<Record<string, never>, GetEvaluationsRequest, ErrorResponse>(
+          `${config.apiEndpoint}/get_evaluations`,
+          () => {
+            return HttpResponse.json(
+              {
                 error: {
                   code: 500,
                   message: 'Internal Server Error',
                 },
-            }, { status: 500 })
-        }, {once: true}),
+              },
+              { status: 500 },
+            )
+          },
+          { once: true },
+        ),
         http.post<
           Record<string, never>,
           RegisterEventsRequest,
@@ -697,19 +743,27 @@ suite('BKTClient', () => {
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, () => {
-          return HttpResponse.json({
-            evaluations: user1Evaluations,
-            userEvaluationsId: 'user_evaluation_id_value',
-          })
-        }, {once: true}),
+        >(
+          `${config.apiEndpoint}/get_evaluations`,
+          () => {
+            return HttpResponse.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            })
+          },
+          { once: true },
+        ),
         http.post<
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-        >(`${config.apiEndpoint}/register_events`, () => {
-          return HttpResponse.json({})
-        }, {once: true}),
+        >(
+          `${config.apiEndpoint}/register_events`,
+          () => {
+            return HttpResponse.json({})
+          },
+          { once: true },
+        ),
       )
 
       await initializeBKTClientInternal(component, 1000)
@@ -733,26 +787,31 @@ suite('BKTClient', () => {
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, () => {
-          return HttpResponse.json({
-            evaluations: user1Evaluations,
-            userEvaluationsId: 'user_evaluation_id_value',
-          })
-        }, {once: true}),
-        http.post<
-          Record<string, never>,
-          RegisterEventsRequest,
-          ErrorResponse
         >(
-          `${config.apiEndpoint}/register_events`,
+          `${config.apiEndpoint}/get_evaluations`,
           () => {
             return HttpResponse.json({
-              error: {
-                code: 500,
-                message: 'Internal Server Error',
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            })
+          },
+          { once: true },
+        ),
+        http.post<Record<string, never>, RegisterEventsRequest, ErrorResponse>(
+          `${config.apiEndpoint}/register_events`,
+          () => {
+            return HttpResponse.json(
+              {
+                error: {
+                  code: 500,
+                  message: 'Internal Server Error',
+                },
               },
-            }, { status: 500 })
-          }, {once: true}),
+              { status: 500 },
+            )
+          },
+          { once: true },
+        ),
       )
 
       await initializeBKTClientInternal(component, 1000)
@@ -780,12 +839,16 @@ suite('BKTClient', () => {
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, () => {
-          return HttpResponse.json({
-            evaluations: user1Evaluations,
-            userEvaluationsId: 'user_evaluation_id_value',
-          })
-        }, {once: true}),
+        >(
+          `${config.apiEndpoint}/get_evaluations`,
+          () => {
+            return HttpResponse.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            })
+          },
+          { once: true },
+        ),
       )
 
       await initializeBKTClientInternal(component, 1000)
@@ -814,12 +877,16 @@ suite('BKTClient', () => {
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, () => {
-          return HttpResponse.json({
-            evaluations: user1Evaluations,
-            userEvaluationsId: 'user_evaluation_id_value',
-          })
-        }, {once: true}),
+        >(
+          `${config.apiEndpoint}/get_evaluations`,
+          () => {
+            return HttpResponse.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            })
+          },
+          { once: true },
+        ),
       )
 
       await initializeBKTClientInternal(component, 1000)
