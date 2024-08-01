@@ -13,7 +13,6 @@
     { "type": "build", "section": "Build System", "hidden": false }
   ],
   "release-type": "node",
-  "release-as": "2.1.5",
   "pull-request-title-pattern": "chore: release v${version}",
   "packages": {
     ".": {
