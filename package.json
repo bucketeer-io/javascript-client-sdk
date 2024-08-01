@@ -57,7 +57,7 @@
     "msw": "2.3.4",
     "prettier": "3.3.3",
     "typescript": "5.5.4",
-    "typescript-eslint": "^7.16.0",
+    "typescript-eslint": "7.18.0",
     "unbuild": "2.0.0",
     "vitest": "1.6.0",
     "webdriverio": "8.39.0"
