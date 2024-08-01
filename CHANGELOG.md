@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.6](https://github.com/bucketeer-io/javascript-client-sdk/compare/js-client-sdk-v2.1.5...js-client-sdk-v2.1.6) (2024-08-01)
+
+
+### Build System
+
+* **deps:** lock file maintenance ([#160](https://github.com/bucketeer-io/javascript-client-sdk/issues/160)) ([b5ee340](https://github.com/bucketeer-io/javascript-client-sdk/commit/b5ee3404d117ded58b29383d2275347fa4617743))
+* **deps:** update all non-major dependencies ([#163](https://github.com/bucketeer-io/javascript-client-sdk/issues/163)) ([32d98ee](https://github.com/bucketeer-io/javascript-client-sdk/commit/32d98ee9c01c2cb9a6caf7d0c1160a69789d3cc5))
+
 ## [2.1.5](https://github.com/bucketeer-io/javascript-client-sdk/compare/js-client-sdk-v2.1.4...js-client-sdk-v2.1.5) (2024-08-01)
 
 ### Bug Fixes
