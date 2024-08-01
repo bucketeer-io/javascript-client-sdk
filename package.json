@@ -60,7 +60,7 @@
     "typescript-eslint": "7.18.0",
     "unbuild": "2.0.0",
     "vitest": "2.0.5",
-    "webdriverio": "8.39.0"
+    "webdriverio": "8.39.1"
   },
   "packageManager": "pnpm@9.6.0"
 }
