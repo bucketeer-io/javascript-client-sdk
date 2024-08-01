@@ -5,6 +5,8 @@ import { Component, DefaultComponent } from './internal/di/Component'
 import { DataModule } from './internal/di/DataModule'
 import { InteractorModule } from './internal/di/InteractorModule'
 import { NodePlatformModule } from './internal/di/PlatformModule.node'
+import { User } from './internal/model/User'
+import { toUser } from './internal/UserHolder'
 
 export type { BKTConfig } from './BKTConfig'
 export { defineBKTConfig } from './BKTConfig'
@@ -18,7 +20,7 @@ export type {
   InMemoryStorage,
 } from './BKTStorage'
 
-const createNodeComponent = (config: BKTConfig, user: BKTUser): Component => {
+const createNodeComponent = (config: BKTConfig, user: User): Component => {
   return new DefaultComponent(
     new NodePlatformModule(),
     new DataModule(user, config),
@@ -31,6 +33,6 @@ export const initializeBKTClient = async (
   user: BKTUser,
   timeoutMillis = 5_000,
 ): Promise<void> => {
-  const component = createNodeComponent(config, user)
+  const component = createNodeComponent(config, toUser(user))
   return initializeBKTClientInternal(component, timeoutMillis)
 }

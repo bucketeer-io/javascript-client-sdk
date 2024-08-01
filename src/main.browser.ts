@@ -6,6 +6,7 @@ import { DataModule } from './internal/di/DataModule'
 import { InteractorModule } from './internal/di/InteractorModule'
 import { BrowserPlatformModule } from './internal/di/PlatformModule.browser'
 import { User } from './internal/model/User'
+import { toUser } from './internal/UserHolder'
 
 export type { BKTConfig } from './BKTConfig'
 export { defineBKTConfig } from './BKTConfig'
@@ -32,6 +33,6 @@ export const initializeBKTClient = async (
   user: BKTUser,
   timeoutMillis = 5_000,
 ): Promise<void> => {
-  const component = createBrowserComponent(config, user)
+  const component = createBrowserComponent(config, toUser(user))
   return initializeBKTClientInternal(component, timeoutMillis)
 }
