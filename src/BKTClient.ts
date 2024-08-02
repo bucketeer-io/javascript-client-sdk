@@ -14,6 +14,10 @@ export interface BKTClient {
   stringVariation: (featureId: string, defaultValue: string) => string
   numberVariation: (featureId: string, defaultValue: number) => number
   booleanVariation: (featureId: string, defaultValue: boolean) => boolean
+  /**
+   * @deprecated use objectVariation(featureId: string, defaultValue: string) instead.
+   */
+  jsonVariation: (featureId: string, defaultValue: BKTJsonValue) => BKTJsonValue
   objectVariation: (featureId: string, defaultValue: BKTJsonValue) => BKTJsonValue
 
   track: (goalId: string, value: number) => void
@@ -76,6 +80,14 @@ export class BKTClientImpl implements BKTClient {
 
   booleanVariation(featureId: string, defaultValue: boolean): boolean {
     return this.booleanVariationDetails(featureId, defaultValue).variationValue
+  }
+
+  jsonVariation(featureId: string, defaultValue: BKTJsonValue): BKTJsonValue {
+    const value = this.objectVariation(
+      featureId,
+      defaultValue,
+    )
+    return value
   }
 
   objectVariation(featureId: string, defaultValue: BKTJsonValue): BKTJsonValue {
