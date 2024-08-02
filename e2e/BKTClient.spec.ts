@@ -22,6 +22,31 @@ suite('e2e/BKTClientTest', () => {
     localStorage.clear()
   })
 
+  suite('get string variation using user attribute when initializing', () => {
+    beforeEach(async () => {
+      config = defineBKTConfig({
+        apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
+        apiKey: import.meta.env.VITE_BKT_API_KEY,
+        featureTag: 'javascript',
+        appVersion: '1.2.3',
+        fetch: window.fetch,
+      })
+
+      user = defineBKTUser({
+        id: USER_ID,
+        customAttributes: { app_version: '0.0.1' },
+      })
+
+      await initializeBKTClient(config, user)
+    })
+
+    test('test', async () => {
+      const client = getBKTClient()
+      assert(client != null)
+      expect(client.stringVariation(FEATURE_ID_STRING, '')).toBe('value-2')
+    })
+  })
+
   suite('evaluation update flow', () => {
     beforeEach(async () => {
       config = defineBKTConfig({
