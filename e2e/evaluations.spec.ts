@@ -211,13 +211,13 @@ suite('e2e/evaluations', () => {
     })
   })
 
-  suite('jsonVariation', () => {
+  suite('objectVariation', () => {
     test('value', () => {
       const client = getBKTClient()
 
       assert(client != null)
 
-      expect(client.jsonVariation(FEATURE_ID_JSON, '')).toStrictEqual({
+      expect(client.objectVariation(FEATURE_ID_JSON, '')).toStrictEqual({
         key: 'value-1',
       })
     })
@@ -239,7 +239,7 @@ suite('e2e/evaluations', () => {
         reason: 'DEFAULT',
       })
 
-      const evaluationDetails = client.jsonVariationDetails(FEATURE_ID_JSON, {})
+      const evaluationDetails = client.objectVariationDetails(FEATURE_ID_JSON, {})
       expect(evaluationDetails).toStrictEqual({
         featureId: FEATURE_ID_JSON,
         featureVersion: 3,

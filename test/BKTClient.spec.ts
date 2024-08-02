@@ -372,16 +372,16 @@ suite('BKTClient', () => {
       expect(client.numberVariation('feature_id_value', 99)).toBe(99)
       expect(client.booleanVariation('feature_id_value', true)).toBe(true)
       expect(client.stringVariation('feature_id_value', '99')).toBe('99')
-      expect(client.jsonVariation('feature_id_value', 1)).toStrictEqual(1)
-      expect(client.jsonVariation('feature_id_value', true)).toStrictEqual(true)
+      expect(client.objectVariation('feature_id_value', 1)).toStrictEqual(1)
+      expect(client.objectVariation('feature_id_value', true)).toStrictEqual(true)
       expect(
-        client.jsonVariation('feature_id_value', 'default_text'),
+        client.objectVariation('feature_id_value', 'default_text'),
       ).toStrictEqual('default_text')
       expect(
-        client.jsonVariation('feature_id_value', { k: 'v' }),
+        client.objectVariation('feature_id_value', { k: 'v' }),
       ).toStrictEqual({ k: 'v' })
       expect(
-        client.jsonVariation('feature_id_value', [{ k: 'v' }]),
+        client.objectVariation('feature_id_value', [{ k: 'v' }]),
       ).toStrictEqual([{ k: 'v' }])
     })
   })
@@ -442,7 +442,7 @@ suite('BKTClient', () => {
     // cases for defaultValue is covered in the above test
   })
 
-  suite('jsonVariation', () => {
+  suite('objectVariation', () => {
     const JSON_VALUE = '{"key": "value"}'
 
     test.each([
@@ -499,7 +499,7 @@ suite('BKTClient', () => {
 
         expect(
           JSON.stringify(
-            client.jsonVariation('feature_id_value', defaultValue),
+            client.objectVariation('feature_id_value', defaultValue),
           ),
         ).toBe(JSON.stringify(actual))
       },
@@ -1200,36 +1200,36 @@ suite('BKTClient', () => {
         newDefaultBKTEvaluationDetails(userId, featureId, false),
       )
 
-      expect(client.jsonVariationDetails(featureId, true)).toStrictEqual(
+      expect(client.objectVariationDetails(featureId, true)).toStrictEqual(
         newDefaultBKTEvaluationDetails(userId, featureId, true),
       )
 
-      expect(client.jsonVariationDetails(featureId, 1)).toStrictEqual(
+      expect(client.objectVariationDetails(featureId, 1)).toStrictEqual(
         newDefaultBKTEvaluationDetails(userId, featureId, 1),
       )
 
-      expect(client.jsonVariationDetails(featureId, 'true')).toStrictEqual(
+      expect(client.objectVariationDetails(featureId, 'true')).toStrictEqual(
         newDefaultBKTEvaluationDetails(userId, featureId, 'true'),
       )
 
       expect(
-        client.jsonVariationDetails(featureId, { key: 'value22' }),
+        client.objectVariationDetails(featureId, { key: 'value22' }),
       ).toStrictEqual(
         newDefaultBKTEvaluationDetails(userId, featureId, { key: 'value22' }),
       )
 
       expect(
-        client.jsonVariationDetails(featureId, { key: 'value' }),
+        client.objectVariationDetails(featureId, { key: 'value' }),
       ).not.toStrictEqual(
         newDefaultBKTEvaluationDetails(userId, featureId, { key: 'value22' }),
       )
 
-      expect(client.jsonVariationDetails(featureId, [])).toStrictEqual(
+      expect(client.objectVariationDetails(featureId, [])).toStrictEqual(
         newDefaultBKTEvaluationDetails(userId, featureId, []),
       )
 
       expect(
-        client.jsonVariationDetails(featureId, [{ key: 'value' }]),
+        client.objectVariationDetails(featureId, [{ key: 'value' }]),
       ).toStrictEqual(
         newDefaultBKTEvaluationDetails(userId, featureId, [{ key: 'value' }]),
       )
@@ -1297,7 +1297,7 @@ suite('BKTClient', () => {
       } satisfies BKTEvaluationDetails<boolean>)
 
       expect(
-        client.jsonVariationDetails(featureId, { key: 'value11' }),
+        client.objectVariationDetails(featureId, { key: 'value11' }),
       ).toStrictEqual({
         featureId: featureId,
         featureVersion: 0,
@@ -1371,7 +1371,7 @@ suite('BKTClient', () => {
       } satisfies BKTEvaluationDetails<boolean>)
 
       expect(
-        client.jsonVariationDetails(featureId, { key: 'value11' }),
+        client.objectVariationDetails(featureId, { key: 'value11' }),
       ).toStrictEqual({
         featureId: featureId,
         featureVersion: 0,
@@ -1445,7 +1445,7 @@ suite('BKTClient', () => {
       } satisfies BKTEvaluationDetails<number>)
 
       expect(
-        client.jsonVariationDetails(featureId, { key: 'value11' }),
+        client.objectVariationDetails(featureId, { key: 'value11' }),
       ).toStrictEqual({
         featureId: featureId,
         featureVersion: 0,
@@ -1457,14 +1457,14 @@ suite('BKTClient', () => {
       } satisfies BKTEvaluationDetails<BKTJsonValue>)
     })
 
-    test('jsonVariationDetails', async () => {
-      const featureId = 'jsonVariationDetails'
+    test('objectVariationDetails', async () => {
+      const featureId = 'objectVariationDetails'
       const mockJsonObjectEvaluation = buildEvaluation(
         '{"key1": "value1"}',
         featureId,
       )
 
-      const featureIdForJsonArray = 'jsonVariationDetailsArray'
+      const featureIdForJsonArray = 'objectVariationDetailsArray'
       const mockJsonArrayEvaluation = buildEvaluation(
         '[{"key1": "value1"}]',
         featureIdForJsonArray,
@@ -1502,7 +1502,7 @@ suite('BKTClient', () => {
       assert(client !== null)
 
       expect(
-        client.jsonVariationDetails(featureIdForJsonArray, {}),
+        client.objectVariationDetails(featureIdForJsonArray, {}),
       ).toStrictEqual({
         featureId: featureIdForJsonArray,
         featureVersion: mockJsonArrayEvaluation.featureVersion,
@@ -1513,7 +1513,7 @@ suite('BKTClient', () => {
         reason: 'CLIENT',
       } satisfies BKTEvaluationDetails<BKTJsonValue>)
 
-      expect(client.jsonVariationDetails(featureId, {})).toStrictEqual({
+      expect(client.objectVariationDetails(featureId, {})).toStrictEqual({
         featureId: mockJsonObjectEvaluation.featureId,
         featureVersion: mockJsonObjectEvaluation.featureVersion,
         userId: mockJsonObjectEvaluation.userId,
@@ -1523,7 +1523,7 @@ suite('BKTClient', () => {
         reason: 'CLIENT',
       } satisfies BKTEvaluationDetails<BKTJsonValue>)
 
-      expect(client.jsonVariationDetails(featureId, '')).toStrictEqual({
+      expect(client.objectVariationDetails(featureId, '')).toStrictEqual({
         featureId: mockJsonObjectEvaluation.featureId,
         featureVersion: mockJsonObjectEvaluation.featureVersion,
         userId: mockJsonObjectEvaluation.userId,
@@ -1533,7 +1533,7 @@ suite('BKTClient', () => {
         reason: 'CLIENT',
       } satisfies BKTEvaluationDetails<BKTJsonValue>)
 
-      expect(client.jsonVariationDetails(featureId, true)).toStrictEqual({
+      expect(client.objectVariationDetails(featureId, true)).toStrictEqual({
         featureId: mockJsonObjectEvaluation.featureId,
         featureVersion: mockJsonObjectEvaluation.featureVersion,
         userId: mockJsonObjectEvaluation.userId,
@@ -1543,7 +1543,7 @@ suite('BKTClient', () => {
         reason: 'CLIENT',
       } satisfies BKTEvaluationDetails<BKTJsonValue>)
 
-      expect(client.jsonVariationDetails(featureId, 1)).toStrictEqual({
+      expect(client.objectVariationDetails(featureId, 1)).toStrictEqual({
         featureId: mockJsonObjectEvaluation.featureId,
         featureVersion: mockJsonObjectEvaluation.featureVersion,
         userId: mockJsonObjectEvaluation.userId,

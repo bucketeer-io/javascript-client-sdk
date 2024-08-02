@@ -14,8 +14,7 @@ export interface BKTClient {
   stringVariation: (featureId: string, defaultValue: string) => string
   numberVariation: (featureId: string, defaultValue: number) => number
   booleanVariation: (featureId: string, defaultValue: boolean) => boolean
-
-  jsonVariation: (featureId: string, defaultValue: BKTJsonValue) => BKTJsonValue
+  objectVariation: (featureId: string, defaultValue: BKTJsonValue) => BKTJsonValue
 
   track: (goalId: string, value: number) => void
   currentUser: () => BKTUser
@@ -48,7 +47,7 @@ export interface BKTClient {
    *
    * Note: The returned value will be either a BKTJsonObject or a BKTJsonArray. If no result is found, it will return the provided `defaultValue`, which can be of any type within `BKTJsonValue`.
    */
-  jsonVariationDetails: (
+  objectVariationDetails: (
     featureId: string,
     defaultValue: BKTJsonValue,
   ) => BKTEvaluationDetails<BKTJsonValue>
@@ -79,8 +78,8 @@ export class BKTClientImpl implements BKTClient {
     return this.booleanVariationDetails(featureId, defaultValue).variationValue
   }
 
-  jsonVariation(featureId: string, defaultValue: BKTJsonValue): BKTJsonValue {
-    const value = this.jsonVariationDetails(
+  objectVariation(featureId: string, defaultValue: BKTJsonValue): BKTJsonValue {
+    const value = this.objectVariationDetails(
       featureId,
       defaultValue,
     ).variationValue
@@ -120,7 +119,7 @@ export class BKTClientImpl implements BKTClient {
     )
   }
 
-  jsonVariationDetails(
+  objectVariationDetails(
     featureId: string,
     defaultValue: BKTJsonValue,
   ): BKTEvaluationDetails<BKTJsonValue> {
