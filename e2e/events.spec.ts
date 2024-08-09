@@ -84,7 +84,7 @@ suite('e2e/events', () => {
     expect(client.numberVariation(FEATURE_ID_INT, 0)).toBe(10)
     expect(client.numberVariation(FEATURE_ID_DOUBLE, 0.0)).toBe(2.1)
     expect(client.booleanVariation(FEATURE_ID_BOOLEAN, false)).toBe(true)
-    expect(client.jsonVariation(FEATURE_ID_JSON, '')).toStrictEqual({
+    expect(client.objectVariation(FEATURE_ID_JSON, '')).toStrictEqual({
       key: 'value-1',
     })
 
@@ -121,7 +121,7 @@ suite('e2e/events', () => {
     expect(client.numberVariation(FEATURE_ID_DOUBLE, 0.0)).toBe(0.0)
     expect(client.booleanVariation(FEATURE_ID_BOOLEAN, false)).toBe(false)
     expect(
-      client.jsonVariation(FEATURE_ID_JSON, { key: 'value-default' }),
+      client.objectVariation(FEATURE_ID_JSON, { key: 'value-default' }),
     ).toStrictEqual({
       key: 'value-default',
     })

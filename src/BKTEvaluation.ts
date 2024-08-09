@@ -1,3 +1,8 @@
+import { BKTValue } from './JsonTypes'
+
+/**
+ * @deprecated use BKTEvaluationDetail<T> instead.
+ */
 export interface BKTEvaluation {
   readonly id: string
   readonly featureId: string
@@ -6,6 +11,22 @@ export interface BKTEvaluation {
   readonly variationId: string
   readonly variationName: string
   readonly variationValue: string
+  readonly reason:
+    | 'TARGET'
+    | 'RULE'
+    | 'DEFAULT'
+    | 'CLIENT'
+    | 'OFF_VARIATION'
+    | 'PREREQUISITE'
+}
+
+export interface BKTEvaluationDetail<T extends BKTValue> {
+  readonly featureId: string
+  readonly featureVersion: number
+  readonly userId: string
+  readonly variationId: string
+  readonly variationName: string
+  readonly variationValue: T
   readonly reason:
     | 'TARGET'
     | 'RULE'
