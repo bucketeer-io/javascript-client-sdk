@@ -20,7 +20,7 @@ import {
   stringToNumberConverter,
   stringToObjectConverter,
 } from '../src/BKTClient'
-import { BKTJsonValue } from '../src/JsonTypes'
+import { BKTValue } from '../src/JsonTypes'
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { GetEvaluationsRequest } from '../src/internal/model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../src/internal/model/response/GetEvaluationsResponse'
@@ -1136,7 +1136,7 @@ suite('BKTClient', () => {
     ])(
       'convertRawValueToType<object> value=%s, expected=%s, testValue=%s',
       (variationValue: string, expected: object | null, _testValue: object) => {
-        let result: BKTJsonValue | null = null
+        let result: BKTValue | null = null
         try {
           const transformer = stringToObjectConverter
           result = transformer(variationValue)
@@ -1306,7 +1306,7 @@ suite('BKTClient', () => {
         variationName: '',
         variationValue: { key: 'value11' },
         reason: 'CLIENT',
-      } satisfies BKTEvaluationDetails<BKTJsonValue>)
+      } satisfies BKTEvaluationDetails<BKTValue>)
     })
 
     test('numVariationDetails', async () => {
@@ -1380,7 +1380,7 @@ suite('BKTClient', () => {
         variationName: '',
         variationValue: { key: 'value11' },
         reason: 'CLIENT',
-      } satisfies BKTEvaluationDetails<BKTJsonValue>)
+      } satisfies BKTEvaluationDetails<BKTValue>)
     })
 
     test('booleanVariationDetails', async () => {
@@ -1454,7 +1454,7 @@ suite('BKTClient', () => {
         variationName: '',
         variationValue: { key: 'value11' },
         reason: 'CLIENT',
-      } satisfies BKTEvaluationDetails<BKTJsonValue>)
+      } satisfies BKTEvaluationDetails<BKTValue>)
     })
 
     test('objectVariationDetails', async () => {
@@ -1511,7 +1511,7 @@ suite('BKTClient', () => {
         variationName: mockJsonArrayEvaluation.variationName,
         variationValue: [{ key1: 'value1' }],
         reason: 'CLIENT',
-      } satisfies BKTEvaluationDetails<BKTJsonValue>)
+      } satisfies BKTEvaluationDetails<BKTValue>)
 
       expect(client.objectVariationDetails(featureId, {})).toStrictEqual({
         featureId: mockJsonObjectEvaluation.featureId,
@@ -1521,7 +1521,7 @@ suite('BKTClient', () => {
         variationName: mockJsonObjectEvaluation.variationName,
         variationValue: { key1: 'value1' },
         reason: 'CLIENT',
-      } satisfies BKTEvaluationDetails<BKTJsonValue>)
+      } satisfies BKTEvaluationDetails<BKTValue>)
 
       expect(client.objectVariationDetails(featureId, '')).toStrictEqual({
         featureId: mockJsonObjectEvaluation.featureId,
@@ -1531,7 +1531,7 @@ suite('BKTClient', () => {
         variationName: mockJsonObjectEvaluation.variationName,
         variationValue: { key1: 'value1' },
         reason: 'CLIENT',
-      } satisfies BKTEvaluationDetails<BKTJsonValue>)
+      } satisfies BKTEvaluationDetails<BKTValue>)
 
       expect(client.objectVariationDetails(featureId, true)).toStrictEqual({
         featureId: mockJsonObjectEvaluation.featureId,
@@ -1541,7 +1541,7 @@ suite('BKTClient', () => {
         variationName: mockJsonObjectEvaluation.variationName,
         variationValue: { key1: 'value1' },
         reason: 'CLIENT',
-      } satisfies BKTEvaluationDetails<BKTJsonValue>)
+      } satisfies BKTEvaluationDetails<BKTValue>)
 
       expect(client.objectVariationDetails(featureId, 1)).toStrictEqual({
         featureId: mockJsonObjectEvaluation.featureId,
@@ -1551,7 +1551,7 @@ suite('BKTClient', () => {
         variationName: mockJsonObjectEvaluation.variationName,
         variationValue: { key1: 'value1' },
         reason: 'CLIENT',
-      } satisfies BKTEvaluationDetails<BKTJsonValue>)
+      } satisfies BKTEvaluationDetails<BKTValue>)
 
       expect(client.stringVariationDetails(featureId, '')).toStrictEqual({
         featureId: featureId,

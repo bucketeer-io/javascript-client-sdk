@@ -8,7 +8,7 @@ import { clearInstance, getInstance, setInstance } from './internal/instance'
 import { ApiId } from './internal/model/MetricsEventData'
 import { TaskScheduler } from './internal/scheduler/TaskScheduler'
 import { toBKTUser } from './internal/UserHolder'
-import { BKTJsonValue } from './JsonTypes'
+import { BKTValue } from './JsonTypes'
 
 export interface BKTClient {
   stringVariation: (featureId: string, defaultValue: string) => string
@@ -17,8 +17,8 @@ export interface BKTClient {
   /**
    * @deprecated use objectVariation(featureId: string, defaultValue: BKTJsonValue) instead.
    */
-  jsonVariation: (featureId: string, defaultValue: BKTJsonValue) => BKTJsonValue
-  objectVariation: (featureId: string, defaultValue: BKTJsonValue) => BKTJsonValue
+  jsonVariation: (featureId: string, defaultValue: BKTValue) => BKTValue
+  objectVariation: (featureId: string, defaultValue: BKTValue) => BKTValue
 
   track: (goalId: string, value: number) => void
   currentUser: () => BKTUser
@@ -29,6 +29,7 @@ export interface BKTClient {
    * @deprecated use stringVariationDetails(featureId: string, defaultValue: string) instead.
    */
   evaluationDetails: (featureId: string) => BKTEvaluation | null
+
   stringVariationDetails: (
     featureId: string,
     defaultValue: string,
@@ -53,8 +54,8 @@ export interface BKTClient {
    */
   objectVariationDetails: (
     featureId: string,
-    defaultValue: BKTJsonValue,
-  ) => BKTEvaluationDetails<BKTJsonValue>
+    defaultValue: BKTValue,
+  ) => BKTEvaluationDetails<BKTValue>
   addEvaluationUpdateListener: (listener: () => void) => string
   removeEvaluationUpdateListener: (listenerId: string) => void
   clearEvaluationUpdateListeners: () => void
@@ -82,7 +83,7 @@ export class BKTClientImpl implements BKTClient {
     return this.booleanVariationDetails(featureId, defaultValue).variationValue
   }
 
-  jsonVariation(featureId: string, defaultValue: BKTJsonValue): BKTJsonValue {
+  jsonVariation(featureId: string, defaultValue: BKTValue): BKTValue {
     const value = this.objectVariation(
       featureId,
       defaultValue,
@@ -90,7 +91,7 @@ export class BKTClientImpl implements BKTClient {
     return value
   }
 
-  objectVariation(featureId: string, defaultValue: BKTJsonValue): BKTJsonValue {
+  objectVariation(featureId: string, defaultValue: BKTValue): BKTValue {
     const value = this.objectVariationDetails(
       featureId,
       defaultValue,
@@ -133,8 +134,8 @@ export class BKTClientImpl implements BKTClient {
 
   objectVariationDetails(
     featureId: string,
-    defaultValue: BKTJsonValue,
-  ): BKTEvaluationDetails<BKTJsonValue> {
+    defaultValue: BKTValue,
+  ): BKTEvaluationDetails<BKTValue> {
     return this.getVariationDetails(
       featureId,
       defaultValue,
@@ -205,7 +206,7 @@ export class BKTClientImpl implements BKTClient {
     this.component.evaluationInteractor().clearUpdateListeners()
   }
 
-  private getVariationDetails<T extends BKTJsonValue>(
+  private getVariationDetails<T extends BKTValue>(
     featureId: string,
     defaultValue: T,
     typeConverter: StringToTypeConverter<T>,
@@ -334,7 +335,7 @@ function parseJsonObjectOrArray(input: string) {
   return parsed
 }
 
-export const newDefaultBKTEvaluationDetails = <T extends BKTJsonValue>(
+export const newDefaultBKTEvaluationDetails = <T extends BKTValue>(
   userId: string,
   featureId: string,
   defaultValue: T,
@@ -379,7 +380,7 @@ export const stringToNumberConverter: StringToTypeConverter<number> = (
   return isNaN(parsedNumber) ? null : parsedNumber
 }
 
-export const stringToObjectConverter: StringToTypeConverter<BKTJsonValue> = (
+export const stringToObjectConverter: StringToTypeConverter<BKTValue> = (
   input: string,
 ) => {
   assetNonBlankString(input)

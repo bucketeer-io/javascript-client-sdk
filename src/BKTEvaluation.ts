@@ -1,4 +1,4 @@
-import { BKTJsonValue } from './JsonTypes'
+import { BKTValue } from './JsonTypes'
 
 /**
  * @deprecated use BKTEvaluationDetail<T> instead.
@@ -20,7 +20,7 @@ export interface BKTEvaluation {
     | 'PREREQUISITE'
 }
 
-export interface BKTEvaluationDetail<T extends BKTJsonValue> {
+export interface BKTEvaluationDetail<T extends BKTValue> {
   readonly featureId: string
   readonly featureVersion: number
   readonly userId: string

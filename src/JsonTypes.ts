@@ -1,9 +1,9 @@
 export type BKTJsonPrimitive = null | boolean | string | number
 export type BKTJsonObject = {
-  [key: string]: BKTJsonValue
+  [key: string]: BKTValue
 }
-export type BKTJsonArray = BKTJsonValue[]
+export type BKTJsonArray = BKTValue[]
 /**
  * Represents a JSON node value.
  */
-export type BKTJsonValue = BKTJsonPrimitive | BKTJsonObject | BKTJsonArray
+export type BKTValue = BKTJsonPrimitive | BKTJsonObject | BKTJsonArray
