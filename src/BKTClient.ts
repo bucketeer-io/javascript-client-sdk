@@ -325,10 +325,10 @@ function assetNonBlankString(input: string) {
 }
 
 function parseJsonObjectOrArray(input: string) {
-  const nonObjectTypes = ['number', 'string', 'boolean', 'null']
+  const primitiveTypes = ['number', 'string', 'boolean', 'null']
   const parsed = JSON.parse(input)
 
-  if (nonObjectTypes.includes(typeof parsed) || parsed === null) {
+  if (primitiveTypes.includes(typeof parsed) || parsed === null) {
     throw new Error('Only JSON objects or array are allowed')
   }
 
