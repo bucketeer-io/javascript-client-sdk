@@ -15,7 +15,7 @@ export interface BKTClient {
   numberVariation: (featureId: string, defaultValue: number) => number
   booleanVariation: (featureId: string, defaultValue: boolean) => boolean
   /**
-   * @deprecated use objectVariation(featureId: string, defaultValue: string) instead.
+   * @deprecated use objectVariation(featureId: string, defaultValue: BKTJsonValue) instead.
    */
   jsonVariation: (featureId: string, defaultValue: BKTJsonValue) => BKTJsonValue
   objectVariation: (featureId: string, defaultValue: BKTJsonValue) => BKTJsonValue
