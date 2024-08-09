@@ -220,12 +220,10 @@ export class BKTClientImpl implements BKTClient {
     let result: T | null = null
 
     if (variationValue !== undefined && variationValue !== null) {
-      if (variationValue !== undefined && variationValue !== null) {
-        try {
-          result = typeConverter(variationValue)
-        } catch (err) {
-          result = null
-        }
+      try {
+        result = typeConverter(variationValue)
+      } catch (err) {
+        result = null
       }
     }
 
