@@ -15,7 +15,7 @@ export interface BKTClient {
   numberVariation: (featureId: string, defaultValue: number) => number
   booleanVariation: (featureId: string, defaultValue: boolean) => boolean
   /**
-   * @deprecated use objectVariation(featureId: string, defaultValue: BKTJsonValue) instead.
+   * @deprecated use objectVariation(featureId: string, defaultValue: BKTValue) instead.
    */
   jsonVariation: (featureId: string, defaultValue: BKTValue) => BKTValue
   objectVariation: (featureId: string, defaultValue: BKTValue) => BKTValue
@@ -46,11 +46,11 @@ export interface BKTClient {
    * Retrieves the evaluation details for a given feature based on its ID.
    *
    * @param featureId - The unique identifier for the feature.
-   * @param defaultValue - The default value to return if no result is found. This value should be of type `BKTJsonValue`.
+   * @param defaultValue - The default value to return if no result is found. This value should be of type `BKTValue`.
    *
-   * @returns An object of type `BKTEvaluationDetail<BKTJsonValue>` containing the evaluation details.
+   * @returns An object of type `BKTEvaluationDetail<BKTValue>` containing the evaluation details.
    *
-   * Note: The returned value will be either a BKTJsonObject or a BKTJsonArray. If no result is found, it will return the provided `defaultValue`, which can be of any type within `BKTJsonValue`.
+   * Note: The returned value will be either a BKTJsonObject or a BKTJsonArray. If no result is found, it will return the provided `defaultValue`, which can be of any type within `BKTValue`.
    */
   objectVariationDetails: (
     featureId: string,

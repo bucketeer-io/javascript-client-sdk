@@ -15,7 +15,7 @@ export { defineBKTUser } from './BKTUser'
 export type { BKTClient } from './BKTClient'
 export { getBKTClient, destroyBKTClient } from './BKTClient'
 export type {
-  BKTValue as BKTJsonValue,
+  BKTValue,
   BKTJsonArray,
   BKTJsonObject,
   BKTJsonPrimitive,
