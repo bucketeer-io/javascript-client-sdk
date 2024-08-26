@@ -11,37 +11,29 @@ import { toBKTUser } from './internal/UserHolder'
 import { BKTValue } from './JsonTypes'
 
 export interface BKTClient {
-  stringVariation: (featureId: string, defaultValue: string) => string
-  numberVariation: (featureId: string, defaultValue: number) => number
   booleanVariation: (featureId: string, defaultValue: boolean) => boolean
-  /**
-   * @deprecated use objectVariation(featureId: string, defaultValue: BKTValue) instead.
-   */
-  jsonVariation: (featureId: string, defaultValue: BKTValue) => BKTValue
-  objectVariation: (featureId: string, defaultValue: BKTValue) => BKTValue
 
-  track: (goalId: string, value: number) => void
-  currentUser: () => BKTUser
-  updateUserAttributes: (attributes: Record<string, string>) => void
-  fetchEvaluations: (timeoutMillis?: number) => Promise<void>
-  flush: () => Promise<void>
-  /**
-   * @deprecated use stringVariationDetails(featureId: string, defaultValue: string) instead.
-   */
-  evaluationDetails: (featureId: string) => BKTEvaluation | null
+  booleanVariationDetails: (
+    featureId: string,
+    defaultValue: boolean,
+  ) => BKTEvaluationDetails<boolean>
+
+  stringVariation: (featureId: string, defaultValue: string) => string
 
   stringVariationDetails: (
     featureId: string,
     defaultValue: string,
   ) => BKTEvaluationDetails<string>
+
+  numberVariation: (featureId: string, defaultValue: number) => number
+
   numberVariationDetails: (
     featureId: string,
     defaultValue: number,
   ) => BKTEvaluationDetails<number>
-  booleanVariationDetails: (
-    featureId: string,
-    defaultValue: boolean,
-  ) => BKTEvaluationDetails<boolean>
+  
+  objectVariation: (featureId: string, defaultValue: BKTValue) => BKTValue
+  
   /**
    * Retrieves the evaluation details for a given feature based on its ID.
    *
@@ -56,6 +48,22 @@ export interface BKTClient {
     featureId: string,
     defaultValue: BKTValue,
   ) => BKTEvaluationDetails<BKTValue>
+
+  /**
+   * @deprecated use objectVariation(featureId: string, defaultValue: BKTValue) instead.
+   */
+  jsonVariation: (featureId: string, defaultValue: BKTValue) => BKTValue
+
+  track: (goalId: string, value: number) => void
+  currentUser: () => BKTUser
+  updateUserAttributes: (attributes: Record<string, string>) => void
+  fetchEvaluations: (timeoutMillis?: number) => Promise<void>
+  flush: () => Promise<void>
+  /**
+   * @deprecated use stringVariationDetails(featureId: string, defaultValue: string) instead.
+   */
+  evaluationDetails: (featureId: string) => BKTEvaluation | null
+
   addEvaluationUpdateListener: (listener: () => void) => string
   removeEvaluationUpdateListener: (listenerId: string) => void
   clearEvaluationUpdateListeners: () => void
@@ -71,54 +79,8 @@ export class BKTClientImpl implements BKTClient {
     return this.fetchEvaluations(timeoutMillis)
   }
 
-  stringVariation(featureId: string, defaultValue: string): string {
-    return this.stringVariationDetails(featureId, defaultValue).variationValue
-  }
-
-  numberVariation(featureId: string, defaultValue: number): number {
-    return this.numberVariationDetails(featureId, defaultValue).variationValue
-  }
-
   booleanVariation(featureId: string, defaultValue: boolean): boolean {
     return this.booleanVariationDetails(featureId, defaultValue).variationValue
-  }
-
-  jsonVariation(featureId: string, defaultValue: BKTValue): BKTValue {
-    const value = this.objectVariation(
-      featureId,
-      defaultValue,
-    )
-    return value
-  }
-
-  objectVariation(featureId: string, defaultValue: BKTValue): BKTValue {
-    const value = this.objectVariationDetails(
-      featureId,
-      defaultValue,
-    ).variationValue
-    return value
-  }
-
-  stringVariationDetails(
-    featureId: string,
-    defaultValue: string,
-  ): BKTEvaluationDetails<string> {
-    return this.getVariationDetails(
-      featureId,
-      defaultValue,
-      defaultStringToTypeConverter,
-    )
-  }
-
-  numberVariationDetails(
-    featureId: string,
-    defaultValue: number,
-  ): BKTEvaluationDetails<number> {
-    return this.getVariationDetails(
-      featureId,
-      defaultValue,
-      stringToNumberConverter,
-    )
   }
 
   booleanVariationDetails(
@@ -132,6 +94,44 @@ export class BKTClientImpl implements BKTClient {
     )
   }
 
+  numberVariation(featureId: string, defaultValue: number): number {
+    return this.numberVariationDetails(featureId, defaultValue).variationValue
+  }
+
+  numberVariationDetails(
+    featureId: string,
+    defaultValue: number,
+  ): BKTEvaluationDetails<number> {
+    return this.getVariationDetails(
+      featureId,
+      defaultValue,
+      stringToNumberConverter,
+    )
+  }
+  
+  stringVariation(featureId: string, defaultValue: string): string {
+    return this.stringVariationDetails(featureId, defaultValue).variationValue
+  }
+
+  stringVariationDetails(
+    featureId: string,
+    defaultValue: string,
+  ): BKTEvaluationDetails<string> {
+    return this.getVariationDetails(
+      featureId,
+      defaultValue,
+      defaultStringToTypeConverter,
+    )
+  }
+
+  objectVariation(featureId: string, defaultValue: BKTValue): BKTValue {
+    const value = this.objectVariationDetails(
+      featureId,
+      defaultValue,
+    ).variationValue
+    return value
+  }
+
   objectVariationDetails(
     featureId: string,
     defaultValue: BKTValue,
@@ -141,6 +141,14 @@ export class BKTClientImpl implements BKTClient {
       defaultValue,
       stringToObjectConverter,
     )
+  }
+
+  jsonVariation(featureId: string, defaultValue: BKTValue): BKTValue {
+    const value = this.objectVariation(
+      featureId,
+      defaultValue,
+    )
+    return value
   }
 
   track(goalId: string, value = 0.0): void {
