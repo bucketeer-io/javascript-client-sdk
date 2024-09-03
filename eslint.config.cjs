@@ -26,22 +26,7 @@ module.exports = [
 		rules: {
 			'no-multiple-empty-lines': 'error',
 			quotes: ['error', 'single', { allowTemplateLiterals: true }],
-			semi: 'off',
-			'@typescript-eslint/semi': ['error', 'never'],
-			'@typescript-eslint/member-delimiter-style': [
-				'error',
-				{
-					multiline: {
-						delimiter: 'none',
-						requireLast: true,
-					},
-					singleline: {
-						delimiter: 'semi',
-						requireLast: false,
-					},
-					multilineDetection: 'brackets',
-				},
-			],
+			semi: ['error', 'never'],
 			'@typescript-eslint/no-unused-vars': [
 				'warn',
 				{
