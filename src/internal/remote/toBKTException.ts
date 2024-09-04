@@ -34,7 +34,7 @@ export const toBKTException = async (
   const errorBody: ErrorResponse | null = (() => {
     try {
       return JSON.parse(responseText)
-    } catch (e) {
+    } catch {
       return null
     }
   })()

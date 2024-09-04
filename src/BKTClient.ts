@@ -71,7 +71,7 @@ export class BKTClientImpl implements BKTClient {
     }
     try {
       return JSON.parse(value)
-    } catch (e) {
+    } catch {
       return defaultValue
     }
   }
