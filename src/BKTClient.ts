@@ -52,7 +52,7 @@ export interface BKTClient {
   /**
    * @deprecated use objectVariation(featureId: string, defaultValue: BKTValue) instead.
    */
-  jsonVariation: (featureId: string, defaultValue: BKTValue) => BKTValue
+  jsonVariation: <T>(featureId: string, defaultValue: T) => T
 
   track: (goalId: string, value: number) => void
   currentUser: () => BKTUser
@@ -143,12 +143,16 @@ export class BKTClientImpl implements BKTClient {
     )
   }
 
-  jsonVariation(featureId: string, defaultValue: BKTValue): BKTValue {
-    const value = this.objectVariation(
-      featureId,
-      defaultValue,
-    )
-    return value
+  jsonVariation<T>(featureId: string, defaultValue: T): T {
+    const value = this.getVariationValue(featureId)
+    if (value === null) {
+      return defaultValue
+    }
+    try {
+      return JSON.parse(value)
+    } catch {
+      return defaultValue
+    }
   }
 
   track(goalId: string, value = 0.0): void {
@@ -256,6 +260,25 @@ export class BKTClientImpl implements BKTClient {
 
       return newDefaultBKTEvaluationDetails(user.id, featureId, defaultValue)
     }
+  }
+
+  private getVariationValue(featureId: string): string | null {
+    const raw = this.component.evaluationInteractor().getLatest(featureId)
+
+    const user = this.component.userHolder().get()
+    const featureTag = this.component.config().featureTag
+
+    if (raw) {
+      this.component
+        .eventInteractor()
+        .trackEvaluationEvent(featureTag, user, raw)
+    } else {
+      this.component
+        .eventInteractor()
+        .trackDefaultEvaluationEvent(featureTag, user, featureId)
+    }
+
+    return raw?.variationValue ?? null
   }
 
   private scheduleTasks(): void {

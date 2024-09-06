@@ -508,6 +508,62 @@ suite('BKTClient', () => {
     // cases for defaultValue is covered in the above test
   })
 
+  suite('jsonVariation', () => {
+    const JSON_VALUE = '{"key": "value"}'
+
+    test.each([
+      [JSON_VALUE, {}, JSON.parse(JSON_VALUE)],
+      ['true', JSON.parse(JSON_VALUE), true],
+      ['true', {}, true],
+      ['not bool', {}, {}],
+      ['1', {}, 1],
+      ['{}', {}, {}],
+    ])(
+      'value=%s, default=%s, actual=%s',
+      async (value, defaultValue, actual) => {
+        server.use(
+          http.post<
+            Record<string, never>,
+            GetEvaluationsRequest,
+            GetEvaluationsResponse
+          >(
+            `${config.apiEndpoint}/get_evaluations`,
+            () => {
+              return HttpResponse.json({
+                evaluations: {
+                  ...user1Evaluations,
+                  evaluations: [buildEvaluation(value)],
+                },
+                userEvaluationsId: 'user_evaluation_id_value',
+              })
+            },
+            { once: true },
+          ),
+          http.post<
+            Record<string, never>,
+            RegisterEventsRequest,
+            RegisterEventsResponse
+          >(`${config.apiEndpoint}/register_events`, () => {
+            return HttpResponse.json({})
+          }),
+        )
+
+        await initializeBKTClientInternal(component, 1000)
+
+        const client = getBKTClient()
+
+        assert(client !== null)
+
+        expect(
+          JSON.stringify(
+            client.jsonVariation('feature_id_value', defaultValue),
+          ),
+        ).toBe(JSON.stringify(actual))
+      },
+    )
+    // cases for defaultValue is covered in the above test
+  })
+
   test('track', async () => {
     server.use(
       http.post<
