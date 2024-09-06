@@ -1,6 +1,5 @@
 import {
   BKTEvaluation,
-  BKTEvaluationDetail as BKTEvaluationDetails,
 } from './BKTEvaluation'
 import { BKTUser } from './BKTUser'
 import { Component } from './internal/di/Component'
@@ -8,7 +7,9 @@ import { clearInstance, getInstance, setInstance } from './internal/instance'
 import { ApiId } from './internal/model/MetricsEventData'
 import { TaskScheduler } from './internal/scheduler/TaskScheduler'
 import { toBKTUser } from './internal/UserHolder'
-import { BKTValue } from './JsonTypes'
+import { BKTValue } from './BKTValue'
+import { BKTEvaluationDetails } from './BKTEvaluationDetails'
+
 
 export interface BKTClient {
   booleanVariation: (featureId: string, defaultValue: boolean) => boolean

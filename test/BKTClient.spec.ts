@@ -20,7 +20,7 @@ import {
   stringToNumberConverter,
   stringToObjectConverter,
 } from '../src/BKTClient'
-import { BKTValue } from '../src/JsonTypes'
+import { BKTValue } from '../src/BKTValue'
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { GetEvaluationsRequest } from '../src/internal/model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../src/internal/model/response/GetEvaluationsResponse'
@@ -41,7 +41,6 @@ import { Evaluation } from '../src/internal/model/Evaluation'
 import { EventType } from '../src/internal/model/Event'
 import {
   BKTEvaluation,
-  BKTEvaluationDetail as BKTEvaluationDetails,
 } from '../src/BKTEvaluation'
 import { ErrorResponse } from '../src/internal/model/response/ErrorResponse'
 import { RegisterEventsRequest } from '../src/internal/model/request/RegisterEventsRequest'
@@ -49,6 +48,7 @@ import { RegisterEventsResponse } from '../src/internal/model/response/RegisterE
 import { DefaultComponent } from '../src/internal/di/Component'
 import { DataModule } from '../src/internal/di/DataModule'
 import { InteractorModule } from '../src/internal/di/InteractorModule'
+import { BKTEvaluationDetails } from '../src/BKTEvaluationDetails'
 
 suite('BKTClient', () => {
   let server: SetupServer
