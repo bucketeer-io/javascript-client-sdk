@@ -30,7 +30,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "unbuild",
+    "build": "unbuild --sourcemap",
     "preview": "vite preview",
     "test": "pnpm test:browser --run ; pnpm test:node --run",
     "test:browser": "vitest --config ./vitest-browser.config.ts --dir test",
@@ -42,25 +42,25 @@
   },
   "devDependencies": {
     "@types/jsdom": "21.1.7",
-    "@types/node": "20.14.13",
-    "@typescript-eslint/eslint-plugin": "7.18.0",
-    "@typescript-eslint/parser": "7.18.0",
+    "@types/node": "20.16.3",
+    "@typescript-eslint/eslint-plugin": "8.4.0",
+    "@typescript-eslint/parser": "8.4.0",
     "@vitest/browser": "2.0.5",
     "@vitest/utils": "2.0.5",
     "cross-fetch": "4.0.0",
-    "eslint": "9.8.0",
+    "eslint": "9.9.1",
     "eslint-config-prettier": "9.1.0",
-    "eslint-plugin-import": "2.29.1",
+    "eslint-plugin-import": "2.30.0",
     "eslint-plugin-prettier": "5.2.1",
-    "happy-dom": "14.12.3",
+    "happy-dom": "15.7.3",
     "jiti": "1.21.6",
-    "msw": "2.3.4",
+    "msw": "2.4.1",
     "prettier": "3.3.3",
     "typescript": "5.5.4",
-    "typescript-eslint": "7.18.0",
+    "typescript-eslint": "8.4.0",
     "unbuild": "2.0.0",
     "vitest": "2.0.5",
-    "webdriverio": "8.39.1"
+    "webdriverio": "9.0.7"
   },
-  "packageManager": "pnpm@9.6.0"
+  "packageManager": "pnpm@9.9.0"
 }

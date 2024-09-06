@@ -35,7 +35,7 @@ export class EvaluationTask implements ScheduledTask {
         this.retryCount = 0
         this.reschedule(this.component.config().pollingInterval)
       }
-    } catch (e) {
+    } catch {
       // error
       const pollingInterval = this.component.config().pollingInterval
       if (pollingInterval <= this.retryPollingInterval) {
