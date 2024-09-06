@@ -1128,7 +1128,7 @@ suite('BKTClient', () => {
           const transformer = stringToBoolConverter
           result = transformer(variationValue)
           expect(result).toStrictEqual(expected)
-        } catch (err) {
+        } catch {
           expect(expected).toStrictEqual(null)
         }
       },
@@ -1156,7 +1156,7 @@ suite('BKTClient', () => {
           const transformer = stringToNumberConverter
           result = transformer(variationValue)
           expect(result).toStrictEqual(expected)
-        } catch (err) {
+        } catch {
           expect(expected).toStrictEqual(null)
         }
       },
@@ -1197,7 +1197,7 @@ suite('BKTClient', () => {
           const transformer = stringToObjectConverter
           result = transformer(variationValue)
           expect(result).toStrictEqual(expected)
-        } catch (err) {
+        } catch {
           expect(expected).toStrictEqual(null)
         }
       },

@@ -236,7 +236,7 @@ export class BKTClientImpl implements BKTClient {
     if (variationValue !== undefined && variationValue !== null) {
       try {
         result = typeConverter(variationValue)
-      } catch (err) {
+      } catch {
         result = null
       }
     }
