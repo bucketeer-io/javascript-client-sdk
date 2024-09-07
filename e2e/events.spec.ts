@@ -95,7 +95,7 @@ suite('e2e/events', () => {
 
     const events = component.dataModule.eventStorage().getAll()
     // It includes the Latency and ResponseSize metrics
-    expect(events).toHaveLength(7)
+    expect(events).toHaveLength(8)
     expect(
       events.some(
         (e) =>
@@ -136,7 +136,7 @@ suite('e2e/events', () => {
 
     const events = component.dataModule.eventStorage().getAll()
     // It includes the Latency and ResponseSize metrics
-    expect(events).toHaveLength(7)
+    expect(events).toHaveLength(8)
     expect(
       events.some(
         (e) =>
