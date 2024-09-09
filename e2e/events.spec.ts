@@ -87,12 +87,15 @@ suite('e2e/events', () => {
     expect(client.jsonVariation(FEATURE_ID_JSON, '')).toStrictEqual({
       key: 'value-1',
     })
+    expect(client.objectVariation(FEATURE_ID_JSON, '')).toStrictEqual({
+      key: 'value-1',
+    })
 
     const component = getDefaultComponent(client)
 
     const events = component.dataModule.eventStorage().getAll()
     // It includes the Latency and ResponseSize metrics
-    expect(events).toHaveLength(7)
+    expect(events).toHaveLength(8)
     expect(
       events.some(
         (e) =>
@@ -125,10 +128,15 @@ suite('e2e/events', () => {
     ).toStrictEqual({
       key: 'value-default',
     })
+    expect(
+      client.objectVariation(FEATURE_ID_JSON, { key: 'value-default' }),
+    ).toStrictEqual({
+      key: 'value-default',
+    })
 
     const events = component.dataModule.eventStorage().getAll()
     // It includes the Latency and ResponseSize metrics
-    expect(events).toHaveLength(7)
+    expect(events).toHaveLength(8)
     expect(
       events.some(
         (e) =>

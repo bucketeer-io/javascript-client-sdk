@@ -1,22 +1,70 @@
-import { BKTEvaluation } from './BKTEvaluation'
+import {
+  BKTEvaluation,
+} from './BKTEvaluation'
 import { BKTUser } from './BKTUser'
 import { Component } from './internal/di/Component'
 import { clearInstance, getInstance, setInstance } from './internal/instance'
 import { ApiId } from './internal/model/MetricsEventData'
 import { TaskScheduler } from './internal/scheduler/TaskScheduler'
 import { toBKTUser } from './internal/UserHolder'
+import { BKTValue } from './BKTValue'
+import { BKTEvaluationDetails } from './BKTEvaluationDetails'
+
 
 export interface BKTClient {
-  stringVariation: (featureId: string, defaultValue: string) => string
-  numberVariation: (featureId: string, defaultValue: number) => number
   booleanVariation: (featureId: string, defaultValue: boolean) => boolean
+
+  booleanVariationDetails: (
+    featureId: string,
+    defaultValue: boolean,
+  ) => BKTEvaluationDetails<boolean>
+
+  stringVariation: (featureId: string, defaultValue: string) => string
+
+  stringVariationDetails: (
+    featureId: string,
+    defaultValue: string,
+  ) => BKTEvaluationDetails<string>
+
+  numberVariation: (featureId: string, defaultValue: number) => number
+
+  numberVariationDetails: (
+    featureId: string,
+    defaultValue: number,
+  ) => BKTEvaluationDetails<number>
+  
+  objectVariation: (featureId: string, defaultValue: BKTValue) => BKTValue
+  
+  /**
+   * Retrieves the evaluation details for a given feature based on its ID.
+   *
+   * @param featureId - The unique identifier for the feature.
+   * @param defaultValue - The default value to return if no result is found. This value should be of type `BKTValue`.
+   *
+   * @returns An object of type `BKTEvaluationDetail<BKTValue>` containing the evaluation details.
+   *
+   * Note: The returned value will be either a BKTJsonObject or a BKTJsonArray. If no result is found, it will return the provided `defaultValue`, which can be of any type within `BKTValue`.
+   */
+  objectVariationDetails: (
+    featureId: string,
+    defaultValue: BKTValue,
+  ) => BKTEvaluationDetails<BKTValue>
+
+  /**
+   * @deprecated use objectVariation(featureId: string, defaultValue: BKTValue) instead.
+   */
   jsonVariation: <T>(featureId: string, defaultValue: T) => T
+
   track: (goalId: string, value: number) => void
   currentUser: () => BKTUser
   updateUserAttributes: (attributes: Record<string, string>) => void
   fetchEvaluations: (timeoutMillis?: number) => Promise<void>
   flush: () => Promise<void>
+  /**
+   * @deprecated use stringVariationDetails(featureId: string, defaultValue: string) instead.
+   */
   evaluationDetails: (featureId: string) => BKTEvaluation | null
+
   addEvaluationUpdateListener: (listener: () => void) => string
   removeEvaluationUpdateListener: (listenerId: string) => void
   clearEvaluationUpdateListeners: () => void
@@ -32,36 +80,68 @@ export class BKTClientImpl implements BKTClient {
     return this.fetchEvaluations(timeoutMillis)
   }
 
-  stringVariation(featureId: string, defaultValue: string): string {
-    const value = this.getVariationValue(featureId)
-    if (value === null) {
-      return defaultValue
-    }
-    return value
+  booleanVariation(featureId: string, defaultValue: boolean): boolean {
+    return this.booleanVariationDetails(featureId, defaultValue).variationValue
+  }
+
+  booleanVariationDetails(
+    featureId: string,
+    defaultValue: boolean,
+  ): BKTEvaluationDetails<boolean> {
+    return this.getVariationDetails(
+      featureId,
+      defaultValue,
+      stringToBoolConverter,
+    )
   }
 
   numberVariation(featureId: string, defaultValue: number): number {
-    const value = this.getVariationValue(featureId)
-    if (value === null) {
-      return defaultValue
-    }
-    const result = Number(value)
-    if (Number.isNaN(result)) {
-      return defaultValue
-    }
-    return result
+    return this.numberVariationDetails(featureId, defaultValue).variationValue
   }
 
-  booleanVariation(featureId: string, defaultValue: boolean): boolean {
-    const value = this.getVariationValue(featureId)
-    const result = value?.toLowerCase()
-    if (result === 'true') {
-      return true
-    } else if (result === 'false') {
-      return false
-    } else {
-      return defaultValue
-    }
+  numberVariationDetails(
+    featureId: string,
+    defaultValue: number,
+  ): BKTEvaluationDetails<number> {
+    return this.getVariationDetails(
+      featureId,
+      defaultValue,
+      stringToNumberConverter,
+    )
+  }
+  
+  stringVariation(featureId: string, defaultValue: string): string {
+    return this.stringVariationDetails(featureId, defaultValue).variationValue
+  }
+
+  stringVariationDetails(
+    featureId: string,
+    defaultValue: string,
+  ): BKTEvaluationDetails<string> {
+    return this.getVariationDetails(
+      featureId,
+      defaultValue,
+      defaultStringToTypeConverter,
+    )
+  }
+
+  objectVariation(featureId: string, defaultValue: BKTValue): BKTValue {
+    const value = this.objectVariationDetails(
+      featureId,
+      defaultValue,
+    ).variationValue
+    return value
+  }
+
+  objectVariationDetails(
+    featureId: string,
+    defaultValue: BKTValue,
+  ): BKTEvaluationDetails<BKTValue> {
+    return this.getVariationDetails(
+      featureId,
+      defaultValue,
+      stringToObjectConverter,
+    )
   }
 
   jsonVariation<T>(featureId: string, defaultValue: T): T {
@@ -137,6 +217,50 @@ export class BKTClientImpl implements BKTClient {
 
   clearEvaluationUpdateListeners() {
     this.component.evaluationInteractor().clearUpdateListeners()
+  }
+
+  private getVariationDetails<T extends BKTValue>(
+    featureId: string,
+    defaultValue: T,
+    typeConverter: StringToTypeConverter<T>,
+  ): BKTEvaluationDetails<T> {
+    const raw = this.component.evaluationInteractor().getLatest(featureId)
+    const user = this.component.userHolder().get()
+    const featureTag = this.component.config().featureTag
+
+    const variationValue = raw?.variationValue
+
+    // Handle conversion based on the type of T
+    let result: T | null = null
+
+    if (variationValue !== undefined && variationValue !== null) {
+      try {
+        result = typeConverter(variationValue)
+      } catch {
+        result = null
+      }
+    }
+
+    if (raw !== null && result !== null) {
+      this.component
+        .eventInteractor()
+        .trackEvaluationEvent(featureTag, user, raw)
+      return {
+        featureId: raw.featureId,
+        featureVersion: raw.featureVersion,
+        userId: raw.userId,
+        variationId: raw.variationId,
+        variationName: raw.variationName,
+        variationValue: result,
+        reason: raw.reason.type,
+      } satisfies BKTEvaluationDetails<T>
+    } else {
+      this.component
+        .eventInteractor()
+        .trackDefaultEvaluationEvent(featureTag, user, featureId)
+
+      return newDefaultBKTEvaluationDetails(user.id, featureId, defaultValue)
+    }
   }
 
   private getVariationValue(featureId: string): string | null {
@@ -224,4 +348,73 @@ export const destroyBKTClient = (): void => {
     ;(client as BKTClientImpl).resetTasks()
   }
   clearInstance()
+}
+
+function assetNonBlankString(input: string) {
+  if (input.trim().length == 0) {
+    throw new Error('Input string must be non-blank')
+  }
+}
+
+function parseJsonObjectOrArray(input: string) {
+  const primitiveTypes = ['number', 'string', 'boolean', 'null']
+  const parsed = JSON.parse(input)
+
+  if (primitiveTypes.includes(typeof parsed) || parsed === null) {
+    throw new Error('Only JSON objects or array are allowed')
+  }
+
+  return parsed
+}
+
+export const newDefaultBKTEvaluationDetails = <T extends BKTValue>(
+  userId: string,
+  featureId: string,
+  defaultValue: T,
+): BKTEvaluationDetails<T> => {
+  return {
+    featureId: featureId,
+    featureVersion: 0,
+    userId: userId,
+    variationId: '',
+    variationName: '',
+    variationValue: defaultValue,
+    reason: 'CLIENT',
+  } satisfies BKTEvaluationDetails<T>
+}
+
+export type StringToTypeConverter<T> = (input: string) => T | null
+
+export const defaultStringToTypeConverter: StringToTypeConverter<string> = (
+  input: string,
+) => input
+
+export const stringToBoolConverter: StringToTypeConverter<boolean> = (
+  input: string,
+) => {
+  assetNonBlankString(input)
+
+  const lowcaseValue = input.toLowerCase()
+  if (lowcaseValue === 'true') {
+    return true
+  } else if (lowcaseValue === 'false') {
+    return false
+  } else {
+    return null
+  }
+}
+
+export const stringToNumberConverter: StringToTypeConverter<number> = (
+  input: string,
+) => {
+  assetNonBlankString(input)
+  const parsedNumber = Number(input)
+  return isNaN(parsedNumber) ? null : parsedNumber
+}
+
+export const stringToObjectConverter: StringToTypeConverter<BKTValue> = (
+  input: string,
+) => {
+  assetNonBlankString(input)
+  return parseJsonObjectOrArray(input)
 }

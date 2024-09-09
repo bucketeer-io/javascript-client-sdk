@@ -19,6 +19,13 @@ export type {
   BrowserLocalStorage,
   InMemoryStorage,
 } from './BKTStorage'
+export type {
+  BKTValue,
+  BKTJsonArray,
+  BKTJsonObject,
+  BKTJsonPrimitive,
+} from './BKTValue'
+export type { BKTEvaluationDetails } from './BKTEvaluationDetails'
 
 const createBrowserComponent = (config: BKTConfig, user: User): Component => {
   return new DefaultComponent(
