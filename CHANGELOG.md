@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.2.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/js-client-sdk-v2.1.5...js-client-sdk-v2.2.0) (2024-09-09)
+
+
+### Features
+
+* get variation details by variation type ([#155](https://github.com/bucketeer-io/javascript-client-sdk/issues/155)) ([d3f76e2](https://github.com/bucketeer-io/javascript-client-sdk/commit/d3f76e2559924405dc3bdf8b6a123f0de835950a))
+
+
+### Miscellaneous
+
+* define the exception name explicitly ([#170](https://github.com/bucketeer-io/javascript-client-sdk/issues/170)) ([78eb60c](https://github.com/bucketeer-io/javascript-client-sdk/commit/78eb60cbdceea2c103629d69c7c30b4a9e7790be))
+* **deps:** lock file maintenance ([#172](https://github.com/bucketeer-io/javascript-client-sdk/issues/172)) ([95e7489](https://github.com/bucketeer-io/javascript-client-sdk/commit/95e748901085335370918c56a012cb777a8d517a))
+
+
+### Build System
+
+* **deps:** lock file maintenance ([#160](https://github.com/bucketeer-io/javascript-client-sdk/issues/160)) ([b5ee340](https://github.com/bucketeer-io/javascript-client-sdk/commit/b5ee3404d117ded58b29383d2275347fa4617743))
+* **deps:** lock file maintenance ([#169](https://github.com/bucketeer-io/javascript-client-sdk/issues/169)) ([6c9497f](https://github.com/bucketeer-io/javascript-client-sdk/commit/6c9497ff8b67690c5d50fc0d20890a659a618b2d))
+* **deps:** update all major dependencies (major) ([#176](https://github.com/bucketeer-io/javascript-client-sdk/issues/176)) ([1b7032b](https://github.com/bucketeer-io/javascript-client-sdk/commit/1b7032bb39633afd71c4953e17126c11bc15370e))
+* **deps:** update all non-major dependencies ([#163](https://github.com/bucketeer-io/javascript-client-sdk/issues/163)) ([32d98ee](https://github.com/bucketeer-io/javascript-client-sdk/commit/32d98ee9c01c2cb9a6caf7d0c1160a69789d3cc5))
+* **deps:** update all non-major dependencies ([#175](https://github.com/bucketeer-io/javascript-client-sdk/issues/175)) ([f443b8b](https://github.com/bucketeer-io/javascript-client-sdk/commit/f443b8b969aaef43fde4228965a63edcc122fa94))
+* export sourcemap file when building ([#171](https://github.com/bucketeer-io/javascript-client-sdk/issues/171)) ([9103328](https://github.com/bucketeer-io/javascript-client-sdk/commit/91033286ad6c54a6e6e5d0a35307763117d2e3d3))
+
 ## [2.1.5](https://github.com/bucketeer-io/javascript-client-sdk/compare/js-client-sdk-v2.1.4...js-client-sdk-v2.1.5) (2024-08-01)
 
 ### Bug Fixes
