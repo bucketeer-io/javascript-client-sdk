@@ -53,7 +53,7 @@
     "eslint-plugin-import": "2.30.0",
     "eslint-plugin-prettier": "5.2.1",
     "happy-dom": "15.7.3",
-    "jiti": "1.21.6",
+    "jiti": "2.3.3",
     "msw": "2.4.1",
     "prettier": "3.3.3",
     "typescript": "5.5.4",
