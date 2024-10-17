@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.2.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/js-client-sdk-v2.1.5...js-client-sdk-v2.2.0) (2024-09-09)
+## [2.2.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.1.5...v2.2.0) (2024-09-09)
 
 ### Features
 
@@ -20,7 +20,7 @@
 - **deps:** update all non-major dependencies ([#175](https://github.com/bucketeer-io/javascript-client-sdk/issues/175)) ([f443b8b](https://github.com/bucketeer-io/javascript-client-sdk/commit/f443b8b969aaef43fde4228965a63edcc122fa94))
 - export sourcemap file when building ([#171](https://github.com/bucketeer-io/javascript-client-sdk/issues/171)) ([9103328](https://github.com/bucketeer-io/javascript-client-sdk/commit/91033286ad6c54a6e6e5d0a35307763117d2e3d3))
 
-## [2.1.5](https://github.com/bucketeer-io/javascript-client-sdk/compare/js-client-sdk-v2.1.4...js-client-sdk-v2.1.5) (2024-08-01)
+## [2.1.5](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.1.4...v2.1.5) (2024-08-01)
 
 ### Bug Fixes
 
