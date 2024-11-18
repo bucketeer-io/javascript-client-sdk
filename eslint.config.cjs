@@ -36,6 +36,13 @@ module.exports = [
 					destructuredArrayIgnorePattern: '^_',
 				},
 			],
+			'@typescript-eslint/no-unused-expressions': [
+				'error',
+				{
+					allowShortCircuit: true,
+					allowTernary: true,
+				},
+			],
 		},
 	}
 ];
