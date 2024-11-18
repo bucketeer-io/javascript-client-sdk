@@ -8,7 +8,7 @@ import {
   beforeAll,
   vi,
 } from 'vitest'
-import fetch from 'cross-fetch'
+
 import { HttpResponse, http, delay, StrictRequest } from 'msw'
 import assert from 'assert'
 import { SetupServer } from 'msw/node'
@@ -52,10 +52,7 @@ suite('internal/remote/ApiClient', () => {
 
   suite('getEvaluations', () => {
     test('success', async () => {
-      const requestInterceptor = vi.fn<
-        [StrictRequest<GetEvaluationsRequest>],
-        void
-      >()
+      const requestInterceptor = vi.fn((_request: StrictRequest<GetEvaluationsRequest>) => {})
 
       server.use(
         http.post<
