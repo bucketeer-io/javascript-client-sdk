@@ -8,7 +8,7 @@ import {
   beforeAll,
   vi,
 } from 'vitest'
-// import fetch from 'cross-fetch'
+
 import { HttpResponse, http, delay, StrictRequest } from 'msw'
 import assert from 'assert'
 import { SetupServer } from 'msw/node'

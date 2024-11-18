@@ -10,7 +10,7 @@ import {
   afterAll,
   beforeAll,
 } from 'vitest'
-// import fetch from 'cross-fetch'
+
 import { destroyBKTClient } from '../../../src/BKTClient'
 import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
 import { DefaultComponent } from '../../../src/internal/di/Component'

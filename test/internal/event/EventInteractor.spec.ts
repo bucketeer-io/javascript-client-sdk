@@ -1,7 +1,7 @@
 import assert from 'assert'
 import { HttpResponse, http } from 'msw'
 import { SetupServer } from 'msw/node'
-// import fetch from 'cross-fetch'
+
 import {
   expect,
   suite,
