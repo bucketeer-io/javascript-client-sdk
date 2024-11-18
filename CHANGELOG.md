@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.2.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.0...v2.2.1) (2024-11-18)
+
+
+### Build System
+
+* **deps:** lock file maintenance ([#178](https://github.com/bucketeer-io/javascript-client-sdk/issues/178)) ([ef1c4a2](https://github.com/bucketeer-io/javascript-client-sdk/commit/ef1c4a289f85c7c61f66f8f0eb9bbfa562a68bbf))
+* **deps:** update all major dependencies ([#184](https://github.com/bucketeer-io/javascript-client-sdk/issues/184)) ([9276f56](https://github.com/bucketeer-io/javascript-client-sdk/commit/9276f56a94fcd1f718f26a1a07364344ea1009e9))
+* **deps:** update all non-major dependencies ([#182](https://github.com/bucketeer-io/javascript-client-sdk/issues/182)) ([d58b258](https://github.com/bucketeer-io/javascript-client-sdk/commit/d58b25825e51ce1fda2253be37ddb2f73bc435a8))
+* **deps:** update dependency happy-dom to v15.10.2 [SECURITY] ([#186](https://github.com/bucketeer-io/javascript-client-sdk/issues/186)) ([66dd0ab](https://github.com/bucketeer-io/javascript-client-sdk/commit/66dd0abf710f013684b5d1c3a191cbd1c57f42bb))
+* **deps:** update dependency vite to v5.4.6 [SECURITY] ([#179](https://github.com/bucketeer-io/javascript-client-sdk/issues/179)) ([c83399b](https://github.com/bucketeer-io/javascript-client-sdk/commit/c83399b4d7fcd98674044c9cc5575ef41bb1d9e3))
+
 ## [2.2.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.1.5...v2.2.0) (2024-09-09)
 
 ### Features
