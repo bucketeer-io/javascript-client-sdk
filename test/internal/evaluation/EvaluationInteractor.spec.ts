@@ -10,7 +10,7 @@ import {
   beforeAll,
   afterAll,
 } from 'vitest'
-import fetch from 'cross-fetch'
+
 import assert from 'assert'
 import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
 import { DefaultComponent } from '../../../src/internal/di/Component'
