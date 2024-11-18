@@ -14,7 +14,7 @@ export function setupServerAndListen(
   ...handlers: Array<RequestHandler>
 ): SetupServer {
   const server = setupServer(...handlers)
-  server.listen({ onUnhandledRequest: 'error' })
+  server.listen({ onUnhandledRequest: 'warn' })
   return server
 }
 

@@ -31,7 +31,7 @@ import {
   TestPlatformModule,
   FakeClock,
 } from './utils'
-import fetch from 'cross-fetch'
+// import fetch from 'cross-fetch'
 import { user1 } from './mocks/users'
 import {
   InternalServerErrorException,
