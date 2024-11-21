@@ -97,7 +97,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         component.dataModule.evaluationStorage().getCurrentEvaluationsId(),
       ).toBeNull()
 
-      const mockListener = vi.fn<[], void>()
+      const mockListener = vi.fn()
       interactor.addUpdateListener(mockListener)
 
       const result = await interactor.fetch(user1)
@@ -158,7 +158,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         }, { once: true }),
       )
 
-      const mockListener = vi.fn<[], void>()
+      const mockListener = vi.fn()
       interactor.addUpdateListener(mockListener)
 
       // initial request
@@ -194,17 +194,14 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     })
 
     test('update with no change', async () => {
-      const requestInterceptor = vi.fn<
-        [StrictRequest<GetEvaluationsRequest>],
-        void
-      >()
+      const requestInterceptor = vi.fn()
 
       server.use(
         http.post<
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async ({request}) => {
+        >(`${config.apiEndpoint}/get_evaluations`, async ({request}: { request: StrictRequest }) => {
           requestInterceptor(request)
           return HttpResponse.json({
             evaluations: {
@@ -218,7 +215,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async ({request}) => {
+        >(`${config.apiEndpoint}/get_evaluations`, async ({request}: { request: StrictRequest }) => {
           requestInterceptor(request)
           return HttpResponse.json({
             evaluations: {
@@ -233,7 +230,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         }),
       )
 
-      const mockListener = vi.fn<[], void>()
+      const mockListener = vi.fn()
       interactor.addUpdateListener(mockListener)
 
       const result1 = await interactor.fetch(user1)
@@ -360,7 +357,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         userAttributesUpdated: false,
       })
 
-      const mockListener = vi.fn<[], void>()
+      const mockListener = vi.fn()
 
       interactor.addUpdateListener(mockListener)
 
@@ -414,7 +411,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         userAttributesUpdated: false,
       })
 
-      const mockListener = vi.fn<[], void>()
+      const mockListener = vi.fn()
 
       interactor.addUpdateListener(mockListener)
 
@@ -468,7 +465,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         userAttributesUpdated: false,
       })
 
-      const mockListener = vi.fn<[], void>()
+      const mockListener = vi.fn()
 
       interactor.addUpdateListener(mockListener)
 

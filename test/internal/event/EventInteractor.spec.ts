@@ -106,7 +106,7 @@ suite('internal/event/EventInteractor', () => {
   })
 
   test('trackEvaluationEvent', () => {
-    const mockListener = vi.fn<[Event[]], void>()
+    const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
     interactor.trackEvaluationEvent('feature_tag_value', user1, evaluation1)
@@ -144,7 +144,7 @@ suite('internal/event/EventInteractor', () => {
   })
 
   test('trackDefaultEvaluationEvent', () => {
-    const mockListener = vi.fn<[Event[]], void>()
+    const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
     interactor.trackDefaultEvaluationEvent(
@@ -186,7 +186,7 @@ suite('internal/event/EventInteractor', () => {
   })
 
   test('trackGoalEvent', () => {
-    const mockListener = vi.fn<[Event[]], void>()
+    const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
     interactor.trackGoalEvent('feature_tag_value', user1, 'goal_id_value', 0.5)
@@ -220,7 +220,7 @@ suite('internal/event/EventInteractor', () => {
   })
 
   test('trackSuccess', () => {
-    const mockListener = vi.fn<[Event[]], void>()
+    const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
     interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
@@ -308,7 +308,7 @@ suite('internal/event/EventInteractor', () => {
       extraLabels: { timeout: '1.5' },
     },
   ])('trackFailure: $errr -> type: $type', ({ error, type, extraLabels }) => {
-    const mockListener = vi.fn<[Event[]], void>()
+    const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
     interactor.trackFailure(ApiId.GET_EVALUATION, 'feature_tag_value', error)
@@ -409,7 +409,7 @@ suite('internal/event/EventInteractor', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-          >(`${config.apiEndpoint}/register_events`, async ({ request }) => {
+          >(`${config.apiEndpoint}/register_events`, async ({ request }: { request: Request }) => {
           const body = await request.json()
           expect(body.events).toHaveLength(3)
           expect(body.sourceId).toEqual(SourceID.JAVASCRIPT)
@@ -452,7 +452,7 @@ suite('internal/event/EventInteractor', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-          >(`${config.apiEndpoint}/register_events`, async ({ request }) => {
+          >(`${config.apiEndpoint}/register_events`, async ({ request }: { request: Request }) => {
           const body = await request.json()
           expect(body.events).toHaveLength(3)
           return HttpResponse.json({
@@ -552,7 +552,7 @@ suite('internal/event/EventInteractor', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-        >(`${config.apiEndpoint}/register_events`, async ({request}) => {
+        >(`${config.apiEndpoint}/register_events`, async ({ request }: { request: Request }) => {
           const body = await request.json()
           expect(body.events).toHaveLength(2)
           return HttpResponse.json({ errors: {} })
