@@ -171,12 +171,12 @@ export class EventInteractor {
   trackFailure(apiId: ApiId, featureTag: string, error: BKTException): void {
 
     if (error.type === MetricsEventType.UnauthorizedError) {
-      console.log('An unauthorized error occurred. Please check your API Key.')
+      console.error('An unauthorized error occurred. Please check your API Key.')
       return
     }
 
     if (error.type === MetricsEventType.ForbiddenError) {
-      console.log('An forbidden error occurred. Please check your API Key.')
+      console.error('An forbidden error occurred. Please check your API Key.')
       return
     }
 
