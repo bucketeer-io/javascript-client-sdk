@@ -438,7 +438,7 @@ suite('internal/event/EventInteractor', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-          >(`${config.apiEndpoint}/register_events`, async ({ request }: { request: Request }) => {
+          >(`${config.apiEndpoint}/register_events`, async ({ request }) => {
           const body = await request.json()
           expect(body.events).toHaveLength(3)
           expect(body.sourceId).toEqual(SourceID.JAVASCRIPT)
@@ -481,7 +481,7 @@ suite('internal/event/EventInteractor', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-          >(`${config.apiEndpoint}/register_events`, async ({ request }: { request: Request }) => {
+          >(`${config.apiEndpoint}/register_events`, async ({ request }) => {
           const body = await request.json()
           expect(body.events).toHaveLength(3)
           return HttpResponse.json({
@@ -581,7 +581,7 @@ suite('internal/event/EventInteractor', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-        >(`${config.apiEndpoint}/register_events`, async ({ request }: { request: Request }) => {
+        >(`${config.apiEndpoint}/register_events`, async ({ request }) => {
           const body = await request.json()
           expect(body.events).toHaveLength(2)
           return HttpResponse.json({ errors: {} })

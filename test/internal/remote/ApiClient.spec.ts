@@ -216,7 +216,7 @@ suite('internal/remote/ApiClient', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-          >(`${endpoint}/register_events`, async ({ request }: { request: StrictRequest<GetEvaluationsRequest> }) => {
+          >(`${endpoint}/register_events`, async ({ request }) => {
           requestInterceptor(request)
           return HttpResponse.json({
             errors: {

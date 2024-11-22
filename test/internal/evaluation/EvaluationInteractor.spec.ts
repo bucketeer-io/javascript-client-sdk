@@ -201,7 +201,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async ({request}: { request: StrictRequest }) => {
+        >(`${config.apiEndpoint}/get_evaluations`, async ({request}) => {
           requestInterceptor(request)
           return HttpResponse.json({
             evaluations: {
@@ -215,7 +215,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, async ({request}: { request: StrictRequest }) => {
+        >(`${config.apiEndpoint}/get_evaluations`, async ({request}) => {
           requestInterceptor(request)
           return HttpResponse.json({
             evaluations: {
