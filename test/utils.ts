@@ -1,5 +1,5 @@
 import { RequestHandler } from 'msw'
-import { setupServer, SetupServerApi } from 'msw/node'
+import { SetupServer, setupServer } from 'msw/node'
 import { Clock, DefaultClock } from '../src/internal/Clock'
 import { IdGenerator } from '../src/internal/IdGenerator'
 import { BKTClient, BKTClientImpl } from '../src/BKTClient'
@@ -12,7 +12,7 @@ import { BrowserIdGenerator } from '../src/internal/IdGenerator.browser'
 
 export function setupServerAndListen(
   ...handlers: Array<RequestHandler>
-): SetupServerApi {
+): SetupServer {
   const server = setupServer(...handlers)
   server.listen({ onUnhandledRequest: 'error' })
   return server

@@ -15,10 +15,12 @@ import {
 import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
 import {
   BadRequestException,
+  ForbiddenException,
   InternalServerErrorException,
   NetworkException,
   RedirectRequestException,
   TimeoutException,
+  UnauthorizedException,
   UnknownException,
 } from '../../../src/BKTExceptions'
 import { DefaultComponent } from '../../../src/internal/di/Component'
@@ -398,6 +400,33 @@ suite('internal/event/EventInteractor', () => {
       '3::type.googleapis.com/bucketeer.event.client.SizeMetricsEvent',
       '2::type.googleapis.com/bucketeer.event.client.BadRequestErrorMetricsEvent',
       '2::type.googleapis.com/bucketeer.event.client.NetworkErrorMetricsEvent',
+      '3::type.googleapis.com/bucketeer.event.client.InternalServerErrorMetricsEvent',
+    ])
+  })
+
+  test('Skip generating error events for unauthorized or forbidden errors', () => {
+    // trackFailure saves one Event in each call
+    interactor.trackFailure(
+      ApiId.GET_EVALUATIONS,
+      'feature_tag_value',
+      new UnauthorizedException(),
+    )
+    interactor.trackFailure(
+      ApiId.GET_EVALUATIONS,
+      'feature_tag_value_1',
+      new ForbiddenException(),
+    )
+    interactor.trackFailure(
+      ApiId.REGISTER_EVENTS,
+      'feature_tag_value_1',
+      new InternalServerErrorException(),
+    )
+
+    const events = eventStorage
+      .getAll()
+      .map((e) => interactor.getMetricsEventUniqueKey(e.event as MetricsEvent))
+
+    expect(events).toStrictEqual([
       '3::type.googleapis.com/bucketeer.event.client.InternalServerErrorMetricsEvent',
     ])
   })

@@ -1,4 +1,3 @@
-import { log } from 'console'
 import { BKTException } from '../../BKTExceptions'
 import { Clock } from '../Clock'
 import { IdGenerator } from '../IdGenerator'
@@ -172,12 +171,12 @@ export class EventInteractor {
   trackFailure(apiId: ApiId, featureTag: string, error: BKTException): void {
 
     if (error.type === MetricsEventType.UnauthorizedError) {
-      log('An unauthorized error occurred. Please check your API Key.')
+      console.log('An unauthorized error occurred. Please check your API Key.')
       return
     }
 
     if (error.type === MetricsEventType.ForbiddenError) {
-      log('An forbidden error occurred. Please check your API Key.')
+      console.log('An forbidden error occurred. Please check your API Key.')
       return
     }
 
