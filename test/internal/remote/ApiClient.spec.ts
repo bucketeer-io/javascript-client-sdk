@@ -59,7 +59,7 @@ suite('internal/remote/ApiClient', () => {
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${endpoint}/get_evaluations`, async ({request}: { request: StrictRequest<GetEvaluationsRequest> }) => {
+        >(`${endpoint}/get_evaluations`, async ({request}) => {
           requestInterceptor(request)
           return HttpResponse.json({
               evaluations: user1Evaluations,
@@ -216,7 +216,7 @@ suite('internal/remote/ApiClient', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-          >(`${endpoint}/register_events`, async ({ request }) => {
+          >(`${endpoint}/register_events`, async ({request}) => {
           requestInterceptor(request)
           return HttpResponse.json({
             errors: {
