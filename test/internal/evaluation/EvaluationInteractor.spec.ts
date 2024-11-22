@@ -1,4 +1,4 @@
-import { HttpResponse, StrictRequest, http } from 'msw'
+import { HttpResponse, http } from 'msw'
 import { SetupServer } from 'msw/node'
 import {
   expect,
