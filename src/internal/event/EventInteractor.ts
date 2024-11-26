@@ -3,7 +3,7 @@ import { Clock } from '../Clock'
 import { IdGenerator } from '../IdGenerator'
 import { Evaluation } from '../model/Evaluation'
 import { EventType, Event, MetricsEvent } from '../model/Event'
-import { ApiId } from '../model/MetricsEventData'
+import { ApiId, MetricsEventType } from '../model/MetricsEventData'
 import { User } from '../model/User'
 import { ApiClient } from '../remote/ApiClient'
 import {
@@ -169,6 +169,17 @@ export class EventInteractor {
   }
 
   trackFailure(apiId: ApiId, featureTag: string, error: BKTException): void {
+
+    if (error.type === MetricsEventType.UnauthorizedError) {
+      console.error('An unauthorized error occurred. Please check your API Key.')
+      return
+    }
+
+    if (error.type === MetricsEventType.ForbiddenError) {
+      console.error('An forbidden error occurred. Please check your API Key.')
+      return
+    }
+
     const metricsEvents: Event[] = [
       {
         id: this.idGenerator.newId(),

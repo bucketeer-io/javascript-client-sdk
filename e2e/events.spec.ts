@@ -198,7 +198,7 @@ suite('e2e/events', () => {
 
       const events = component.dataModule.eventStorage().getAll()
 
-      expect(events).toHaveLength(1)
+      expect(events).toHaveLength(0)
       expect(
         events.some((e) => {
           return (
@@ -207,16 +207,14 @@ suite('e2e/events', () => {
             e.event.event.apiId === ApiId.GET_EVALUATIONS
           )
         }),
-      ).toBe(true)
+      ).toBe(false)
 
-      await expect(() => client.flush()).rejects.toThrowError(
-        ForbiddenException,
-      )
+      await client.flush()
 
       const events2 = component.dataModule.eventStorage().getAll()
 
-      // error from /register_events does not get stored
-      expect(events2).toHaveLength(1)
+      // no events should be stored
+      expect(events2).toHaveLength(0)
 
       destroyBKTClient()
 
@@ -236,10 +234,9 @@ suite('e2e/events', () => {
       const component2 = getDefaultComponent(client)
 
       const events3 = component2.dataModule.eventStorage().getAll()
-
-      // error from /register_events does not get stored
-      expect(events3).toHaveLength(3)
-      // ForbiddenError should still exist
+      // 2 events - latency and response size
+      expect(events3).toHaveLength(2)
+      // ForbiddenError should not exist
       expect(
         events.some((e) => {
           return (
@@ -248,7 +245,7 @@ suite('e2e/events', () => {
             e.event.event.apiId === ApiId.GET_EVALUATIONS
           )
         }),
-      ).toBe(true)
+      ).toBe(false)
 
       await client2.flush()
 

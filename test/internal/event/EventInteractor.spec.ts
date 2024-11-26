@@ -15,10 +15,12 @@ import {
 import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
 import {
   BadRequestException,
+  ForbiddenException,
   InternalServerErrorException,
   NetworkException,
   RedirectRequestException,
   TimeoutException,
+  UnauthorizedException,
   UnknownException,
 } from '../../../src/BKTExceptions'
 import { DefaultComponent } from '../../../src/internal/di/Component'
@@ -106,7 +108,7 @@ suite('internal/event/EventInteractor', () => {
   })
 
   test('trackEvaluationEvent', () => {
-    const mockListener = vi.fn<[Event[]], void>()
+    const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
     interactor.trackEvaluationEvent('feature_tag_value', user1, evaluation1)
@@ -144,7 +146,7 @@ suite('internal/event/EventInteractor', () => {
   })
 
   test('trackDefaultEvaluationEvent', () => {
-    const mockListener = vi.fn<[Event[]], void>()
+    const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
     interactor.trackDefaultEvaluationEvent(
@@ -186,7 +188,7 @@ suite('internal/event/EventInteractor', () => {
   })
 
   test('trackGoalEvent', () => {
-    const mockListener = vi.fn<[Event[]], void>()
+    const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
     interactor.trackGoalEvent('feature_tag_value', user1, 'goal_id_value', 0.5)
@@ -220,7 +222,7 @@ suite('internal/event/EventInteractor', () => {
   })
 
   test('trackSuccess', () => {
-    const mockListener = vi.fn<[Event[]], void>()
+    const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
     interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
@@ -308,7 +310,7 @@ suite('internal/event/EventInteractor', () => {
       extraLabels: { timeout: '1.5' },
     },
   ])('trackFailure: $errr -> type: $type', ({ error, type, extraLabels }) => {
-    const mockListener = vi.fn<[Event[]], void>()
+    const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
     interactor.trackFailure(ApiId.GET_EVALUATION, 'feature_tag_value', error)
@@ -402,6 +404,33 @@ suite('internal/event/EventInteractor', () => {
     ])
   })
 
+  test('Skip generating error events for unauthorized or forbidden errors', () => {
+    // trackFailure saves one Event in each call
+    interactor.trackFailure(
+      ApiId.GET_EVALUATIONS,
+      'feature_tag_value',
+      new UnauthorizedException(),
+    )
+    interactor.trackFailure(
+      ApiId.GET_EVALUATIONS,
+      'feature_tag_value_1',
+      new ForbiddenException(),
+    )
+    interactor.trackFailure(
+      ApiId.REGISTER_EVENTS,
+      'feature_tag_value_1',
+      new InternalServerErrorException(),
+    )
+
+    const events = eventStorage
+      .getAll()
+      .map((e) => interactor.getMetricsEventUniqueKey(e.event as MetricsEvent))
+
+    expect(events).toStrictEqual([
+      '3::type.googleapis.com/bucketeer.event.client.InternalServerErrorMetricsEvent',
+    ])
+  })
+
   suite('sendEvents', () => {
     test('success', async () => {
       server.use(
@@ -409,7 +438,7 @@ suite('internal/event/EventInteractor', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-          >(`${config.apiEndpoint}/register_events`, async ({ request }) => {
+          >(`${config.apiEndpoint}/register_events`, async ({request}) => {
           const body = await request.json()
           expect(body.events).toHaveLength(3)
           expect(body.sourceId).toEqual(SourceID.JAVASCRIPT)
@@ -452,7 +481,7 @@ suite('internal/event/EventInteractor', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-          >(`${config.apiEndpoint}/register_events`, async ({ request }) => {
+          >(`${config.apiEndpoint}/register_events`, async ({request}) => {
           const body = await request.json()
           expect(body.events).toHaveLength(3)
           return HttpResponse.json({

@@ -209,17 +209,14 @@ suite('internal/remote/ApiClient', () => {
 
   suite('registerEvents', () => {
     test('success', async () => {
-      const requestInterceptor = vi.fn<
-        [StrictRequest<RegisterEventsRequest>],
-        void
-      >()
+      const requestInterceptor = vi.fn()
 
       server.use(
         http.post<
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-          >(`${endpoint}/register_events`, async ({ request }) => {
+          >(`${endpoint}/register_events`, async ({request}) => {
           requestInterceptor(request)
           return HttpResponse.json({
             errors: {
@@ -315,9 +312,10 @@ suite('internal/remote/ApiClient', () => {
         evaluationEvent1,
         metricsEvent1,
       ])
-
+      
+      assert(response.type === 'failure')
       expect(response.type).toBe('failure')
-
+      
       const error = response.error
       expect(error.name).toBe('UnknownException')
 
