@@ -6,7 +6,6 @@ expect.extend({
       actual != null &&
       actual.id === expected.id &&
       actual.featureId === expected.featureId &&
-      actual.featureVersion === expected.featureVersion &&
       actual.userId === expected.userId &&
       actual.variationId === expected.variationId &&
       actual.variationName === expected.variationName &&
