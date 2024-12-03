@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.2](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.1...v2.2.2) (2024-12-03)
+
+
+### Bug Fixes
+
+* skip generating error events for unauthorized or forbidden errors ([#188](https://github.com/bucketeer-io/javascript-client-sdk/issues/188)) ([0c48090](https://github.com/bucketeer-io/javascript-client-sdk/commit/0c4809031e8b73cc35d8f7a4176763ae3d9083bd))
+
+
+### Build System
+
+* **deps:** lock file maintenance ([#189](https://github.com/bucketeer-io/javascript-client-sdk/issues/189)) ([42099c5](https://github.com/bucketeer-io/javascript-client-sdk/commit/42099c50f0c0dd8696eb1bbf662a84b4e0ea048d))
+* **deps:** update all non-major dependencies ([#192](https://github.com/bucketeer-io/javascript-client-sdk/issues/192)) ([db6e812](https://github.com/bucketeer-io/javascript-client-sdk/commit/db6e81273cf12665b8a648554113570db3a89fce))
+* **deps:** update dependency vite to v6 ([#193](https://github.com/bucketeer-io/javascript-client-sdk/issues/193)) ([75f64c8](https://github.com/bucketeer-io/javascript-client-sdk/commit/75f64c8340a475dff42efc408bb411c66e75a45a))
+
 ## [2.2.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.0...v2.2.1) (2024-11-18)
 
 
