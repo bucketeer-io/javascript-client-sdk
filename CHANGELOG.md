@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.2.3](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.2...v2.2.3) (2025-01-07)
+
+
+### Miscellaneous
+
+* **deps:** lock file maintenance ([#195](https://github.com/bucketeer-io/javascript-client-sdk/issues/195)) ([f31fa11](https://github.com/bucketeer-io/javascript-client-sdk/commit/f31fa119d79c54c1639567c6f28a817b8311a0dd))
+
+
+### Build System
+
+* **deps:** update all major dependencies ([#199](https://github.com/bucketeer-io/javascript-client-sdk/issues/199)) ([6fe3017](https://github.com/bucketeer-io/javascript-client-sdk/commit/6fe30173baf5d8d4497862fe1f2eabce78d129ce))
+* **deps:** update all non-major dependencies ([#197](https://github.com/bucketeer-io/javascript-client-sdk/issues/197)) ([5248238](https://github.com/bucketeer-io/javascript-client-sdk/commit/5248238f2101d37acc69eaf946d73b1b5edacb5e))
+
 ## [2.2.2](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.1...v2.2.2) (2024-12-03)
 
 
