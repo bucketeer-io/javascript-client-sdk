@@ -45,7 +45,7 @@
     "@types/node": "22.13.9",
     "@typescript-eslint/eslint-plugin": "8.26.0",
     "@typescript-eslint/parser": "8.26.0",
-    "@vitest/browser": "2.1.8",
+    "@vitest/browser": "2.1.9",
     "@vitest/utils": "2.1.8",
     "eslint": "9.21.0",
     "eslint-config-prettier": "10.0.2",
