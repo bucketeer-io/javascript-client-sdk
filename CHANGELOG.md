@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.2.5](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.4...v2.2.5) (2025-04-01)
+
+
+### Build System
+
+* **deps:** update all non-major dependencies ([#216](https://github.com/bucketeer-io/javascript-client-sdk/issues/216)) ([07ec455](https://github.com/bucketeer-io/javascript-client-sdk/commit/07ec455da4cdace9e02d4fcb0619bca616a97528))
+* **deps:** update dependency vite to v6.0.13 [SECURITY] ([#215](https://github.com/bucketeer-io/javascript-client-sdk/issues/215)) ([0b2403a](https://github.com/bucketeer-io/javascript-client-sdk/commit/0b2403a4bea15ab402f72ac2fef4747df2d409eb))
+
 ## [2.2.4](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.3...v2.2.4) (2025-03-05)
 
 
