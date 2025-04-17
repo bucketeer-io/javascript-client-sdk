@@ -9,7 +9,7 @@ import { requiredInternalConfig } from './internal/InternalConfig'
 import { User } from './internal/model/User'
 import { toUser } from './internal/UserHolder'
 
-export type { BKTConfig } from './BKTConfig'
+export type { BKTConfig, RawBKTConfig } from './BKTConfig'
 export { defineBKTConfig } from './BKTConfig'
 export type { BKTUser } from './BKTUser'
 export { defineBKTUser } from './BKTUser'

@@ -14,11 +14,17 @@
   "module": "./dist/main.mjs",
   "browser": "./dist/main.browser.mjs",
   "types": "./dist/main.d.ts",
+  "react-native": "./dist/main.native.cjs",
   "exports": {
     ".": {
       "node": {
         "import": "./dist/main.mjs",
         "require": "./dist/main.cjs",
+        "types": "./dist/main.d.ts"
+      },
+      "react-native": {
+        "import": "./dist/main.native.mjs",
+        "require": "./dist/main.native.cjs",
         "types": "./dist/main.d.ts"
       },
       "default": {
@@ -35,7 +41,9 @@
     "test": "pnpm test:browser --run ; pnpm test:node --run",
     "test:browser": "vitest --config ./vitest-browser.config.ts --dir test",
     "test:node": "vitest --config ./vitest-node.config.ts --dir test",
-    "test:e2e": "vitest --config ./vitest-e2e.config.ts --dir e2e",
+    "test:e2e": "pnpm test:e2e:browser --run ; pnpm test:e2e:node --run",
+    "test:e2e:browser": "cp -f ./e2e/module.browser.ts ./e2e/module.ts ; vitest --config ./vitest-e2e.config.ts --dir e2e",
+    "test:e2e:node": "cp -f ./e2e/module.node.ts ./e2e/module.ts ; vitest --config ./vitest-e2e-node.config.ts --dir e2e",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "example:serve": "pnpm exec unbuild && pnpm --filter example serve"

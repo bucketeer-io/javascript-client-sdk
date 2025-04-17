@@ -5,6 +5,7 @@ import {
   resolveSDKVersion,
   resolveSourceId,
 } from './internal/InternalConfig'
+import { IdGenerator } from './internal/IdGenerator'
 import { FetchLike } from './internal/remote/fetch'
 import { SDK_VERSION } from './internal/version'
 
@@ -23,7 +24,7 @@ const isValidUrl = (url: string): boolean => {
   }
 }
 
-interface RawBKTConfig {
+export interface RawBKTConfig {
   apiKey: string
   apiEndpoint: string
   featureTag?: string
@@ -48,6 +49,7 @@ interface RawBKTConfig {
   // In such cases, set this value to the sourceID of the proxy SDK.
   // The sourceID is used to identify the origin of the request.
   wrapperSdkSourceId?: number
+  idGenerator?: IdGenerator
 }
 
 export interface BKTConfig extends RawBKTConfig {
@@ -61,10 +63,14 @@ export interface BKTConfig extends RawBKTConfig {
 }
 
 const defaultUserAgent = () => {
-  if (typeof window === 'undefined') {
-    return `Bucketeer JavaScript SDK(${SDK_VERSION})`
-  } else {
+  if (
+    typeof window !== 'undefined' &&
+    window.navigator &&
+    typeof window.navigator.userAgent === 'string'
+  ) {
     return window.navigator.userAgent
+  } else {
+    return `Bucketeer JavaScript SDK(${SDK_VERSION})`
   }
 }
 
