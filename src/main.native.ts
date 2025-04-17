@@ -5,10 +5,9 @@ import { Component, DefaultComponent } from './internal/di/Component'
 import { DataModule } from './internal/di/DataModule'
 import { InteractorModule } from './internal/di/InteractorModule'
 import { BasePlatformModule } from './internal/di/PlatformModule'
-import { NodePlatformModule } from './internal/di/PlatformModule.node'
 import { User } from './internal/model/User'
 import { toUser } from './internal/UserHolder'
-import { requiredInternalConfig } from './internal/InternalConfig'
+import { IdGenerator } from './internal/IdGenerator'
 
 export type { BKTConfig } from './BKTConfig'
 export { defineBKTConfig } from './BKTConfig'
@@ -29,12 +28,12 @@ export type {
 } from './BKTValue'
 export type { BKTEvaluationDetails } from './BKTEvaluationDetails'
 
-const createNodeComponent = (config: BKTConfig, user: User): Component => {
+// This endpoint is intended for use in React Native - Expo environments.
+const createComponent = (config: BKTConfig, user: User): Component => {
+  const idGenerator = requiredIdGenerator(config)
   return new DefaultComponent(
-    config.idGenerator
-      ? new BasePlatformModule({ idGenerator: config.idGenerator })
-      : new NodePlatformModule(),
-    new DataModule(user, requiredInternalConfig(config)),
+    new BasePlatformModule({ idGenerator }),
+    new DataModule(user, config),
     new InteractorModule(),
   )
 }
@@ -44,6 +43,14 @@ export const initializeBKTClient = async (
   user: BKTUser,
   timeoutMillis = 5_000,
 ): Promise<void> => {
-  const component = createNodeComponent(config, toUser(user))
+  // idGenerator is required in the react native environment
+  const component = createComponent(config, toUser(user))
   return initializeBKTClientInternal(component, timeoutMillis)
+}
+
+export function requiredIdGenerator(config: BKTConfig): IdGenerator {
+  if (!config.idGenerator) {
+    throw new Error('idGenerator is required in this environment')
+  }
+  return config.idGenerator
 }

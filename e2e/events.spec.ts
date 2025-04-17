@@ -25,6 +25,7 @@ import { ForbiddenException, TimeoutException } from '../src/BKTExceptions'
 import { ApiId, MetricsEventType } from '../src/internal/model/MetricsEventData'
 import { SDK_VERSION } from '../src/internal/version'
 import { SourceId } from '../src/internal/model/SourceId'
+import { fetchLike } from './fetchProvider'
 
 function getDefaultComponent(client: BKTClient): DefaultComponent {
   return (client as BKTClientImpl).component as DefaultComponent
@@ -40,7 +41,7 @@ suite('e2e/events', () => {
       apiKey: import.meta.env.VITE_BKT_API_KEY,
       featureTag: 'javascript',
       appVersion: '1.2.3',
-      fetch: window.fetch,
+      fetch: fetchLike,
       // DO NOT remove this line
       // Because the tests are asynchronous and share the same local storage,
       // It might fail randomly, having more or fewer events in the storage when checking the test.
@@ -57,7 +58,6 @@ suite('e2e/events', () => {
 
   afterEach(() => {
     destroyBKTClient()
-    localStorage.clear()
   })
 
   test('goal event', async () => {
@@ -185,14 +185,14 @@ suite('e2e/events', () => {
 
     test('Using a random string in the api key setting should throw Forbidden', async () => {
       destroyBKTClient()
-      localStorage.clear()
+      if (typeof localStorage !== 'undefined') { localStorage.clear() }
 
       config = defineBKTConfig({
         apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
         apiKey: 'some-random-string',
         featureTag: 'javascript',
         appVersion: '1.2.3',
-        fetch: window.fetch,
+        fetch: fetchLike,
       })
 
       user = defineBKTUser({
@@ -237,7 +237,7 @@ suite('e2e/events', () => {
         apiKey: import.meta.env.VITE_BKT_API_KEY,
         featureTag: 'javascript',
         appVersion: '1.2.3',
-        fetch: window.fetch,
+        fetch: fetchLike,
       })
 
       await initializeBKTClient(config, user)
@@ -272,14 +272,14 @@ suite('e2e/events', () => {
 
     test('Using a random string in the featureTag setting should not affect api request', async () => {
       destroyBKTClient()
-      localStorage.clear()
+      if (typeof localStorage !== 'undefined') { localStorage.clear() }
 
       config = defineBKTConfig({
         apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
         apiKey: import.meta.env.VITE_BKT_API_KEY,
         featureTag: 'some-random-feature-tag',
         appVersion: '1.2.3',
-        fetch: window.fetch,
+        fetch: fetchLike,
       })
 
       user = defineBKTUser({
@@ -293,14 +293,14 @@ suite('e2e/events', () => {
       // setting a very low value for the timeout
 
       destroyBKTClient()
-      localStorage.clear()
+      if (typeof localStorage !== 'undefined') { localStorage.clear() }
 
       config = defineBKTConfig({
         apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
         apiKey: import.meta.env.VITE_BKT_API_KEY,
         featureTag: 'javascript',
         appVersion: '1.2.3',
-        fetch: window.fetch,
+        fetch: fetchLike,
       })
 
       user = defineBKTUser({
