@@ -15,7 +15,7 @@ import {
   USER_ID,
 } from './constants'
 import './assertions'
-import { fetchLike } from './fetchProvider'
+import { fetchLike } from './environment'
 
 suite('e2e/evaluations', () => {
   let config: BKTConfig

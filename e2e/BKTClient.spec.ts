@@ -12,7 +12,7 @@ import { BKTClient, BKTClientImpl } from '../src/BKTClient'
 import { DefaultComponent } from '../src/internal/di/Component'
 import { EvaluationStorageImpl } from '../src/internal/evaluation/EvaluationStorage'
 import { evaluation1 } from '../test/mocks/evaluations'
-import { fetchLike } from './fetchProvider'
+import { fetchLike } from './environment'
 
 suite('e2e/BKTClientTest', () => {
   let config: BKTConfig

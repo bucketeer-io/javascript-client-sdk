@@ -25,7 +25,7 @@ import { ForbiddenException, TimeoutException } from '../src/BKTExceptions'
 import { ApiId, MetricsEventType } from '../src/internal/model/MetricsEventData'
 import { SDK_VERSION } from '../src/internal/version'
 import { SourceId } from '../src/internal/model/SourceId'
-import { fetchLike } from './fetchProvider'
+import { fetchLike, isNodeEnvironment } from './environment'
 
 function getDefaultComponent(client: BKTClient): DefaultComponent {
   return (client as BKTClientImpl).component as DefaultComponent
@@ -262,12 +262,31 @@ suite('e2e/events', () => {
         }),
       ).toBe(false)
 
-      await client2.flush()
+      if (isNodeEnvironment) {
+      // on the node environment, no events should be stored  after destroying the client
+      // because its using in-memory storage
+        expect(events3).toHaveLength(0)
+      } else {
+        // on the browser environment, we should have 2 events - latency and response size
+        expect(events3).toHaveLength(2)
+        // ForbiddenError should not exist
+        expect(
+          events.some((e) => {
+            return (
+              e.type === EventType.METRICS &&
+              e.event.event['@type'] === MetricsEventType.ForbiddenError &&
+              e.event.event.apiId === ApiId.GET_EVALUATIONS
+            )
+          }),
+        ).toBe(false)
 
-      const events4 = component2.dataModule.eventStorage().getAll()
+        await client2.flush()
 
-      // error from /register_events does not get stored
-      expect(events4).toHaveLength(0)
+        const events4 = component2.dataModule.eventStorage().getAll()
+
+        // error from /register_events does not get stored
+        expect(events4).toHaveLength(0)
+      }
     })
 
     test('Using a random string in the featureTag setting should not affect api request', async () => {
