@@ -11,4 +11,9 @@ function setIsNodeEnvironment(isNode: boolean) {
   isNodeEnvironment = isNode
 }
 
-export { setFetchProvider, setIsNodeEnvironment, fetchLike, isNodeEnvironment }
+export {
+  setFetchProvider,
+  setIsNodeEnvironment,
+  fetchLike,
+  isNodeEnvironment,
+}

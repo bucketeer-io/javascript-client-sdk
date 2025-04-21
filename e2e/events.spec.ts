@@ -185,7 +185,6 @@ suite('e2e/events', () => {
 
     test('Using a random string in the api key setting should throw Forbidden', async () => {
       destroyBKTClient()
-      if (typeof localStorage !== 'undefined') { localStorage.clear() }
 
       config = defineBKTConfig({
         apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
@@ -291,7 +290,6 @@ suite('e2e/events', () => {
 
     test('Using a random string in the featureTag setting should not affect api request', async () => {
       destroyBKTClient()
-      if (typeof localStorage !== 'undefined') { localStorage.clear() }
 
       config = defineBKTConfig({
         apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
@@ -310,9 +308,7 @@ suite('e2e/events', () => {
 
     test('Timeout', async () => {
       // setting a very low value for the timeout
-
       destroyBKTClient()
-      if (typeof localStorage !== 'undefined') { localStorage.clear() }
 
       config = defineBKTConfig({
         apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
