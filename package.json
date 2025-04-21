@@ -43,7 +43,7 @@
     "test:node": "vitest --config ./vitest-node.config.ts --dir test",
     "test:e2e": "pnpm test:e2e:browser --run ; pnpm test:e2e:node --run",
     "test:e2e:browser": "cp -f ./e2e/module.browser.ts ./e2e/module.ts ; vitest --config ./vitest-e2e.config.ts --dir e2e",
-    "test:e2e:node": "cp -f ./e2e/module.node.ts ./e2e/module.ts ; vitest --config ./vitest-e2e-node.config.ts --dir e2e ; cp -f ./e2e/module.browser.ts ./e2e/module.ts",
+    "test:e2e:node": "cp -f ./e2e/module.node.ts ./e2e/module.ts ; vitest --config ./vitest-e2e-node.config.ts --dir e2e",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "example:serve": "pnpm exec unbuild && pnpm --filter example serve"
