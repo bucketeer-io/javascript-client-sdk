@@ -2,10 +2,8 @@ import { suite, test, expect, beforeEach, afterEach, assert } from 'vitest'
 import {
   BKTClient,
   BKTClientImpl,
-  destroyBKTClient,
-  getBKTClient,
 } from '../src/BKTClient'
-import { initializeBKTClient } from '../src/main.browser'
+import { initializeBKTClient, getBKTClient, destroyBKTClient } from './module'
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { BKTUser, defineBKTUser } from '../src/BKTUser'
 import { DefaultComponent } from '../src/internal/di/Component'

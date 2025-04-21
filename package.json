@@ -42,11 +42,13 @@
     "test:browser": "vitest --config ./vitest-browser.config.ts --dir test",
     "test:node": "vitest --config ./vitest-node.config.ts --dir test",
     "test:e2e": "pnpm test:e2e:browser --run ; pnpm test:e2e:node --run",
-    "test:e2e:browser": "vitest --config ./vitest-e2e.config.ts --dir e2e",
-    "test:e2e:node": "vitest --config ./vitest-e2e-node.config.ts --dir e2e",
+    "test:e2e:browser": "pnpm prepare:e2e:browser ; vitest --config ./vitest-e2e.config.ts --dir e2e",
+    "test:e2e:node": "pnpm prepare:e2e:node ; vitest --config ./vitest-e2e-node.config.ts --dir e2e ; pnpm prepare:e2e:browser",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
-    "example:serve": "pnpm exec unbuild && pnpm --filter example serve"
+    "example:serve": "pnpm exec unbuild && pnpm --filter example serve",
+    "prepare:e2e:node": "cp -f ./e2e/module.node.ts ./e2e/module.ts",
+    "prepare:e2e:browser": "cp -f ./e2e/module.browser.ts ./e2e/module.ts"
   },
   "devDependencies": {
     "@types/jsdom": "21.1.7",
