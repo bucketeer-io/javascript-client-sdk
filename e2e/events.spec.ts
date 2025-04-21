@@ -263,7 +263,7 @@ suite('e2e/events', () => {
 
       if (isNodeEnvironment) {
       // on the node environment, no events should be stored  after destroying the client
-      // because its using in-memory storage
+      // because it's using in-memory storage
         expect(events3).toHaveLength(0)
       } else {
         // on the browser environment, we should have 2 events - latency and response size
