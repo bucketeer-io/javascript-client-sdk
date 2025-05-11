@@ -7,6 +7,15 @@ export const SourceID = {
   GO_SERVER: 5,
   NODE_SERVER: 6,
   JAVASCRIPT: 7,
+  FLUTTER: 8,
+  REACT: 9,
+  REACT_NATIVE: 10,
+  OPEN_FEATURE_KOTLIN: 100,
+  OPEN_FEATURE_SWIFT: 101,
+  OPEN_FEATURE_JAVASCRIPT: 102,
+  OPEN_FEATURE_GO: 103,
+  OPEN_FEATURE_NODEJS: 104,
+
 } as const
 
 export type SourceID = (typeof SourceID)[keyof typeof SourceID]
