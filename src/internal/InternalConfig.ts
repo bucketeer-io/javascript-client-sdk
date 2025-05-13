@@ -24,16 +24,16 @@ const createInternalConfig = (config: BKTConfig): InternalConfig => {
 
 function resolveSourceId(
   config: BKTConfig,): SourceID {
-  const supportedWrapperSdkSourceIds = [
-      SourceID.REACT,
-      SourceID.REACT_NATIVE,
-      SourceID.OPEN_FEATURE_JAVASCRIPT,
-    ]
+  const supportedWrapperSdkSourceIds: SourceID[] = [
+    SourceID.REACT,
+    SourceID.REACT_NATIVE,
+    SourceID.OPEN_FEATURE_JAVASCRIPT,
+  ]
   if (config.wrapperSdkSourceId) {
     const wrapperSdkSourceId = sourceIdFromNumber(
       config.wrapperSdkSourceId,
     )
-    if (supportedWrapperSdkSourceIds[wrapperSdkSourceId]) {
+    if (supportedWrapperSdkSourceIds.includes(wrapperSdkSourceId)) {
       return wrapperSdkSourceId
     }
     console.warn(
@@ -45,17 +45,17 @@ function resolveSourceId(
 
 function resolveSDKVersion(
   config: BKTConfig,
-  resolveSourceId: SourceID,
+  resolvedSourceId: SourceID,
 ): string {
-  if (resolveSourceId !== SourceID.JAVASCRIPT) {
+  if (resolvedSourceId !== SourceID.JAVASCRIPT) {
     if (config.wrapperSdkVersion) {
-    return config.wrapperSdkVersion
+      return config.wrapperSdkVersion
     }
     return DEFAULT_WRAPPER_SDK_VERSION
   }
   return SDK_VERSION
 }
 
-export { createInternalConfig }
+export { createInternalConfig, DEFAULT_WRAPPER_SDK_VERSION }
 
 export type { InternalConfig }
