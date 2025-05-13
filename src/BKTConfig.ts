@@ -30,6 +30,8 @@ interface RawBKTConfig {
   userAgent?: string
   fetch?: FetchLike
   storageFactory?: <T>(key: string) => BKTStorage<T>
+  wrapperSdkVersion?: string
+  wrapperSdkSourceId?: number
 }
 
 export interface BKTConfig extends RawBKTConfig {

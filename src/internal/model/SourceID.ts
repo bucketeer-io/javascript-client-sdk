@@ -19,3 +19,13 @@ export const SourceID = {
 } as const
 
 export type SourceID = (typeof SourceID)[keyof typeof SourceID]
+
+export function sourceIdFromNumber(
+  sourceId: number,
+): SourceID {
+  const sourceIdValue = Object.values(SourceID).find((value) => value === sourceId)
+  if (sourceIdValue !== undefined) {
+    return sourceIdValue
+  }
+  return SourceID.UNKNOWN
+}
