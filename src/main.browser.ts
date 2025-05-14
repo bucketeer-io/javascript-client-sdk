@@ -5,6 +5,7 @@ import { Component, DefaultComponent } from './internal/di/Component'
 import { DataModule } from './internal/di/DataModule'
 import { InteractorModule } from './internal/di/InteractorModule'
 import { BrowserPlatformModule } from './internal/di/PlatformModule.browser'
+import { createInternalConfig } from './internal/InternalConfig'
 import { User } from './internal/model/User'
 import { toUser } from './internal/UserHolder'
 
@@ -30,7 +31,7 @@ export type { BKTEvaluationDetails } from './BKTEvaluationDetails'
 const createBrowserComponent = (config: BKTConfig, user: User): Component => {
   return new DefaultComponent(
     new BrowserPlatformModule(),
-    new DataModule(user, config),
+    new DataModule(user, createInternalConfig(config)),
     new InteractorModule(),
   )
 }
