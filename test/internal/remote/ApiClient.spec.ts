@@ -20,7 +20,7 @@ import {
   ApiClientImpl,
 } from '../../../src/internal/remote/ApiClient'
 import { user1 } from '../../mocks/users'
-import { SourceID } from '../../../src/internal/model/SourceID'
+import { SourceId } from '../../../src/internal/model/SourceId'
 import { RegisterEventsRequest } from '../../../src/internal/model/request/RegisterEventsRequest'
 import { evaluationEvent1, metricsEvent1 } from '../../mocks/events'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
@@ -43,7 +43,7 @@ suite('internal/remote/ApiClient', () => {
       endpoint,
       'api_key_value',
       fetch,
-      SourceID.JAVASCRIPT,
+      SourceId.JAVASCRIPT,
       SDK_VERSION,
     )
   })
@@ -111,7 +111,7 @@ suite('internal/remote/ApiClient', () => {
         tag: 'feature_tag_value',
         user: user1,
         userEvaluationsId: 'user_evaluation_id',
-        sourceId: SourceID.JAVASCRIPT,
+        sourceId: SourceId.JAVASCRIPT,
         sdkVersion: SDK_VERSION,
         userEvaluationCondition: {
           evaluatedAt: '0',
@@ -150,7 +150,7 @@ suite('internal/remote/ApiClient', () => {
           endpoint,
           'api_key_value',
           fetch,
-          SourceID.JAVASCRIPT,
+          SourceId.JAVASCRIPT,
           SDK_VERSION,
           200,
         )
@@ -193,7 +193,7 @@ suite('internal/remote/ApiClient', () => {
           endpoint,
           'api_key_value',
           fetch,
-          SourceID.JAVASCRIPT,
+          SourceId.JAVASCRIPT,
           SDK_VERSION,
           200,
         )
@@ -281,7 +281,7 @@ suite('internal/remote/ApiClient', () => {
       expect(requestBody).toStrictEqual<RegisterEventsRequest>({
         events: [evaluationEvent1, metricsEvent1],
         sdkVersion: SDK_VERSION,
-        sourceId: SourceID.JAVASCRIPT,
+        sourceId: SourceId.JAVASCRIPT,
       })
     })
 
@@ -308,7 +308,7 @@ suite('internal/remote/ApiClient', () => {
         endpoint,
         'api_key_value',
         fetch,
-        SourceID.JAVASCRIPT,
+        SourceId.JAVASCRIPT,
         SDK_VERSION,
         200,
       )
@@ -345,7 +345,7 @@ suite('internal/remote/ApiClient', () => {
         endpoint,
         'api_key_value',
         fetch,
-        SourceID.JAVASCRIPT,
+        SourceId.JAVASCRIPT,
         SDK_VERSION,
         200,
       )

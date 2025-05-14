@@ -1,6 +1,6 @@
 import { MetricsEventData } from './MetricsEventData'
 import { Reason } from './Reason'
-import { SourceID } from './SourceID'
+import { SourceId } from './SourceId'
 import { User } from './User'
 
 export const EventType = {
@@ -20,7 +20,7 @@ export type RootEventType = (typeof RootEventType)[keyof typeof RootEventType]
 
 export interface BaseEvent {
   timestamp: number
-  sourceId: SourceID
+  sourceId: SourceId
   sdkVersion: string
   metadata: Record<string, string>
 }

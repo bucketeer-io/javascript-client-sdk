@@ -24,7 +24,7 @@ import { EventType } from '../src/internal/model/Event'
 import { ForbiddenException, TimeoutException } from '../src/BKTExceptions'
 import { ApiId, MetricsEventType } from '../src/internal/model/MetricsEventData'
 import { SDK_VERSION } from '../src/internal/version'
-import { SourceID } from '../src/internal/model/SourceID'
+import { SourceId } from '../src/internal/model/SourceId'
 
 function getDefaultComponent(client: BKTClient): DefaultComponent {
   return (client as BKTClientImpl).component as DefaultComponent
@@ -76,7 +76,7 @@ suite('e2e/events', () => {
         (e) =>
           e.type === EventType.GOAL &&
           e.event.sdkVersion === SDK_VERSION &&
-          e.event.sourceId === SourceID.JAVASCRIPT,
+          e.event.sourceId === SourceId.JAVASCRIPT,
       ),
     ).toBe(true)
     await client.flush()
@@ -110,7 +110,7 @@ suite('e2e/events', () => {
         (e) =>
           e.type === EventType.EVALUATION && e.event.reason.type === 'DEFAULT' &&
           e.event.sdkVersion === SDK_VERSION &&
-          e.event.sourceId === SourceID.JAVASCRIPT,
+          e.event.sourceId === SourceId.JAVASCRIPT,
       ),
     ).toBe(true)
 
@@ -217,7 +217,7 @@ suite('e2e/events', () => {
             e.event.event['@type'] === MetricsEventType.ForbiddenError &&
             e.event.event.apiId === ApiId.GET_EVALUATIONS &&
             e.event.sdkVersion === SDK_VERSION,
-            e.event.sourceId === SourceID.JAVASCRIPT
+            e.event.sourceId === SourceId.JAVASCRIPT
           )
         }),
       ).toBe(false)
@@ -257,7 +257,7 @@ suite('e2e/events', () => {
             e.event.event['@type'] === MetricsEventType.ForbiddenError &&
             e.event.event.apiId === ApiId.GET_EVALUATIONS,
             e.event.sdkVersion === SDK_VERSION,
-            e.event.sourceId === SourceID.JAVASCRIPT
+            e.event.sourceId === SourceId.JAVASCRIPT
           )
         }),
       ).toBe(false)
@@ -325,7 +325,7 @@ suite('e2e/events', () => {
             e.event.event['@type'] === MetricsEventType.TimeoutError &&
             e.event.event.apiId === ApiId.GET_EVALUATIONS &&
             e.event.sdkVersion === SDK_VERSION,
-            e.event.sourceId === SourceID.JAVASCRIPT
+            e.event.sourceId === SourceId.JAVASCRIPT
           )
         }),
       ).toBe(true)

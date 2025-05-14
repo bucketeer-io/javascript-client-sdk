@@ -1,7 +1,7 @@
 import { BKTException, UnknownException } from '../../BKTExceptions'
 import { GetEvaluationsRequest } from '../model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../model/response/GetEvaluationsResponse'
-import { SourceID } from '../model/SourceID'
+import { SourceId } from '../model/SourceId'
 import { FetchLike, FetchRequestLike, FetchResponseLike } from './fetch'
 import { postInternal } from './post'
 import {
@@ -29,7 +29,7 @@ export class ApiClientImpl implements ApiClient {
     private readonly endpoint: string,
     private readonly apiKey: string,
     private readonly fetch: FetchLike,
-    private readonly sourceId: SourceID,
+    private readonly sourceId: SourceId,
     private readonly sdkVersion: string,
     private readonly defaultRequestTimeoutMillis: number = DEFAULT_REQUEST_TIMEOUT_MILLIS,
   ) {}

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { defineBKTConfig } from '../src/BKTConfig'
 import { createInternalConfig, DEFAULT_WRAPPER_SDK_VERSION, supportedWrapperSdkSourceIds } from '../src/internal/InternalConfig'
-import { SourceID } from '../src/internal/model/SourceID'
+import { SourceId } from '../src/internal/model/SourceId'
 import { SDK_VERSION } from '../src/internal/version'
 
 const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
@@ -27,7 +27,7 @@ describe('InternalConfig', () => {
       
       expect(internalConfig).toEqual({
         ...config,
-        sourceId: SourceID.JAVASCRIPT,
+        sourceId: SourceId.JAVASCRIPT,
         sdkVersion: SDK_VERSION
       })
     })
@@ -54,14 +54,14 @@ describe('InternalConfig', () => {
       
       const internalConfig = createInternalConfig(config)
       
-      expect(internalConfig.sourceId).toBe(SourceID.JAVASCRIPT)
+      expect(internalConfig.sourceId).toBe(SourceId.JAVASCRIPT)
       expect(console.warn).toHaveBeenCalled()
     })
     
     it('should use the wrapper SDK version when a wrapper sourceId is used', () => {
       const config = defineBKTConfig({
         ...defaultConfig,
-        wrapperSdkSourceId: SourceID.REACT,
+        wrapperSdkSourceId: SourceId.REACT,
         wrapperSdkVersion: '2.0.0'
       })
       
@@ -69,7 +69,7 @@ describe('InternalConfig', () => {
 
       expect(internalConfig).toEqual({
         ...config,
-        sourceId: SourceID.REACT,
+        sourceId: SourceId.REACT,
         sdkVersion: '2.0.0'
       })
     })
@@ -77,12 +77,12 @@ describe('InternalConfig', () => {
     it('should use default wrapper SDK version when a wrapper sourceId is used without version', () => {
       const config = defineBKTConfig({
         ...defaultConfig,
-        wrapperSdkSourceId: SourceID.REACT
+        wrapperSdkSourceId: SourceId.REACT
       })
       
       const internalConfig = createInternalConfig(config)
 
-      expect(internalConfig.sourceId).toBe(SourceID.REACT)
+      expect(internalConfig.sourceId).toBe(SourceId.REACT)
       expect(internalConfig.sdkVersion).toBe(DEFAULT_WRAPPER_SDK_VERSION)
     })
     
@@ -92,7 +92,7 @@ describe('InternalConfig', () => {
       const internalConfig = createInternalConfig(config)
       
       expect(internalConfig).toMatchObject(config)
-      expect(internalConfig.sourceId).toBe(SourceID.JAVASCRIPT)
+      expect(internalConfig.sourceId).toBe(SourceId.JAVASCRIPT)
       expect(internalConfig.sdkVersion).toBe(SDK_VERSION)
     })
   })

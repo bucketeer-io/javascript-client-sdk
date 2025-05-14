@@ -18,7 +18,7 @@ import {
   RedirectRequestException,
   UnknownException,
 } from '../../../src/BKTExceptions'
-import { SourceID } from '../../../src/internal/model/SourceID'
+import { SourceId } from '../../../src/internal/model/SourceId'
 import { describe, it, expect } from 'vitest'
 import type { Reason } from '../../../src/internal/model/Reason'
 
@@ -29,10 +29,10 @@ describe('EventCreators', () => {
   })
 
   it('should create base event', () => {
-    const base = newBaseEvent(123, { foo: 'bar' }, SourceID.REACT, '0.0.5')
+    const base = newBaseEvent(123, { foo: 'bar' }, SourceId.REACT, '0.0.5')
     expect(base).toEqual({
       timestamp: 123,
-      sourceId: SourceID.REACT,
+      sourceId: SourceId.REACT,
       sdkVersion: '0.0.5',
       metadata: { foo: 'bar' },
     })
@@ -56,7 +56,7 @@ describe('EventCreators', () => {
   })
 
   it('should create default evaluation event', () => {
-    const base = newBaseEvent(1, {}, SourceID.OPEN_FEATURE_JAVASCRIPT, '1.0.0')
+    const base = newBaseEvent(1, {}, SourceId.OPEN_FEATURE_JAVASCRIPT, '1.0.0')
     const fields = {
       featureId: 'f',
       featureVersion: 1,
@@ -68,12 +68,12 @@ describe('EventCreators', () => {
     }
     const event = newDefaultEvaluationEvent(base, fields)
     expect(event['@type']).toBe(RootEventType.EvaluationEvent)
-    expect(event.sourceId).toBe(SourceID.OPEN_FEATURE_JAVASCRIPT)
+    expect(event.sourceId).toBe(SourceId.OPEN_FEATURE_JAVASCRIPT)
     expect(event.sdkVersion).toBe('1.0.0')
   })
 
   it('should create goal event', () => {
-    const base = newBaseEvent(1, {}, SourceID.OPEN_FEATURE_JAVASCRIPT, '1.0.0')
+    const base = newBaseEvent(1, {}, SourceId.OPEN_FEATURE_JAVASCRIPT, '1.0.0')
     const fields = {
       goalId: 'g',
       value: 42,
@@ -85,7 +85,7 @@ describe('EventCreators', () => {
     expect(event['@type']).toBe(RootEventType.GoalEvent)
     expect(event.goalId).toBe('g')
     expect(event.value).toBe(42)
-    expect(event.sourceId).toBe(SourceID.OPEN_FEATURE_JAVASCRIPT)
+    expect(event.sourceId).toBe(SourceId.OPEN_FEATURE_JAVASCRIPT)
     expect(event.sdkVersion).toBe('1.0.0')
   })
 
@@ -134,14 +134,14 @@ describe('EventCreators', () => {
   })
 
   it('should create metrics event', () => {
-    const base = newBaseEvent(1, {}, SourceID.REACT, '0.0.5')
+    const base = newBaseEvent(1, {}, SourceId.REACT, '0.0.5')
     const latencyMetricsEvent = newLatencyMetricsData(1, 0.5, 'tag')
     const event = newMetricsEvent(base, {
       event: latencyMetricsEvent,
     })
     expect(event['@type']).toBe(RootEventType.MetricsEvent)
     expect(event.event).toEqual(latencyMetricsEvent)
-    expect(event.sourceId).toBe(SourceID.REACT)
+    expect(event.sourceId).toBe(SourceId.REACT)
     expect(event.sdkVersion).toBe('0.0.5')
   })
 })

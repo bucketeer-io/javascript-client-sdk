@@ -1,4 +1,4 @@
-export const SourceID = {
+export const SourceId = {
   UNKNOWN: 0,
   ANDROID: 1,
   IOS: 2,
@@ -18,14 +18,14 @@ export const SourceID = {
 
 } as const
 
-export type SourceID = (typeof SourceID)[keyof typeof SourceID]
+export type SourceId = (typeof SourceId)[keyof typeof SourceId]
 
 export function sourceIdFromNumber(
   sourceId: number,
-): SourceID {
-  const sourceIdValue = Object.values(SourceID).find((value) => value === sourceId)
+): SourceId {
+  const sourceIdValue = Object.values(SourceId).find((value) => value === sourceId)
   if (sourceIdValue !== undefined) {
     return sourceIdValue
   }
-  return SourceID.UNKNOWN
+  return SourceId.UNKNOWN
 }

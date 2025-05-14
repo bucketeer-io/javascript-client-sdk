@@ -1,20 +1,20 @@
 import { BKTConfig } from '../BKTConfig'
-import { SourceID, sourceIdFromNumber } from './model/SourceID'
+import { SourceId, sourceIdFromNumber } from './model/SourceId'
 import { SDK_VERSION } from './version'
 
 // The internal config is used for the SDK's internal use only
 // and should not be exposed to the user.
-// The intent is not exposing the `SourceID` to the user
+// The intent is not exposing the `SourceId` to the user
 interface InternalConfig extends BKTConfig {
-  sourceId: SourceID
+  sourceId: SourceId
   sdkVersion: string
 }
 
 const DEFAULT_WRAPPER_SDK_VERSION = '0.0.1'
-const supportedWrapperSdkSourceIds: SourceID[] = [
-  SourceID.REACT,
-  SourceID.REACT_NATIVE,
-  SourceID.OPEN_FEATURE_JAVASCRIPT,
+const supportedWrapperSdkSourceIds: SourceId[] = [
+  SourceId.REACT,
+  SourceId.REACT_NATIVE,
+  SourceId.OPEN_FEATURE_JAVASCRIPT,
 ]
 
 const createInternalConfig = (config: BKTConfig): InternalConfig => {
@@ -27,24 +27,24 @@ const createInternalConfig = (config: BKTConfig): InternalConfig => {
   }
 }
 
-function resolveSourceId(config: BKTConfig): SourceID {
+function resolveSourceId(config: BKTConfig): SourceId {
   if (config.wrapperSdkSourceId) {
     const wrapperSdkSourceId = sourceIdFromNumber(config.wrapperSdkSourceId)
     if (supportedWrapperSdkSourceIds.includes(wrapperSdkSourceId)) {
       return wrapperSdkSourceId
     }
     console.warn(
-      `Unsupported wrapperSdkSourceId: ${wrapperSdkSourceId}. Defaulting to SourceID.JAVASCRIPT.`,
+      `Unsupported wrapperSdkSourceId: ${wrapperSdkSourceId}. Defaulting to SourceId.JAVASCRIPT.`,
     )
   }
-  return SourceID.JAVASCRIPT
+  return SourceId.JAVASCRIPT
 }
 
 function resolveSDKVersion(
   config: BKTConfig,
-  resolvedSourceId: SourceID,
+  resolvedSourceId: SourceId,
 ): string {
-  if (resolvedSourceId !== SourceID.JAVASCRIPT) {
+  if (resolvedSourceId !== SourceId.JAVASCRIPT) {
     if (config.wrapperSdkVersion) {
       return config.wrapperSdkVersion
     }

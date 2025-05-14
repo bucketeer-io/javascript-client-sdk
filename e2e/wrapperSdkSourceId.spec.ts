@@ -23,7 +23,7 @@ import './assertions'
 import { EventType } from '../src/internal/model/Event'
 import { TimeoutException } from '../src/BKTExceptions'
 import { ApiId, MetricsEventType } from '../src/internal/model/MetricsEventData'
-import { SourceID } from '../src/internal/model/SourceID'
+import { SourceId } from '../src/internal/model/SourceId'
 
 function getDefaultComponent(client: BKTClient): DefaultComponent {
   return (client as BKTClientImpl).component as DefaultComponent
@@ -45,7 +45,7 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
       // It might fail randomly, having more or fewer events in the storage when checking the test.
       // So, we separate the storage from the evaluation tests to avoid flaky tests.
       storageKeyPrefix: 'wrapper-sdk-events',
-      wrapperSdkSourceId: SourceID.REACT_NATIVE,
+      wrapperSdkSourceId: SourceId.REACT_NATIVE,
       wrapperSdkVersion: '1.2.3',
     })
 
@@ -77,7 +77,7 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
         (e) =>
           e.type === EventType.GOAL &&
           e.event.sdkVersion === '1.2.3' &&
-          e.event.sourceId === SourceID.REACT_NATIVE,
+          e.event.sourceId === SourceId.REACT_NATIVE,
       ),
     ).toBe(true)
     await client.flush()
@@ -111,7 +111,7 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
         (e) =>
           e.type === EventType.EVALUATION && e.event.reason.type === 'DEFAULT' &&
           e.event.sdkVersion === '1.2.3' &&
-          e.event.sourceId === SourceID.REACT_NATIVE,
+          e.event.sourceId === SourceId.REACT_NATIVE,
       ),
     ).toBe(true)
 
@@ -132,7 +132,7 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
       featureTag: 'javascript',
       appVersion: '1.2.3',
       fetch: window.fetch,
-      wrapperSdkSourceId: SourceID.OPEN_FEATURE_JAVASCRIPT,
+      wrapperSdkSourceId: SourceId.OPEN_FEATURE_JAVASCRIPT,
       wrapperSdkVersion: '2.2.3',
     })
 
@@ -158,7 +158,7 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
           e.event.event['@type'] === MetricsEventType.TimeoutError &&
           e.event.event.apiId === ApiId.GET_EVALUATIONS &&
           e.event.sdkVersion === '2.2.3' &&
-          e.event.sourceId === SourceID.OPEN_FEATURE_JAVASCRIPT
+          e.event.sourceId === SourceId.OPEN_FEATURE_JAVASCRIPT
         )
       }),
     ).toBe(true)

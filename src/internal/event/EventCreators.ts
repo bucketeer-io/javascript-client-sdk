@@ -18,7 +18,7 @@ import {
   MetricsEventType,
   SizeMetricsEvent,
 } from '../model/MetricsEventData'
-import { SourceID } from '../model/SourceID'
+import { SourceId } from '../model/SourceId'
 
 export const newMetadata = (
   appVersion: string,
@@ -35,7 +35,7 @@ export const newMetadata = (
 export const newBaseEvent = (
   timestamp: number,
   metadata: Record<string, string>,
-  sourceId: SourceID,
+  sourceId: SourceId,
   sdkVersion: string,
 ): BaseEvent => {
   return {

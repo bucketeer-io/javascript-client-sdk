@@ -4,7 +4,7 @@ import { IdGenerator } from '../IdGenerator'
 import { Evaluation } from '../model/Evaluation'
 import { EventType, Event, MetricsEvent } from '../model/Event'
 import { ApiId, MetricsEventType } from '../model/MetricsEventData'
-import { SourceID } from '../model/SourceID'
+import { SourceId } from '../model/SourceId'
 import { User } from '../model/User'
 import { ApiClient } from '../remote/ApiClient'
 import {
@@ -34,7 +34,7 @@ export class EventInteractor {
     private idGenerator: IdGenerator,
     private appVersion: string,
     private userAgent: string,
-    private sourceId: SourceID,
+    private sourceId: SourceId,
     private sdkVersion: string,
   ) {}
 
