@@ -56,7 +56,7 @@ describe('EventCreators', () => {
   })
 
   it('should create default evaluation event', () => {
-    const base = newBaseEvent(1, {}, 1, '1.0.0')
+    const base = newBaseEvent(1, {}, SourceID.OPEN_FEATURE_JAVASCRIPT, '1.0.0')
     const fields = {
       featureId: 'f',
       featureVersion: 1,
@@ -68,10 +68,12 @@ describe('EventCreators', () => {
     }
     const event = newDefaultEvaluationEvent(base, fields)
     expect(event['@type']).toBe(RootEventType.EvaluationEvent)
+    expect(event.sourceId).toBe(SourceID.OPEN_FEATURE_JAVASCRIPT)
+    expect(event.sdkVersion).toBe('1.0.0')
   })
 
   it('should create goal event', () => {
-    const base = newBaseEvent(1, {}, 1, '1.0.0')
+    const base = newBaseEvent(1, {}, SourceID.OPEN_FEATURE_JAVASCRIPT, '1.0.0')
     const fields = {
       goalId: 'g',
       value: 42,
@@ -83,6 +85,8 @@ describe('EventCreators', () => {
     expect(event['@type']).toBe(RootEventType.GoalEvent)
     expect(event.goalId).toBe('g')
     expect(event.value).toBe(42)
+    expect(event.sourceId).toBe(SourceID.OPEN_FEATURE_JAVASCRIPT)
+    expect(event.sdkVersion).toBe('1.0.0')
   })
 
   it('should create latency metrics data', () => {
@@ -137,5 +141,7 @@ describe('EventCreators', () => {
     })
     expect(event['@type']).toBe(RootEventType.MetricsEvent)
     expect(event.event).toEqual(latencyMetricsEvent)
+    expect(event.sourceId).toBe(SourceID.REACT)
+    expect(event.sdkVersion).toBe('0.0.5')
   })
 })
