@@ -40,7 +40,7 @@ import {
 } from '../../../src/internal/model/MetricsEventData'
 import { RegisterEventsRequest } from '../../../src/internal/model/request/RegisterEventsRequest'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
-import { SourceId } from '../../../src/internal/model/SourceID'
+import { SourceId } from '../../../src/internal/model/SourceId'
 import { evaluation1 } from '../../mocks/evaluations'
 import { user1 } from '../../mocks/users'
 import {

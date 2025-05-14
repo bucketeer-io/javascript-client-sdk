@@ -9,7 +9,7 @@ import {
   LatencyMetricsEvent,
   MetricsEventType,
 } from '../../src/internal/model/MetricsEventData'
-import { SourceId } from '../../src/internal/model/SourceID'
+import { SourceId } from '../../src/internal/model/SourceId'
 import { user1 } from './users'
 
 export const evaluationEvent1: Event = {

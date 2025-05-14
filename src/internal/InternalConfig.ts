@@ -1,5 +1,5 @@
 import { BKTConfig } from '../BKTConfig'
-import { SourceId, sourceIdFromNumber } from './model/SourceID'
+import { SourceId, sourceIdFromNumber } from './model/SourceId'
 import { SDK_VERSION } from './version'
 
 // The internal config is used for the SDK's internal use only

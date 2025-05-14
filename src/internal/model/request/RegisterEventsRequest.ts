@@ -1,5 +1,5 @@
 import { Event } from '../Event'
-import { SourceId } from '../SourceID'
+import { SourceId } from '../SourceId'
 
 export interface RegisterEventsRequest {
   events: Event[]

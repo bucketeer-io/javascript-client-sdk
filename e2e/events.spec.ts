@@ -24,7 +24,7 @@ import { EventType } from '../src/internal/model/Event'
 import { ForbiddenException, TimeoutException } from '../src/BKTExceptions'
 import { ApiId, MetricsEventType } from '../src/internal/model/MetricsEventData'
 import { SDK_VERSION } from '../src/internal/version'
-import { SourceId } from '../src/internal/model/SourceID'
+import { SourceId } from '../src/internal/model/SourceId'
 
 function getDefaultComponent(client: BKTClient): DefaultComponent {
   return (client as BKTClientImpl).component as DefaultComponent

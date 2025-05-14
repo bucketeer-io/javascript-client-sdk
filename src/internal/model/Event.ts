@@ -1,6 +1,6 @@
 import { MetricsEventData } from './MetricsEventData'
 import { Reason } from './Reason'
-import { SourceId } from './SourceID'
+import { SourceId } from './SourceId'
 import { User } from './User'
 
 export const EventType = {

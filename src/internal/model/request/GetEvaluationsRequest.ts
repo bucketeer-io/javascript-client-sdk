@@ -1,4 +1,4 @@
-import { SourceId } from '../SourceID'
+import { SourceId } from '../SourceId'
 import { User } from '../User'
 
 interface UserEvaluationCondition {
