@@ -28,11 +28,6 @@ const createInternalConfig = (config: BKTConfig): InternalConfig => {
 }
 
 function resolveSourceId(config: BKTConfig): SourceID {
-  const supportedWrapperSdkSourceIds: SourceID[] = [
-    SourceID.REACT,
-    SourceID.REACT_NATIVE,
-    SourceID.OPEN_FEATURE_JAVASCRIPT,
-  ]
   if (config.wrapperSdkSourceId) {
     const wrapperSdkSourceId = sourceIdFromNumber(config.wrapperSdkSourceId)
     if (supportedWrapperSdkSourceIds.includes(wrapperSdkSourceId)) {
