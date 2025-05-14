@@ -1,7 +1,7 @@
 import { BKTException, UnknownException } from '../../BKTExceptions'
 import { GetEvaluationsRequest } from '../model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../model/response/GetEvaluationsResponse'
-import { SourceId } from '../model/SDKSourceId'
+import { SourceId } from '../model/SourceID'
 import { FetchLike, FetchRequestLike, FetchResponseLike } from './fetch'
 import { postInternal } from './post'
 import {

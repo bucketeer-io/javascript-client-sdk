@@ -20,7 +20,7 @@ import {
   ApiClientImpl,
 } from '../../../src/internal/remote/ApiClient'
 import { user1 } from '../../mocks/users'
-import { SourceId } from '../../../src/internal/model/SDKSourceId'
+import { SourceId } from '../../../src/internal/model/SourceID'
 import { RegisterEventsRequest } from '../../../src/internal/model/request/RegisterEventsRequest'
 import { evaluationEvent1, metricsEvent1 } from '../../mocks/events'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'

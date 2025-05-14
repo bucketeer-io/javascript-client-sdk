@@ -1,5 +1,5 @@
 import { Event } from '../Event'
-import { SourceId } from '../SDKSourceId'
+import { SourceId } from '../SourceID'
 
 export interface RegisterEventsRequest {
   events: Event[]

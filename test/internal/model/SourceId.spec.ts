@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { SourceId, sourceIdFromNumber } from '../../../src/internal/model/SDKSourceId'
+import { SourceId, sourceIdFromNumber } from '../../../src/internal/model/SourceID'
 
 describe('sourceIdFromNumber', () => {
   it('returns the correct SourceId for valid inputs', () => {

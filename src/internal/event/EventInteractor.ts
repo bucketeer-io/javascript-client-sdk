@@ -4,7 +4,7 @@ import { IdGenerator } from '../IdGenerator'
 import { Evaluation } from '../model/Evaluation'
 import { EventType, Event, MetricsEvent } from '../model/Event'
 import { ApiId, MetricsEventType } from '../model/MetricsEventData'
-import { SourceId } from '../model/SDKSourceId'
+import { SourceId } from '../model/SourceID'
 import { User } from '../model/User'
 import { ApiClient } from '../remote/ApiClient'
 import {
