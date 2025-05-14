@@ -25,13 +25,12 @@ import { RegisterEventsRequest } from '../../../src/internal/model/request/Regis
 import { evaluationEvent1, metricsEvent1 } from '../../mocks/events'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
 import { setupServerAndListen } from '../../utils'
+import { SDK_VERSION } from '../../../src/internal/version'
 import { TimeoutException, UnknownException } from '../../../src/BKTExceptions'
 import { MetricsEventType } from '../../../src/internal/model/MetricsEventData'
 
 suite('internal/remote/ApiClient', () => {
   const endpoint = 'https://api.bucketeer.io'
-  const sourceId = SourceID.REACT_NATIVE
-  const sdkVersion = '1.2.4'
   let server: SetupServer
   let apiClient: ApiClient
 
@@ -44,8 +43,8 @@ suite('internal/remote/ApiClient', () => {
       endpoint,
       'api_key_value',
       fetch,
-      sourceId,
-      sdkVersion,
+      SourceID.JAVASCRIPT,
+      SDK_VERSION,
     )
   })
 
@@ -60,7 +59,7 @@ suite('internal/remote/ApiClient', () => {
   suite('getEvaluations', () => {
     test('success', async () => {
       const requestInterceptor = vi.fn(
-        (_request: StrictRequest<GetEvaluationsRequest>) => {},
+        (_request: StrictRequest<GetEvaluationsRequest>) => { },
       )
 
       server.use(
@@ -112,8 +111,8 @@ suite('internal/remote/ApiClient', () => {
         tag: 'feature_tag_value',
         user: user1,
         userEvaluationsId: 'user_evaluation_id',
-        sourceId: sourceId,
-        sdkVersion: sdkVersion,
+        sourceId: SourceID.JAVASCRIPT,
+        sdkVersion: SDK_VERSION,
         userEvaluationCondition: {
           evaluatedAt: '0',
           userAttributesUpdated: false,
@@ -151,8 +150,8 @@ suite('internal/remote/ApiClient', () => {
           endpoint,
           'api_key_value',
           fetch,
-          sourceId,
-          sdkVersion,
+          SourceID.JAVASCRIPT,
+          SDK_VERSION,
           200,
         )
         server.use(
@@ -194,8 +193,8 @@ suite('internal/remote/ApiClient', () => {
           endpoint,
           'api_key_value',
           fetch,
-          sourceId,
-          sdkVersion,
+          SourceID.JAVASCRIPT,
+          SDK_VERSION,
           200,
         )
         server.use(
@@ -281,8 +280,8 @@ suite('internal/remote/ApiClient', () => {
       const requestBody = await request.json()
       expect(requestBody).toStrictEqual<RegisterEventsRequest>({
         events: [evaluationEvent1, metricsEvent1],
-        sourceId: sourceId,
-        sdkVersion: sdkVersion,
+        sdkVersion: SDK_VERSION,
+        sourceId: SourceID.JAVASCRIPT,
       })
     })
 
@@ -309,8 +308,8 @@ suite('internal/remote/ApiClient', () => {
         endpoint,
         'api_key_value',
         fetch,
-        sourceId,
-        sdkVersion,
+        SourceID.JAVASCRIPT,
+        SDK_VERSION,
         200,
       )
       server.use(
@@ -346,8 +345,8 @@ suite('internal/remote/ApiClient', () => {
         endpoint,
         'api_key_value',
         fetch,
-        sourceId,
-        sdkVersion,
+        SourceID.JAVASCRIPT,
+        SDK_VERSION,
         200,
       )
       server.use(
