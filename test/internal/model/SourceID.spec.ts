@@ -17,7 +17,7 @@ describe('sourceIdFromNumber', () => {
     expect(sourceIdFromNumber(101)).toBe(SourceId.OPEN_FEATURE_SWIFT)
     expect(sourceIdFromNumber(102)).toBe(SourceId.OPEN_FEATURE_JAVASCRIPT)
     expect(sourceIdFromNumber(103)).toBe(SourceId.OPEN_FEATURE_GO)
-    expect(sourceIdFromNumber(104)).toBe(SourceId.OPEN_FEATURE_NODEJS)
+    expect(sourceIdFromNumber(104)).toBe(SourceId.OPEN_FEATURE_NODE)
   })
 
   it('returns SourceId.UNKNOWN for unrecognized source IDs', () => {
