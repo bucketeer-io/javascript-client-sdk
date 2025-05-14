@@ -18,7 +18,7 @@ import {
   MetricsEventType,
   SizeMetricsEvent,
 } from '../model/MetricsEventData'
-import { SourceId } from '../model/SourceId'
+import { SourceId } from '../model/SDKSourceId'
 
 export const newMetadata = (
   appVersion: string,

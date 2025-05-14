@@ -23,7 +23,7 @@ import './assertions'
 import { EventType } from '../src/internal/model/Event'
 import { TimeoutException } from '../src/BKTExceptions'
 import { ApiId, MetricsEventType } from '../src/internal/model/MetricsEventData'
-import { SourceId } from '../src/internal/model/SourceId'
+import { SourceId } from '../src/internal/model/SDKSourceId'
 
 function getDefaultComponent(client: BKTClient): DefaultComponent {
   return (client as BKTClientImpl).component as DefaultComponent

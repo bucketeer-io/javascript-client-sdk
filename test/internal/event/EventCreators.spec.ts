@@ -18,7 +18,7 @@ import {
   RedirectRequestException,
   UnknownException,
 } from '../../../src/BKTExceptions'
-import { SourceId } from '../../../src/internal/model/SourceId'
+import { SourceId } from '../../../src/internal/model/SDKSourceId'
 import { describe, it, expect } from 'vitest'
 import type { Reason } from '../../../src/internal/model/Reason'
 

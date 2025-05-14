@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { defineBKTConfig } from '../src/BKTConfig'
 import { createInternalConfig, DEFAULT_WRAPPER_SDK_VERSION, supportedWrapperSdkSourceIds } from '../src/internal/InternalConfig'
-import { SourceId } from '../src/internal/model/SourceId'
+import { SourceId } from '../src/internal/model/SDKSourceId'
 import { SDK_VERSION } from '../src/internal/version'
 
 const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {

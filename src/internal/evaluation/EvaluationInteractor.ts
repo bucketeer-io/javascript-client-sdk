@@ -1,6 +1,6 @@
 import { IdGenerator } from '../IdGenerator'
 import { Evaluation } from '../model/Evaluation'
-import { SourceId } from '../model/SourceId'
+import { SourceId } from '../model/SDKSourceId'
 import { User } from '../model/User'
 import { ApiClient } from '../remote/ApiClient'
 import { GetEvaluationsResult } from '../remote/GetEvaluationsResult'
