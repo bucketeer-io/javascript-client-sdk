@@ -23,6 +23,8 @@ import './assertions'
 import { EventType } from '../src/internal/model/Event'
 import { ForbiddenException, TimeoutException } from '../src/BKTExceptions'
 import { ApiId, MetricsEventType } from '../src/internal/model/MetricsEventData'
+import { SDK_VERSION } from '../src/internal/version'
+import { SourceID } from '../src/internal/model/SourceID'
 
 function getDefaultComponent(client: BKTClient): DefaultComponent {
   return (client as BKTClientImpl).component as DefaultComponent
@@ -69,7 +71,14 @@ suite('e2e/events', () => {
 
     const events = component.dataModule.eventStorage().getAll()
     expect(events).toHaveLength(3)
-    expect(events.some((e) => e.type === EventType.GOAL)).toBe(true)
+    expect(
+      events.some(
+        (e) =>
+          e.type === EventType.GOAL &&
+          e.event.sdkVersion === SDK_VERSION &&
+          e.event.sourceId === SourceID.JAVASCRIPT,
+      ),
+    ).toBe(true)
     await client.flush()
 
     expect(component.dataModule.eventStorage().getAll()).toHaveLength(0)
@@ -99,7 +108,9 @@ suite('e2e/events', () => {
     expect(
       events.some(
         (e) =>
-          e.type === EventType.EVALUATION && e.event.reason.type === 'DEFAULT',
+          e.type === EventType.EVALUATION && e.event.reason.type === 'DEFAULT' &&
+          e.event.sdkVersion === SDK_VERSION &&
+          e.event.sourceId === SourceID.JAVASCRIPT,
       ),
     ).toBe(true)
 
@@ -204,7 +215,9 @@ suite('e2e/events', () => {
           return (
             e.type === EventType.METRICS &&
             e.event.event['@type'] === MetricsEventType.ForbiddenError &&
-            e.event.event.apiId === ApiId.GET_EVALUATIONS
+            e.event.event.apiId === ApiId.GET_EVALUATIONS &&
+            e.event.sdkVersion === SDK_VERSION,
+            e.event.sourceId === SourceID.JAVASCRIPT
           )
         }),
       ).toBe(false)
@@ -242,7 +255,9 @@ suite('e2e/events', () => {
           return (
             e.type === EventType.METRICS &&
             e.event.event['@type'] === MetricsEventType.ForbiddenError &&
-            e.event.event.apiId === ApiId.GET_EVALUATIONS
+            e.event.event.apiId === ApiId.GET_EVALUATIONS,
+            e.event.sdkVersion === SDK_VERSION,
+            e.event.sourceId === SourceID.JAVASCRIPT
           )
         }),
       ).toBe(false)
@@ -308,7 +323,9 @@ suite('e2e/events', () => {
           return (
             e.type === EventType.METRICS &&
             e.event.event['@type'] === MetricsEventType.TimeoutError &&
-            e.event.event.apiId === ApiId.GET_EVALUATIONS
+            e.event.event.apiId === ApiId.GET_EVALUATIONS &&
+            e.event.sdkVersion === SDK_VERSION,
+            e.event.sourceId === SourceID.JAVASCRIPT
           )
         }),
       ).toBe(true)
