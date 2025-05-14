@@ -44,7 +44,7 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
       // Because the tests are asynchronous and share the same local storage,
       // It might fail randomly, having more or fewer events in the storage when checking the test.
       // So, we separate the storage from the evaluation tests to avoid flaky tests.
-      storageKeyPrefix: 'events',
+      storageKeyPrefix: 'wrapper-sdk-events',
       wrapperSdkSourceId: SourceID.REACT_NATIVE,
       wrapperSdkVersion: '1.2.3',
     })
