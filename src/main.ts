@@ -1,4 +1,3 @@
-import { create } from 'domain'
 import { initializeBKTClientInternal } from './BKTClient'
 import { BKTConfig } from './BKTConfig'
 import { BKTUser } from './BKTUser'
