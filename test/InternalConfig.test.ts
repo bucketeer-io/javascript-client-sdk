@@ -1,14 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-import * as versionModule from '../src/internal/version'
 import { defineBKTConfig } from '../src/BKTConfig'
-import { createInternalConfig, DEFAULT_WRAPPER_SDK_VERSION } from '../src/internal/InternalConfig'
+import { createInternalConfig, DEFAULT_WRAPPER_SDK_VERSION, supportedWrapperSdkSourceIds } from '../src/internal/InternalConfig'
 import { SourceID } from '../src/internal/model/SourceID'
-
-// Mock the SDK_VERSION
-vi.mock('./version', () => ({
-  SDK_VERSION: '1.2.3'
-}))
+import { SDK_VERSION } from '../src/internal/version'
 
 const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
   apiKey: 'api-key',
@@ -33,19 +28,21 @@ describe('InternalConfig', () => {
       expect(internalConfig).toEqual({
         ...config,
         sourceId: SourceID.JAVASCRIPT,
-        sdkVersion: versionModule.SDK_VERSION
+        sdkVersion: SDK_VERSION
       })
     })
     
     it('should use the wrapper sourceId when a supported one is provided', () => {
-      const config = defineBKTConfig({
-        ...defaultConfig,
-        wrapperSdkSourceId: SourceID.REACT 
+      supportedWrapperSdkSourceIds.forEach((sourceId) => {
+        const config = defineBKTConfig({
+          ...defaultConfig,
+          wrapperSdkSourceId: sourceId
+        })
+        
+        const internalConfig = createInternalConfig(config)
+        
+        expect(internalConfig.sourceId).toBe(sourceId)
       })
-      
-      const internalConfig = createInternalConfig(config)
-      
-      expect(internalConfig.sourceId).toBe(SourceID.REACT)
     })
     
     it('should default to JAVASCRIPT sourceId when an unsupported wrapper sourceId is provided', () => {
@@ -96,7 +93,7 @@ describe('InternalConfig', () => {
       
       expect(internalConfig).toMatchObject(config)
       expect(internalConfig.sourceId).toBe(SourceID.JAVASCRIPT)
-      expect(internalConfig.sdkVersion).toBe(versionModule.SDK_VERSION)
+      expect(internalConfig.sdkVersion).toBe(SDK_VERSION)
     })
   })
 })

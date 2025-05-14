@@ -4,6 +4,7 @@ import { EvaluationStorage } from '../evaluation/EvaluationStorage'
 import { EventInteractor } from '../event/EventInteractor'
 import { EventStorage } from '../event/EventStorage'
 import { IdGenerator } from '../IdGenerator'
+import { SourceID } from '../model/SourceID'
 import { ApiClient } from '../remote/ApiClient'
 
 export class InteractorModule {
@@ -12,12 +13,16 @@ export class InteractorModule {
     apiClient: ApiClient,
     evaluationStorage: EvaluationStorage,
     idGenerator: IdGenerator,
+    sourceId: SourceID,
+    sdkVersion: string,
   ): EvaluationInteractor {
     return new EvaluationInteractor(
       featureTag,
       apiClient,
       evaluationStorage,
       idGenerator,
+      sourceId,
+      sdkVersion,
     )
   }
 
@@ -29,6 +34,8 @@ export class InteractorModule {
     clock: Clock,
     appVersion: string,
     userAgent: string,
+    sourceId: SourceID,
+    sdkVersion: string,
   ): EventInteractor {
     return new EventInteractor(
       eventsMaxBatchQueueCount,
@@ -38,6 +45,8 @@ export class InteractorModule {
       idGenerator,
       appVersion,
       userAgent,
+      sourceId,
+      sdkVersion,
     )
   }
 }

@@ -11,6 +11,11 @@ interface InternalConfig extends BKTConfig {
 }
 
 const DEFAULT_WRAPPER_SDK_VERSION = '0.0.1'
+const supportedWrapperSdkSourceIds: SourceID[] = [
+  SourceID.REACT,
+  SourceID.REACT_NATIVE,
+  SourceID.OPEN_FEATURE_JAVASCRIPT,
+]
 
 const createInternalConfig = (config: BKTConfig): InternalConfig => {
   const sourceId = resolveSourceId(config)
@@ -22,17 +27,14 @@ const createInternalConfig = (config: BKTConfig): InternalConfig => {
   }
 }
 
-function resolveSourceId(
-  config: BKTConfig,): SourceID {
+function resolveSourceId(config: BKTConfig): SourceID {
   const supportedWrapperSdkSourceIds: SourceID[] = [
     SourceID.REACT,
     SourceID.REACT_NATIVE,
     SourceID.OPEN_FEATURE_JAVASCRIPT,
   ]
   if (config.wrapperSdkSourceId) {
-    const wrapperSdkSourceId = sourceIdFromNumber(
-      config.wrapperSdkSourceId,
-    )
+    const wrapperSdkSourceId = sourceIdFromNumber(config.wrapperSdkSourceId)
     if (supportedWrapperSdkSourceIds.includes(wrapperSdkSourceId)) {
       return wrapperSdkSourceId
     }
@@ -56,6 +58,10 @@ function resolveSDKVersion(
   return SDK_VERSION
 }
 
-export { createInternalConfig, DEFAULT_WRAPPER_SDK_VERSION }
+export {
+  createInternalConfig,
+  DEFAULT_WRAPPER_SDK_VERSION,
+  supportedWrapperSdkSourceIds,
+}
 
 export type { InternalConfig }
