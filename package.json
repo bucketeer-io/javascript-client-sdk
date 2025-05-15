@@ -1,10 +1,10 @@
 {
-  "name": "@bucketeer/js-client-sdk",
+  "name": "bkt-js-client-sdk",
   "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
   },
-  "version": "2.2.4",
+  "version": "2.2.7",
   "type": "module",
   "files": [
     "dist",
