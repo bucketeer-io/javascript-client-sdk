@@ -216,7 +216,7 @@ suite('e2e/events', () => {
             e.type === EventType.METRICS &&
             e.event.event['@type'] === MetricsEventType.ForbiddenError &&
             e.event.event.apiId === ApiId.GET_EVALUATIONS &&
-            e.event.sdkVersion === SDK_VERSION,
+            e.event.sdkVersion === SDK_VERSION &&
             e.event.sourceId === SourceId.JAVASCRIPT
           )
         }),
@@ -255,8 +255,8 @@ suite('e2e/events', () => {
           return (
             e.type === EventType.METRICS &&
             e.event.event['@type'] === MetricsEventType.ForbiddenError &&
-            e.event.event.apiId === ApiId.GET_EVALUATIONS,
-            e.event.sdkVersion === SDK_VERSION,
+            e.event.event.apiId === ApiId.GET_EVALUATIONS &&
+            e.event.sdkVersion === SDK_VERSION &&
             e.event.sourceId === SourceId.JAVASCRIPT
           )
         }),
@@ -324,7 +324,7 @@ suite('e2e/events', () => {
             e.type === EventType.METRICS &&
             e.event.event['@type'] === MetricsEventType.TimeoutError &&
             e.event.event.apiId === ApiId.GET_EVALUATIONS &&
-            e.event.sdkVersion === SDK_VERSION,
+            e.event.sdkVersion === SDK_VERSION &&
             e.event.sourceId === SourceId.JAVASCRIPT
           )
         }),
