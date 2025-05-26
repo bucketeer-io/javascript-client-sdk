@@ -30,5 +30,6 @@ describe('sourceIdFromNumber', () => {
   it('returns SourceId.UNKNOWN for negative numbers and other edge cases', () => {
     expect(sourceIdFromNumber(-1)).toBe(SourceId.UNKNOWN)
     expect(sourceIdFromNumber(Number.MAX_SAFE_INTEGER)).toBe(SourceId.UNKNOWN)
+     expect(sourceIdFromNumber('yep' as unknown as number)).toBe(SourceId.UNKNOWN)
   })
 })

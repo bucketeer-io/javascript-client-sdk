@@ -32,7 +32,7 @@ import {
 } from '../../../src/internal/evaluation/EvaluationStorage'
 import { FakeClock, setupServerAndListen } from '../../utils'
 import { NodePlatformModule } from '../../../src/internal/di/PlatformModule.node'
-import { createInternalConfig } from '../../../src/internal/InternalConfig'
+import { requiredInternalConfig } from '../../../src/internal/InternalConfig'
 
 suite('internal/evaluation/EvaluationInteractor', () => {
   let server: SetupServer
@@ -56,7 +56,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     })
     component = new DefaultComponent(
       new NodePlatformModule(),
-      new DataModule(user1, createInternalConfig(config)),
+      new DataModule(user1, requiredInternalConfig(config)),
       new InteractorModule(),
     )
 

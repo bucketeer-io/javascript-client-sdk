@@ -52,7 +52,7 @@ import {
 import { ErrorResponse } from '../../../src/internal/model/response/ErrorResponse'
 import { Clock } from '../../../src/internal/Clock'
 import { SDK_VERSION } from '../../../src/internal/version'
-import { createInternalConfig, InternalConfig } from '../../../src/internal/InternalConfig'
+import { InternalConfig, requiredInternalConfig } from '../../../src/internal/InternalConfig'
 
 class TestDataModule extends DataModule {
   clock(): Clock {
@@ -87,7 +87,7 @@ suite('internal/event/EventInteractor', () => {
       userAgent: 'user_agent_value',
       fetch,
     })
-    internalConfig = createInternalConfig(config)
+    internalConfig = requiredInternalConfig(config)
     component = new DefaultComponent(
       new TestPlatformModule(),
       new TestDataModule(user1, internalConfig),

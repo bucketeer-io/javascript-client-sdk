@@ -10,31 +10,38 @@ interface InternalConfig extends BKTConfig {
   sdkVersion: string
 }
 
-const DEFAULT_WRAPPER_SDK_VERSION = '0.0.1'
 const supportedWrapperSdkSourceIds: SourceId[] = [
   SourceId.REACT,
   SourceId.REACT_NATIVE,
   SourceId.OPEN_FEATURE_JAVASCRIPT,
 ]
 
-const createInternalConfig = (config: BKTConfig): InternalConfig => {
-  const sourceId = resolveSourceId(config)
-  const sdkVersion = resolveSDKVersion(config, sourceId)
-  return {
-    ...config,
-    sourceId: sourceId,
-    sdkVersion: sdkVersion,
+const requiredInternalConfig = (config: BKTConfig): InternalConfig => {
+  const internalConfig = config as InternalConfig
+
+  if (internalConfig.sourceId === undefined) {
+    throw new Error(
+      'Config is missing sourceId. Must be processed by defineBKTConfig first.',
+    )
   }
+
+  if (!internalConfig.sdkVersion) {
+    throw new Error(
+      'Config is missing sdkVersion. Must be processed by defineBKTConfig first.',
+    )
+  }
+
+  return internalConfig
 }
 
 function resolveSourceId(config: BKTConfig): SourceId {
-  if (config.wrapperSdkSourceId) {
+  if (config.wrapperSdkSourceId !== undefined) {
     const wrapperSdkSourceId = sourceIdFromNumber(config.wrapperSdkSourceId)
     if (supportedWrapperSdkSourceIds.includes(wrapperSdkSourceId)) {
       return wrapperSdkSourceId
     }
-    console.warn(
-      `Unsupported wrapperSdkSourceId: ${wrapperSdkSourceId}. Defaulting to SourceId.JAVASCRIPT.`,
+    throw new Error(
+      `Unsupported wrapperSdkSourceId: ${config.wrapperSdkSourceId}. Supported values are: ${supportedWrapperSdkSourceIds.join(', ')}`,
     )
   }
   return SourceId.JAVASCRIPT
@@ -48,15 +55,16 @@ function resolveSDKVersion(
     if (config.wrapperSdkVersion) {
       return config.wrapperSdkVersion
     }
-    return DEFAULT_WRAPPER_SDK_VERSION
+    throw new Error('Config is missing wrapperSdkVersion')
   }
   return SDK_VERSION
 }
 
 export {
-  createInternalConfig,
-  DEFAULT_WRAPPER_SDK_VERSION,
+  requiredInternalConfig,
   supportedWrapperSdkSourceIds,
+  resolveSourceId,
+  resolveSDKVersion,
 }
 
 export type { InternalConfig }

@@ -2,6 +2,8 @@ import { suite, test, expect } from 'vitest'
 import { defineBKTConfig } from '../src/BKTConfig'
 import { IllegalArgumentException } from '../src/BKTExceptions'
 import { createBKTStorage } from '../src/BKTStorage'
+import { SDK_VERSION } from '../src/internal/version'
+import { SourceId } from '../src/internal/model/SourceId'
 
 const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
   apiKey: 'api-key',
@@ -25,7 +27,11 @@ suite('defineBKTConfig', () => {
       storageKeyPrefix: '',
       fetch,
       storageFactory: createBKTStorage,
+      // Should be set by createInternalConfig
+      sdkVersion: SDK_VERSION,
+      sourceId: SourceId.JAVASCRIPT,
     })
+
   })
 
   test('empty apiKey throws', () => {
@@ -113,5 +119,14 @@ suite('defineBKTConfig', () => {
     })
 
     expect(result.featureTag).toBe('')
+  })
+
+  test('invalid apiEndpoint throws', () => {
+    expect(() => {
+      defineBKTConfig({
+        ...defaultConfig,
+        apiEndpoint: 'not a valid url',
+      })
+    }).toThrowError('apiEndpoint is invalid')
   })
 })

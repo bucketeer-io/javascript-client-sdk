@@ -1,5 +1,6 @@
 import { IllegalArgumentException } from './BKTExceptions'
 import { BKTStorage, createBKTStorage } from './BKTStorage'
+import { createInternalConfig, InternalConfig, resolveSDKVersion, resolveSourceId } from './internal/InternalConfig'
 import { FetchLike } from './internal/remote/fetch'
 import { SDK_VERSION } from './internal/version'
 
@@ -52,6 +53,7 @@ const defaultUserAgent = () => {
   }
 }
 
+
 export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
   const userAgent = defaultUserAgent()
 
@@ -92,7 +94,13 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     result.userAgent = userAgent
   }
 
-  return {
+  // Resolve SDK version and source Id without exposing SourceId to outside
+  const sourceId = resolveSourceId(result)
+  const sdkVersion = resolveSDKVersion(result, sourceId)
+  const internalConfig = {
     ...result,
-  }
+    sourceId,
+    sdkVersion,
+  } satisfies InternalConfig
+  return internalConfig as BKTConfig
 }
