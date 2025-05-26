@@ -28,9 +28,31 @@ suite('defineBKTConfig', () => {
       storageKeyPrefix: '',
       fetch,
       storageFactory: createBKTStorage,
-      // Should be set by createInternalConfig
       sdkVersion: SDK_VERSION,
       sourceId: SourceId.JAVASCRIPT,
+    })
+
+  })
+
+  test('all parameters are valid - with wrapperSDK SourceId & Version', () => {
+    const result = defineBKTConfig({
+      ...defaultConfig,
+      wrapperSdkSourceId: SourceId.REACT,
+      wrapperSdkVersion: '1.2.5',
+    })
+
+    expect(result).toStrictEqual({
+      ...defaultConfig,
+      eventsFlushInterval: 30_000,
+      eventsMaxQueueSize: 50,
+      pollingInterval: 600_000,
+      storageKeyPrefix: '',
+      fetch,
+      storageFactory: createBKTStorage,
+      wrapperSdkSourceId: SourceId.REACT,
+      wrapperSdkVersion: '1.2.5',
+      sdkVersion: '1.2.5',
+      sourceId: SourceId.REACT,
     })
 
   })
