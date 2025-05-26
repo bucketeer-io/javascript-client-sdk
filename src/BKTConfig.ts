@@ -102,5 +102,5 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     sourceId,
     sdkVersion,
   } satisfies InternalConfig
-  return internalConfig as BKTConfig
+  return internalConfig
 }
