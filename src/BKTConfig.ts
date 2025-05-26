@@ -1,6 +1,6 @@
 import { IllegalArgumentException } from './BKTExceptions'
 import { BKTStorage, createBKTStorage } from './BKTStorage'
-import { createInternalConfig, InternalConfig, resolveSDKVersion, resolveSourceId } from './internal/InternalConfig'
+import { InternalConfig, resolveSDKVersion, resolveSourceId } from './internal/InternalConfig'
 import { FetchLike } from './internal/remote/fetch'
 import { SDK_VERSION } from './internal/version'
 

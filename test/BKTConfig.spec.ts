@@ -4,6 +4,7 @@ import { IllegalArgumentException } from '../src/BKTExceptions'
 import { createBKTStorage } from '../src/BKTStorage'
 import { SDK_VERSION } from '../src/internal/version'
 import { SourceId } from '../src/internal/model/SourceId'
+import type { InternalConfig } from '../src/internal/InternalConfig'
 
 const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
   apiKey: 'api-key',
@@ -128,5 +129,80 @@ suite('defineBKTConfig', () => {
         apiEndpoint: 'not a valid url',
       })
     }).toThrowError('apiEndpoint is invalid')
+  })
+
+  suite('sourceId and sdkVersion resolution', () => {
+    test('default sourceId and sdkVersion without wrapper config', () => {
+      const result = defineBKTConfig({
+        ...defaultConfig,
+      })
+      const internalResult = result as InternalConfig
+
+      expect(internalResult.sourceId).toBe(SourceId.JAVASCRIPT)
+      expect(internalResult.sdkVersion).toBe(SDK_VERSION)
+    })
+
+    test('supported wrapper SDKs with valid sourceId and version', () => {
+      const testCases = [
+        { sourceId: SourceId.REACT, version: '1.0.0' },
+        { sourceId: SourceId.REACT_NATIVE, version: '2.1.0' },
+        { sourceId: SourceId.OPEN_FEATURE_JAVASCRIPT, version: '3.2.1' },
+      ]
+
+      testCases.forEach(({ sourceId, version }) => {
+        const result = defineBKTConfig({
+          ...defaultConfig,
+          wrapperSdkSourceId: sourceId,
+          wrapperSdkVersion: version,
+        })
+        const internalResult = result as InternalConfig
+
+        expect(internalResult.sourceId).toBe(sourceId)
+        expect(internalResult.sdkVersion).toBe(version)
+      })
+    })
+
+    test('unsupported wrapper SDK sourceIds throw error', () => {
+      const unsupportedSourceIds = [SourceId.ANDROID, SourceId.UNKNOWN]
+
+      unsupportedSourceIds.forEach(sourceId => {
+        expect(() => {
+          defineBKTConfig({
+            ...defaultConfig,
+            wrapperSdkSourceId: sourceId,
+            wrapperSdkVersion: '1.0.0',
+          })
+        }).toThrowError(/Unsupported wrapperSdkSourceId/)
+      })
+    })
+
+    test('wrapper SDK with missing or empty version throws error', () => {
+      const invalidVersionCases = [
+        { version: undefined },
+        { version: '' },
+      ]
+
+      invalidVersionCases.forEach(({ version }) => {
+        expect(() => {
+          defineBKTConfig({
+            ...defaultConfig,
+            wrapperSdkSourceId: SourceId.REACT,
+            wrapperSdkVersion: version,
+          })
+        }).toThrowError('Config is missing wrapperSdkVersion')
+      })
+    })
+
+    test('explicitly setting wrapperSdkSourceId to undefined uses default', () => {
+      const result = defineBKTConfig({
+        ...defaultConfig,
+        wrapperSdkSourceId: undefined,
+      })
+      const internalResult = result as InternalConfig
+
+      expect(internalResult.sourceId).toBe(SourceId.JAVASCRIPT)
+      expect(internalResult.sdkVersion).toBe(SDK_VERSION)
+    })
+
   })
 })
