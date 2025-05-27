@@ -41,7 +41,7 @@ function resolveSourceId(config: BKTConfig): SourceId {
       return wrapperSdkSourceId
     }
     throw new Error(
-      `Unsupported wrapperSdkSourceId: ${config.wrapperSdkSourceId}}`,
+      `Unsupported wrapperSdkSourceId: ${config.wrapperSdkSourceId}`,
     )
   }
   return SourceId.JAVASCRIPT
