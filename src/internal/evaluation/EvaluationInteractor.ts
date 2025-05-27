@@ -1,6 +1,5 @@
 import { IdGenerator } from '../IdGenerator'
 import { Evaluation } from '../model/Evaluation'
-import { SourceId } from '../model/SourceId'
 import { User } from '../model/User'
 import { ApiClient } from '../remote/ApiClient'
 import { GetEvaluationsResult } from '../remote/GetEvaluationsResult'
@@ -12,8 +11,6 @@ export class EvaluationInteractor {
     private apiClient: ApiClient,
     private evaluationStorage: EvaluationStorage,
     private idGenerator: IdGenerator,
-    private sourceId: SourceId,
-    private sdkVersion: string,
   ) {
     // check if the new featureTag is different from the saved one
     this.evaluationStorage.updateFeatureTag(this.featureTag)

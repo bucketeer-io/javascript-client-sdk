@@ -38,8 +38,6 @@ export class DefaultComponent implements Component {
         this.dataModule.apiClient(),
         this.dataModule.evaluationStorage(),
         this.platformModule.idGenerator(),
-        this.dataModule.config().sourceId,
-        this.dataModule.config().sdkVersion,
       )
     }
     return this._evaluationInteractor

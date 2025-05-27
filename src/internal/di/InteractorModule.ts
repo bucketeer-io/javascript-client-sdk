@@ -13,16 +13,12 @@ export class InteractorModule {
     apiClient: ApiClient,
     evaluationStorage: EvaluationStorage,
     idGenerator: IdGenerator,
-    sourceId: SourceId,
-    sdkVersion: string,
   ): EvaluationInteractor {
     return new EvaluationInteractor(
       featureTag,
       apiClient,
       evaluationStorage,
       idGenerator,
-      sourceId,
-      sdkVersion,
     )
   }
 
