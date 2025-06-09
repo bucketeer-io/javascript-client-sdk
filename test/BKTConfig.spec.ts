@@ -2,6 +2,9 @@ import { suite, test, expect } from 'vitest'
 import { defineBKTConfig } from '../src/BKTConfig'
 import { IllegalArgumentException } from '../src/BKTExceptions'
 import { createBKTStorage } from '../src/BKTStorage'
+import { SDK_VERSION } from '../src/internal/version'
+import { SourceId } from '../src/internal/model/SourceId'
+import type { InternalConfig } from '../src/internal/InternalConfig'
 
 const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
   apiKey: 'api-key',
@@ -25,7 +28,33 @@ suite('defineBKTConfig', () => {
       storageKeyPrefix: '',
       fetch,
       storageFactory: createBKTStorage,
+      sdkVersion: SDK_VERSION,
+      sourceId: SourceId.JAVASCRIPT,
     })
+
+  })
+
+  test('all parameters are valid - with wrapperSDK SourceId & Version', () => {
+    const result = defineBKTConfig({
+      ...defaultConfig,
+      wrapperSdkSourceId: SourceId.REACT,
+      wrapperSdkVersion: '1.2.5',
+    })
+
+    expect(result).toStrictEqual({
+      ...defaultConfig,
+      eventsFlushInterval: 30_000,
+      eventsMaxQueueSize: 50,
+      pollingInterval: 600_000,
+      storageKeyPrefix: '',
+      fetch,
+      storageFactory: createBKTStorage,
+      wrapperSdkSourceId: SourceId.REACT,
+      wrapperSdkVersion: '1.2.5',
+      sdkVersion: '1.2.5',
+      sourceId: SourceId.REACT,
+    })
+
   })
 
   test('empty apiKey throws', () => {
@@ -113,5 +142,89 @@ suite('defineBKTConfig', () => {
     })
 
     expect(result.featureTag).toBe('')
+  })
+
+  test('invalid apiEndpoint throws', () => {
+    expect(() => {
+      defineBKTConfig({
+        ...defaultConfig,
+        apiEndpoint: 'not a valid url',
+      })
+    }).toThrowError('apiEndpoint is invalid')
+  })
+
+  suite('sourceId and sdkVersion resolution', () => {
+    test('default sourceId and sdkVersion without wrapper config', () => {
+      const result = defineBKTConfig({
+        ...defaultConfig,
+      })
+      const internalResult = result as InternalConfig
+
+      expect(internalResult.sourceId).toBe(SourceId.JAVASCRIPT)
+      expect(internalResult.sdkVersion).toBe(SDK_VERSION)
+    })
+
+    test('supported wrapper SDKs with valid sourceId and version', () => {
+      const testCases = [
+        { sourceId: SourceId.REACT, version: '1.0.0' },
+        { sourceId: SourceId.REACT_NATIVE, version: '2.1.0' },
+        { sourceId: SourceId.OPEN_FEATURE_JAVASCRIPT, version: '3.2.1' },
+      ]
+
+      testCases.forEach(({ sourceId, version }) => {
+        const result = defineBKTConfig({
+          ...defaultConfig,
+          wrapperSdkSourceId: sourceId,
+          wrapperSdkVersion: version,
+        })
+        const internalResult = result as InternalConfig
+
+        expect(internalResult.sourceId).toBe(sourceId)
+        expect(internalResult.sdkVersion).toBe(version)
+      })
+    })
+
+    test('unsupported wrapper SDK sourceIds throw error', () => {
+      const unsupportedSourceIds = [SourceId.ANDROID, SourceId.UNKNOWN]
+
+      unsupportedSourceIds.forEach(sourceId => {
+        expect(() => {
+          defineBKTConfig({
+            ...defaultConfig,
+            wrapperSdkSourceId: sourceId,
+            wrapperSdkVersion: '1.0.0',
+          })
+        }).toThrowError(/Unsupported wrapperSdkSourceId/)
+      })
+    })
+
+    test('wrapper SDK with missing or empty version throws error', () => {
+      const invalidVersionCases = [
+        { version: undefined },
+        { version: '' },
+      ]
+
+      invalidVersionCases.forEach(({ version }) => {
+        expect(() => {
+          defineBKTConfig({
+            ...defaultConfig,
+            wrapperSdkSourceId: SourceId.REACT,
+            wrapperSdkVersion: version,
+          })
+        }).toThrowError('Config is missing wrapperSdkVersion')
+      })
+    })
+
+    test('explicitly setting wrapperSdkSourceId to undefined uses default', () => {
+      const result = defineBKTConfig({
+        ...defaultConfig,
+        wrapperSdkSourceId: undefined,
+      })
+      const internalResult = result as InternalConfig
+
+      expect(internalResult.sourceId).toBe(SourceId.JAVASCRIPT)
+      expect(internalResult.sdkVersion).toBe(SDK_VERSION)
+    })
+
   })
 })

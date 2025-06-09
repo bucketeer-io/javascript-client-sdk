@@ -9,7 +9,7 @@ import {
   LatencyMetricsEvent,
   MetricsEventType,
 } from '../../src/internal/model/MetricsEventData'
-import { SourceID } from '../../src/internal/model/SourceID'
+import { SourceId } from '../../src/internal/model/SourceId'
 import { user1 } from './users'
 
 export const evaluationEvent1: Event = {
@@ -24,7 +24,7 @@ export const evaluationEvent1: Event = {
     variationId: 'variation1',
     reason: { type: 'CLIENT' },
     tag: 'javascript',
-    sourceId: SourceID.JAVASCRIPT,
+    sourceId: SourceId.JAVASCRIPT,
     sdkVersion: '1.0.0',
     metadata: {},
     '@type': RootEventType.EvaluationEvent,
@@ -43,7 +43,7 @@ export const evaluationEvent2: Event = {
     variationId: 'variation2',
     reason: { type: 'CLIENT' },
     tag: 'javascript',
-    sourceId: SourceID.JAVASCRIPT,
+    sourceId: SourceId.JAVASCRIPT,
     sdkVersion: '1.0.0',
     metadata: {
       appVersion: '1.2.3',
@@ -64,7 +64,7 @@ export const goalEvent1: Event = {
     user: user1,
     value: 0.0,
     tag: 'javascript',
-    sourceId: SourceID.JAVASCRIPT,
+    sourceId: SourceId.JAVASCRIPT,
     sdkVersion: '1.0.0',
     metadata: {
       app_version: '1.2.3',
@@ -85,7 +85,7 @@ export const goalEvent2: Event = {
     user: user1,
     value: 0.0,
     tag: 'javascript',
-    sourceId: SourceID.JAVASCRIPT,
+    sourceId: SourceId.JAVASCRIPT,
     sdkVersion: '1.0.0',
     metadata: {
       app_version: '1.2.3',
@@ -117,7 +117,7 @@ export const metricsEvent1: Event = {
       os_version: 'os_version_value',
       device_model: 'device_model_value',
     },
-    sourceId: SourceID.JAVASCRIPT,
+    sourceId: SourceId.JAVASCRIPT,
     '@type': RootEventType.MetricsEvent,
   },
 }

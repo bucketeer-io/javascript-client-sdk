@@ -1,7 +1,7 @@
 import { BKTException, UnknownException } from '../../BKTExceptions'
 import { GetEvaluationsRequest } from '../model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../model/response/GetEvaluationsResponse'
-import { SourceID } from '../model/SourceID'
+import { SourceId } from '../model/SourceId'
 import { FetchLike, FetchRequestLike, FetchResponseLike } from './fetch'
 import { postInternal } from './post'
 import {
@@ -13,7 +13,6 @@ import { Event } from '../model/Event'
 import { RegisterEventsResult } from './RegisterEventsResult'
 import { RegisterEventsRequest } from '../model/request/RegisterEventsRequest'
 import { RegisterEventsResponse } from '../model/response/RegisterEventsResponse'
-import { SDK_VERSION } from '../version'
 
 export interface ApiClient {
   getEvaluations(
@@ -30,6 +29,8 @@ export class ApiClientImpl implements ApiClient {
     private readonly endpoint: string,
     private readonly apiKey: string,
     private readonly fetch: FetchLike,
+    private readonly sourceId: SourceId,
+    private readonly sdkVersion: string,
     private readonly defaultRequestTimeoutMillis: number = DEFAULT_REQUEST_TIMEOUT_MILLIS,
   ) {}
 
@@ -39,8 +40,8 @@ export class ApiClientImpl implements ApiClient {
   ): Promise<GetEvaluationsResult> {
     const body: GetEvaluationsRequest = {
       ...request,
-      sourceId: SourceID.JAVASCRIPT,
-      sdkVersion: SDK_VERSION,
+      sourceId: this.sourceId,
+      sdkVersion: this.sdkVersion,
     }
 
     try {
@@ -86,8 +87,8 @@ export class ApiClientImpl implements ApiClient {
   async registerEvents(events: Event[]): Promise<RegisterEventsResult> {
     const body: RegisterEventsRequest = {
       events,
-      sdkVersion: SDK_VERSION,
-      sourceId: SourceID.JAVASCRIPT,
+      sdkVersion: this.sdkVersion,
+      sourceId: this.sourceId,
     }
 
     try {

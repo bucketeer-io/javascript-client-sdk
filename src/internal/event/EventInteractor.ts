@@ -4,6 +4,7 @@ import { IdGenerator } from '../IdGenerator'
 import { Evaluation } from '../model/Evaluation'
 import { EventType, Event, MetricsEvent } from '../model/Event'
 import { ApiId, MetricsEventType } from '../model/MetricsEventData'
+import { SourceId } from '../model/SourceId'
 import { User } from '../model/User'
 import { ApiClient } from '../remote/ApiClient'
 import {
@@ -33,6 +34,8 @@ export class EventInteractor {
     private idGenerator: IdGenerator,
     private appVersion: string,
     private userAgent: string,
+    private sourceId: SourceId,
+    private sdkVersion: string,
   ) {}
 
   eventUpdateListener: ((events: Event[]) => void) | null = null
@@ -53,6 +56,8 @@ export class EventInteractor {
         newBaseEvent(
           this.clock.currentTimeSeconds(),
           newMetadata(this.appVersion, this.userAgent),
+          this.sourceId,
+          this.sdkVersion,
         ),
         {
           featureId: evaluation.featureId,
@@ -81,6 +86,8 @@ export class EventInteractor {
         newBaseEvent(
           this.clock.currentTimeSeconds(),
           newMetadata(this.appVersion, this.userAgent),
+          this.sourceId,
+          this.sdkVersion,
         ),
         {
           featureId,
@@ -112,6 +119,8 @@ export class EventInteractor {
         newBaseEvent(
           this.clock.currentTimeSeconds(),
           newMetadata(this.appVersion, this.userAgent),
+          this.sourceId,
+          this.sdkVersion,
         ),
         {
           goalId,
@@ -140,6 +149,8 @@ export class EventInteractor {
           newBaseEvent(
             this.clock.currentTimeSeconds(),
             newMetadata(this.appVersion, this.userAgent),
+            this.sourceId,
+            this.sdkVersion,
           ),
           {
             event: newLatencyMetricsData(apiId, seconds, featureTag),
@@ -153,6 +164,8 @@ export class EventInteractor {
           newBaseEvent(
             this.clock.currentTimeSeconds(),
             newMetadata(this.appVersion, this.userAgent),
+            this.sourceId,
+            this.sdkVersion,
           ),
           {
             event: newSizeMetricsData(apiId, sizeByte, featureTag),
@@ -169,9 +182,10 @@ export class EventInteractor {
   }
 
   trackFailure(apiId: ApiId, featureTag: string, error: BKTException): void {
-
     if (error.type === MetricsEventType.UnauthorizedError) {
-      console.error('An unauthorized error occurred. Please check your API Key.')
+      console.error(
+        'An unauthorized error occurred. Please check your API Key.',
+      )
       return
     }
 
@@ -188,6 +202,8 @@ export class EventInteractor {
           newBaseEvent(
             this.clock.currentTimeSeconds(),
             newMetadata(this.appVersion, this.userAgent),
+            this.sourceId,
+            this.sdkVersion,
           ),
           {
             event: newErrorMetricsData(apiId, error, featureTag),

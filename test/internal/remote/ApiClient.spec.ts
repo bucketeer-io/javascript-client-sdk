@@ -20,7 +20,7 @@ import {
   ApiClientImpl,
 } from '../../../src/internal/remote/ApiClient'
 import { user1 } from '../../mocks/users'
-import { SourceID } from '../../../src/internal/model/SourceID'
+import { SourceId } from '../../../src/internal/model/SourceId'
 import { RegisterEventsRequest } from '../../../src/internal/model/request/RegisterEventsRequest'
 import { evaluationEvent1, metricsEvent1 } from '../../mocks/events'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
@@ -39,7 +39,13 @@ suite('internal/remote/ApiClient', () => {
   })
 
   beforeEach(() => {
-    apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch)
+    apiClient = new ApiClientImpl(
+      endpoint,
+      'api_key_value',
+      fetch,
+      SourceId.JAVASCRIPT,
+      SDK_VERSION,
+    )
   })
 
   afterEach(() => {
@@ -52,20 +58,23 @@ suite('internal/remote/ApiClient', () => {
 
   suite('getEvaluations', () => {
     test('success', async () => {
-      const requestInterceptor = vi.fn((_request: StrictRequest<GetEvaluationsRequest>) => {})
+      const requestInterceptor = vi.fn(
+        (_request: StrictRequest<GetEvaluationsRequest>) => { },
+      )
 
       server.use(
         http.post<
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${endpoint}/get_evaluations`, async ({request}) => {
+        >(`${endpoint}/get_evaluations`, async ({ request }) => {
           requestInterceptor(request)
-          return HttpResponse.json({
+          return HttpResponse.json(
+            {
               evaluations: user1Evaluations,
               userEvaluationsId: 'user_evaluation_id',
             },
-            { headers: { 'Content-Length': '10' } }
+            { headers: { 'Content-Length': '10' } },
           )
         }),
       )
@@ -102,7 +111,7 @@ suite('internal/remote/ApiClient', () => {
         tag: 'feature_tag_value',
         user: user1,
         userEvaluationsId: 'user_evaluation_id',
-        sourceId: SourceID.JAVASCRIPT,
+        sourceId: SourceId.JAVASCRIPT,
         sdkVersion: SDK_VERSION,
         userEvaluationCondition: {
           evaluatedAt: '0',
@@ -137,11 +146,21 @@ suite('internal/remote/ApiClient', () => {
 
     suite('timeout error', async () => {
       test('initial timeout', async () => {
-        apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
+        apiClient = new ApiClientImpl(
+          endpoint,
+          'api_key_value',
+          fetch,
+          SourceId.JAVASCRIPT,
+          SDK_VERSION,
+          200,
+        )
         server.use(
           http.post(`${endpoint}/get_evaluations`, async () => {
             await delay(1000)
-            return HttpResponse.json({ 'error': 'super slow response'}, { status: 500 })
+            return HttpResponse.json(
+              { error: 'super slow response' },
+              { status: 500 },
+            )
           }),
         )
 
@@ -170,11 +189,21 @@ suite('internal/remote/ApiClient', () => {
       })
 
       test('passig timeout value from getEvaluations', async () => {
-        apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
+        apiClient = new ApiClientImpl(
+          endpoint,
+          'api_key_value',
+          fetch,
+          SourceId.JAVASCRIPT,
+          SDK_VERSION,
+          200,
+        )
         server.use(
           http.post(`${endpoint}/get_evaluations`, async () => {
             await delay(1000)
-            return HttpResponse.json({ 'error': 'super slow response'}, { status: 500 })
+            return HttpResponse.json(
+              { error: 'super slow response' },
+              { status: 500 },
+            )
           }),
         )
 
@@ -216,7 +245,7 @@ suite('internal/remote/ApiClient', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-          >(`${endpoint}/register_events`, async ({request}) => {
+        >(`${endpoint}/register_events`, async ({ request }) => {
           requestInterceptor(request)
           return HttpResponse.json({
             errors: {
@@ -224,7 +253,8 @@ suite('internal/remote/ApiClient', () => {
                 retriable: true,
                 message: 'error',
               },
-            }})
+            },
+          })
         }),
       )
 
@@ -251,7 +281,7 @@ suite('internal/remote/ApiClient', () => {
       expect(requestBody).toStrictEqual<RegisterEventsRequest>({
         events: [evaluationEvent1, metricsEvent1],
         sdkVersion: SDK_VERSION,
-        sourceId: SourceID.JAVASCRIPT,
+        sourceId: SourceId.JAVASCRIPT,
       })
     })
 
@@ -274,11 +304,21 @@ suite('internal/remote/ApiClient', () => {
     })
 
     test('timeout error', async () => {
-      apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
+      apiClient = new ApiClientImpl(
+        endpoint,
+        'api_key_value',
+        fetch,
+        SourceId.JAVASCRIPT,
+        SDK_VERSION,
+        200,
+      )
       server.use(
         http.post(`${endpoint}/register_events`, async () => {
           await delay(1000)
-          return HttpResponse.json({ 'error': 'super slow response'}, { status: 500 })
+          return HttpResponse.json(
+            { error: 'super slow response' },
+            { status: 500 },
+          )
         }),
       )
 
@@ -301,7 +341,14 @@ suite('internal/remote/ApiClient', () => {
     })
 
     test('got a response with status 200 and invalid JSON', async () => {
-      apiClient = new ApiClientImpl(endpoint, 'api_key_value', fetch, 200)
+      apiClient = new ApiClientImpl(
+        endpoint,
+        'api_key_value',
+        fetch,
+        SourceId.JAVASCRIPT,
+        SDK_VERSION,
+        200,
+      )
       server.use(
         http.post(`${endpoint}/register_events`, async () => {
           return HttpResponse.text('Text')
@@ -312,10 +359,10 @@ suite('internal/remote/ApiClient', () => {
         evaluationEvent1,
         metricsEvent1,
       ])
-      
+
       assert(response.type === 'failure')
       expect(response.type).toBe('failure')
-      
+
       const error = response.error
       expect(error.name).toBe('UnknownException')
 

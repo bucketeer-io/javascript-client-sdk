@@ -40,7 +40,7 @@ import {
 } from '../../../src/internal/model/MetricsEventData'
 import { RegisterEventsRequest } from '../../../src/internal/model/request/RegisterEventsRequest'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
-import { SourceID } from '../../../src/internal/model/SourceID'
+import { SourceId } from '../../../src/internal/model/SourceId'
 import { evaluation1 } from '../../mocks/evaluations'
 import { user1 } from '../../mocks/users'
 import {
@@ -52,6 +52,7 @@ import {
 import { ErrorResponse } from '../../../src/internal/model/response/ErrorResponse'
 import { Clock } from '../../../src/internal/Clock'
 import { SDK_VERSION } from '../../../src/internal/version'
+import { InternalConfig, requiredInternalConfig } from '../../../src/internal/InternalConfig'
 
 class TestDataModule extends DataModule {
   clock(): Clock {
@@ -65,6 +66,7 @@ class TestDataModule extends DataModule {
 suite('internal/event/EventInteractor', () => {
   let server: SetupServer
   let config: BKTConfig
+  let internalConfig: InternalConfig
   let component: DefaultComponent
   let interactor: EventInteractor
   let eventStorage: EventStorageImpl
@@ -85,9 +87,10 @@ suite('internal/event/EventInteractor', () => {
       userAgent: 'user_agent_value',
       fetch,
     })
+    internalConfig = requiredInternalConfig(config)
     component = new DefaultComponent(
       new TestPlatformModule(),
-      new TestDataModule(user1, config),
+      new TestDataModule(user1, internalConfig),
       new InteractorModule(),
     )
 
@@ -120,7 +123,7 @@ suite('internal/event/EventInteractor', () => {
         event: {
           '@type': RootEventType.EvaluationEvent,
           timestamp: clock.currentTimeSecondsCalls[0],
-          sourceId: SourceID.JAVASCRIPT,
+          sourceId: SourceId.JAVASCRIPT,
           featureId: 'test-feature-1',
           featureVersion: 9,
           variationId: 'test-feature-1-variation-A',
@@ -133,7 +136,7 @@ suite('internal/event/EventInteractor', () => {
           reason: {
             type: 'CLIENT',
           },
-          sdkVersion: __BKT_SDK_VERSION__,
+          sdkVersion: SDK_VERSION,
           tag: 'feature_tag_value',
         },
       },
@@ -162,7 +165,7 @@ suite('internal/event/EventInteractor', () => {
         event: {
           '@type': RootEventType.EvaluationEvent,
           timestamp: clock.currentTimeSecondsCalls[0],
-          sourceId: SourceID.JAVASCRIPT,
+          sourceId: SourceId.JAVASCRIPT,
           featureId: 'feature_id_value',
           featureVersion: 0,
           variationId: '',
@@ -175,7 +178,7 @@ suite('internal/event/EventInteractor', () => {
           reason: {
             type: 'CLIENT',
           },
-          sdkVersion: __BKT_SDK_VERSION__,
+          sdkVersion: SDK_VERSION,
           tag: 'feature_tag_value',
         },
       },
@@ -200,7 +203,7 @@ suite('internal/event/EventInteractor', () => {
         event: {
           '@type': RootEventType.GoalEvent,
           timestamp: clock.currentTimeSecondsCalls[0],
-          sourceId: SourceID.JAVASCRIPT,
+          sourceId: SourceId.JAVASCRIPT,
           goalId: 'goal_id_value',
           value: 0.5,
           userId: user1.id,
@@ -209,7 +212,7 @@ suite('internal/event/EventInteractor', () => {
             app_version: '1.2.3',
             device_model: 'user_agent_value',
           },
-          sdkVersion: __BKT_SDK_VERSION__,
+          sdkVersion: SDK_VERSION,
           tag: 'feature_tag_value',
         },
       },
@@ -234,12 +237,12 @@ suite('internal/event/EventInteractor', () => {
         event: {
           '@type': RootEventType.MetricsEvent,
           timestamp: clock.currentTimeSecondsCalls[0],
-          sourceId: SourceID.JAVASCRIPT,
+          sourceId: SourceId.JAVASCRIPT,
           metadata: {
             app_version: '1.2.3',
             device_model: 'user_agent_value',
           },
-          sdkVersion: __BKT_SDK_VERSION__,
+          sdkVersion: SDK_VERSION,
           event: {
             apiId: ApiId.GET_EVALUATION,
             labels: { tag: 'feature_tag_value' },
@@ -254,12 +257,12 @@ suite('internal/event/EventInteractor', () => {
         event: {
           '@type': RootEventType.MetricsEvent,
           timestamp: clock.currentTimeSecondsCalls[1],
-          sourceId: SourceID.JAVASCRIPT,
+          sourceId: SourceId.JAVASCRIPT,
           metadata: {
             app_version: '1.2.3',
             device_model: 'user_agent_value',
           },
-          sdkVersion: __BKT_SDK_VERSION__,
+          sdkVersion: SDK_VERSION,
           event: {
             apiId: ApiId.GET_EVALUATION,
             labels: { tag: 'feature_tag_value' },
@@ -322,12 +325,12 @@ suite('internal/event/EventInteractor', () => {
         event: {
           '@type': RootEventType.MetricsEvent,
           timestamp: clock.currentTimeSecondsCalls[0],
-          sourceId: SourceID.JAVASCRIPT,
+          sourceId: SourceId.JAVASCRIPT,
           metadata: {
             app_version: '1.2.3',
             device_model: 'user_agent_value',
           },
-          sdkVersion: __BKT_SDK_VERSION__,
+          sdkVersion: SDK_VERSION,
           event: {
             apiId: ApiId.GET_EVALUATION,
             labels: { tag: 'feature_tag_value', ...extraLabels },
@@ -441,7 +444,7 @@ suite('internal/event/EventInteractor', () => {
           >(`${config.apiEndpoint}/register_events`, async ({request}) => {
           const body = await request.json()
           expect(body.events).toHaveLength(3)
-          expect(body.sourceId).toEqual(SourceID.JAVASCRIPT)
+          expect(body.sourceId).toEqual(SourceId.JAVASCRIPT)
           expect(body.sdkVersion).toEqual(SDK_VERSION)
           return HttpResponse.json({errors: {}})
         }),

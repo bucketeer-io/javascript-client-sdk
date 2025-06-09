@@ -1,8 +1,8 @@
 import { Event } from '../Event'
-import { SourceID } from '../SourceID'
+import { SourceId } from '../SourceId'
 
 export interface RegisterEventsRequest {
   events: Event[]
   sdkVersion: string
-  sourceId: SourceID
+  sourceId: SourceId
 }

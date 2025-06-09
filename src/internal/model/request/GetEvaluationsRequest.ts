@@ -1,4 +1,4 @@
-import { SourceID } from '../SourceID'
+import { SourceId } from '../SourceId'
 import { User } from '../User'
 
 interface UserEvaluationCondition {
@@ -11,7 +11,7 @@ export interface GetEvaluationsRequest {
   tag: string
   user: User
   userEvaluationsId: string
-  sourceId: SourceID
+  sourceId: SourceId
   userEvaluationCondition: UserEvaluationCondition
   sdkVersion: string
 }
