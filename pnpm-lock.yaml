@@ -76,8 +76,8 @@ importers:
         specifier: 5.8.2
         version: 5.8.2
       vite:
-        specifier: 6.0.13
-        version: 6.0.13(@types/node@22.13.14)(jiti@2.4.2)
+        specifier: 6.1.6
+        version: 6.1.6(@types/node@22.13.14)(jiti@2.4.2)
 
 packages:
 
@@ -2974,6 +2974,46 @@ packages:
 
   vite@6.0.13:
     resolution: {integrity: sha512-vreFe9+wkAVt1I6gerGnUmDH1ir9gmbQ7+jtfMAk4iwSMkuQxl4/eGc26LLhCWTJf1wCgQWFxZBRsjPHKmEM+w==}
+    engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
+    hasBin: true
+    peerDependencies:
+      '@types/node': ^18.0.0 || ^20.0.0 || >=22.0.0
+      jiti: '>=1.21.0'
+      less: '*'
+      lightningcss: ^1.21.0
+      sass: '*'
+      sass-embedded: '*'
+      stylus: '*'
+      sugarss: '*'
+      terser: ^5.16.0
+      tsx: ^4.8.1
+      yaml: ^2.4.2
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+      jiti:
+        optional: true
+      less:
+        optional: true
+      lightningcss:
+        optional: true
+      sass:
+        optional: true
+      sass-embedded:
+        optional: true
+      stylus:
+        optional: true
+      sugarss:
+        optional: true
+      terser:
+        optional: true
+      tsx:
+        optional: true
+      yaml:
+        optional: true
+
+  vite@6.1.6:
+    resolution: {integrity: sha512-u+jokLMwHVFUoUkfL+m/1hzucejL2639g9QXcrRdtN3WPHfW7imI83V96Oh1R0xVZqDjvcgp+7S8bSQpdVlmPA==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
     peerDependencies:
@@ -6233,7 +6273,7 @@ snapshots:
       debug: 4.4.1
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 6.0.13(@types/node@22.13.14)(jiti@2.4.2)
+      vite: 6.1.6(@types/node@22.13.14)(jiti@2.4.2)
     transitivePeerDependencies:
       - '@types/node'
       - jiti
@@ -6249,6 +6289,16 @@ snapshots:
       - yaml
 
   vite@6.0.13(@types/node@22.13.14)(jiti@2.4.2):
+    dependencies:
+      esbuild: 0.24.2
+      postcss: 8.5.3
+      rollup: 4.34.9
+    optionalDependencies:
+      '@types/node': 22.13.14
+      fsevents: 2.3.3
+      jiti: 2.4.2
+
+  vite@6.1.6(@types/node@22.13.14)(jiti@2.4.2):
     dependencies:
       esbuild: 0.24.2
       postcss: 8.5.3
