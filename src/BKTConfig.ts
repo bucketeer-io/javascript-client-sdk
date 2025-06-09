@@ -1,6 +1,10 @@
 import { IllegalArgumentException } from './BKTExceptions'
 import { BKTStorage, createBKTStorage } from './BKTStorage'
-import { InternalConfig, resolveSDKVersion, resolveSourceId } from './internal/InternalConfig'
+import {
+  InternalConfig,
+  resolveSDKVersion,
+  resolveSourceId,
+} from './internal/InternalConfig'
 import { FetchLike } from './internal/remote/fetch'
 import { SDK_VERSION } from './internal/version'
 
@@ -31,7 +35,18 @@ interface RawBKTConfig {
   userAgent?: string
   fetch?: FetchLike
   storageFactory?: <T>(key: string) => BKTStorage<T>
+  // Use wrapperSdkVersion to set the SDK version explicitly.
+  // IMPORTANT: This option is intended for internal use only.
+  // It should NOT be set by developers directly integrating this SDK.
+  // Use this option ONLY when another SDK acts as a proxy and wraps this native SDK.
+  // In such cases, set this value to the version of the proxy SDK.
   wrapperSdkVersion?: string
+  // Use wrapperSdkSourceId to set the source ID explicitly.
+  // IMPORTANT: This option is intended for internal use only.
+  // It should NOT be set by developers directly integrating this SDK.
+  // Use this option ONLY when another SDK acts as a proxy and wraps this native SDK.
+  // In such cases, set this value to the sourceID of the proxy SDK.
+  // The sourceID is used to identify the origin of the request.
   wrapperSdkSourceId?: number
 }
 
@@ -52,7 +67,6 @@ const defaultUserAgent = () => {
     return window.navigator.userAgent
   }
 }
-
 
 export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
   const userAgent = defaultUserAgent()
