@@ -45,8 +45,8 @@
     "@types/node": "22.13.14",
     "@typescript-eslint/eslint-plugin": "8.29.0",
     "@typescript-eslint/parser": "8.29.0",
-    "@vitest/browser": "3.0.7",
-    "@vitest/utils": "3.0.7",
+    "@vitest/browser": "3.2.3",
+    "@vitest/utils": "3.2.3",
     "eslint": "9.23.0",
     "eslint-config-prettier": "10.1.1",
     "eslint-plugin-import": "2.31.0",
@@ -58,8 +58,8 @@
     "typescript": "5.8.2",
     "typescript-eslint": "8.29.0",
     "unbuild": "3.5.0",
-    "vitest": "3.0.7",
-    "webdriverio": "9.10.1"
+    "vitest": "3.2.3",
+    "webdriverio": "9.15.0"
   },
   "packageManager": "pnpm@10.7.0"
 }
