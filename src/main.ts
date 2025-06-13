@@ -4,6 +4,7 @@ import { BKTUser } from './BKTUser'
 import { Component, DefaultComponent } from './internal/di/Component'
 import { DataModule } from './internal/di/DataModule'
 import { InteractorModule } from './internal/di/InteractorModule'
+import { BasePlatformModule } from './internal/di/PlatformModule'
 import { NodePlatformModule } from './internal/di/PlatformModule.node'
 import { User } from './internal/model/User'
 import { toUser } from './internal/UserHolder'
@@ -30,7 +31,9 @@ export type { BKTEvaluationDetails } from './BKTEvaluationDetails'
 
 const createNodeComponent = (config: BKTConfig, user: User): Component => {
   return new DefaultComponent(
-    new NodePlatformModule(),
+    config.idGenerator
+      ? new BasePlatformModule({ idGenerator: config.idGenerator })
+      : new NodePlatformModule(),
     new DataModule(user, requiredInternalConfig(config)),
     new InteractorModule(),
   )
