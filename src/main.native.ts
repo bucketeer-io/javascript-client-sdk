@@ -8,6 +8,7 @@ import { BasePlatformModule } from './internal/di/PlatformModule'
 import { User } from './internal/model/User'
 import { toUser } from './internal/UserHolder'
 import { IdGenerator } from './internal/IdGenerator'
+import { requiredInternalConfig } from './internal/InternalConfig'
 
 export type { BKTConfig } from './BKTConfig'
 export { defineBKTConfig } from './BKTConfig'
@@ -33,7 +34,7 @@ const createComponent = (config: BKTConfig, user: User): Component => {
   const idGenerator = requiredIdGenerator(config)
   return new DefaultComponent(
     new BasePlatformModule({ idGenerator }),
-    new DataModule(user, config),
+    new DataModule(user, requiredInternalConfig(config)),
     new InteractorModule(),
   )
 }
