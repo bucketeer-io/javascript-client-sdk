@@ -24,7 +24,7 @@ const isValidUrl = (url: string): boolean => {
   }
 }
 
-interface RawBKTConfig {
+export interface RawBKTConfig {
   apiKey: string
   apiEndpoint: string
   featureTag?: string
