@@ -244,23 +244,9 @@ suite('e2e/events', () => {
       const component2 = getDefaultComponent(client)
 
       const events3 = component2.dataModule.eventStorage().getAll()
-      // 2 events - latency and response size
-      expect(events3).toHaveLength(2)
-      // ForbiddenError should not exist
-      expect(
-        events.some((e) => {
-          return (
-            e.type === EventType.METRICS &&
-            e.event.event['@type'] === MetricsEventType.ForbiddenError &&
-            e.event.event.apiId === ApiId.GET_EVALUATIONS &&
-            e.event.sdkVersion === SDK_VERSION &&
-            e.event.sourceId === SourceId.JAVASCRIPT
-          )
-        }),
-      ).toBe(false)
 
       if (isNodeEnvironment) {
-        // on the node environment, no events should be stored  after destroying the client
+        // on the node environment, no events should be stored after destroying the client
         // because it's using in-memory storage
         expect(events3).toHaveLength(0)
       } else {
@@ -268,11 +254,13 @@ suite('e2e/events', () => {
         expect(events3).toHaveLength(2)
         // ForbiddenError should not exist
         expect(
-          events.some((e) => {
+          events3.some((e) => {
             return (
-              e.type === EventType.METRICS &&
-              e.event.event['@type'] === MetricsEventType.ForbiddenError &&
-              e.event.event.apiId === ApiId.GET_EVALUATIONS
+            e.type === EventType.METRICS &&
+            e.event.event['@type'] === MetricsEventType.ForbiddenError &&
+            e.event.event.apiId === ApiId.GET_EVALUATIONS &&
+            e.event.sdkVersion === SDK_VERSION &&
+            e.event.sourceId === SourceId.JAVASCRIPT
             )
           }),
         ).toBe(false)
