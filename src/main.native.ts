@@ -11,7 +11,7 @@ import { IdGenerator } from './internal/IdGenerator'
 import { requiredInternalConfig } from './internal/InternalConfig'
 import { defineBKTConfig as _defineBKTConfig } from './BKTConfig'
 
-export type { BKTConfig } from './BKTConfig'
+export type { BKTConfig, RawBKTConfig } from './BKTConfig'
 export type { BKTUser } from './BKTUser'
 export { defineBKTUser } from './BKTUser'
 export type { BKTClient } from './BKTClient'
