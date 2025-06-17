@@ -63,10 +63,14 @@ export interface BKTConfig extends RawBKTConfig {
 }
 
 const defaultUserAgent = () => {
-  if (typeof window === 'undefined') {
-    return `Bucketeer JavaScript SDK(${SDK_VERSION})`
-  } else {
+  if (
+    typeof window !== 'undefined' &&
+    window.navigator &&
+    typeof window.navigator.userAgent === 'string'
+  ) {
     return window.navigator.userAgent
+  } else {
+    return `Bucketeer JavaScript SDK(${SDK_VERSION})`
   }
 }
 
