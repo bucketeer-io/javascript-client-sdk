@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.2.5](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.4...v2.2.5) (2025-06-17)
+
+
+### Miscellaneous
+
+* allow set the wrapper SDK version & SourceId ([#224](https://github.com/bucketeer-io/javascript-client-sdk/issues/224)) ([47db9b1](https://github.com/bucketeer-io/javascript-client-sdk/commit/47db9b19046e4552c8eb05620172fe5d8e288e44))
+
+
+### Build System
+
+* **deps:** lock file maintenance ([#214](https://github.com/bucketeer-io/javascript-client-sdk/issues/214)) ([1624159](https://github.com/bucketeer-io/javascript-client-sdk/commit/1624159b1f8bbcd7bb2e9d7107b890fb5f5e3ba3))
+* **deps:** update all non-major dependencies ([#216](https://github.com/bucketeer-io/javascript-client-sdk/issues/216)) ([07ec455](https://github.com/bucketeer-io/javascript-client-sdk/commit/07ec455da4cdace9e02d4fcb0619bca616a97528))
+* **deps:** update all non-major dependencies ([#221](https://github.com/bucketeer-io/javascript-client-sdk/issues/221)) ([072c23c](https://github.com/bucketeer-io/javascript-client-sdk/commit/072c23cec1b4cb71a5ccb9238bceeea7ce8beeec))
+* **deps:** update dependency vite to v6.0.13 [SECURITY] ([#215](https://github.com/bucketeer-io/javascript-client-sdk/issues/215)) ([0b2403a](https://github.com/bucketeer-io/javascript-client-sdk/commit/0b2403a4bea15ab402f72ac2fef4747df2d409eb))
+
 ## [2.2.4](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.3...v2.2.4) (2025-03-05)
 
 
