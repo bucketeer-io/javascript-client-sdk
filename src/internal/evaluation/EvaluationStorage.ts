@@ -13,17 +13,23 @@ export interface EvaluationEntity {
 export interface EvaluationStorage {
   getByFeatureId(featureId: string): Evaluation | null
 
+  /**
+   * Preload the storage from the underlying storage.
+   * This is useful to ensure that the storage is ready before any operations.
+   */
+  refreshCache(): Promise<void>
+
   deleteAllAndInsert(
     evaluationsId: string,
     evaluations: Evaluation[],
     evaluatedAt: string,
-  ): void
+  ): Promise<void>
   update(
     evaluationsId: string,
     evaluations: Evaluation[],
     archivedFeatureIds: string[],
     evaluatedAt: string,
-  ): boolean
+  ): Promise<boolean>
 
   getCurrentEvaluationsId(): string | null
 
@@ -32,32 +38,71 @@ export interface EvaluationStorage {
   /**
    * @returns true if featureTag has been updated
    */
-  updateFeatureTag(featureTag: string): boolean
+  updateFeatureTag(featureTag: string): Promise<boolean>
 
-  setUserAttributesUpdated(): void
+  setUserAttributesUpdated(): Promise<void>
   getUserAttributesUpdated(): boolean
-  clearUserAttributesUpdated(): void
+  clearUserAttributesUpdated(): Promise<void>
 
-  clear(): void
+  clear(): Promise<void>
 }
 
+/**
+
+IMPORTANT: Always load fresh data from storage before each write operation.
+Rationale:
+In browser environments, each tab/window runs in its own process with its own in-memory cache.
+The underlying storage (e.g., localStorage, IndexedDB) is shared across tabs.
+If another tab modifies the storage, our in-memory cache becomes stale.
+By reading from storage before every write, we reduce the risk of overwriting changes made by other tabs.
+This approach improves consistency and safety in multi-tab scenarios, at the cost of some performance.
+*/
 export class EvaluationStorageImpl implements EvaluationStorage {
   constructor(
     public userId: string,
     public storage: BKTStorage<EvaluationEntity>,
   ) {}
 
+  /**
+   * Cached evaluation entity for fast access.
+   * It is initialized to null, meaning that the storage has not been loaded yet.
+   * It is set to null when the storage is cleared.
+   */
+  public cacheEvaluationEntity: EvaluationEntity | null = null
+
+  async refreshCache(): Promise<void> {
+    this.cacheEvaluationEntity = await this.getInternal(this.userId)
+  }
+
+  private getCachedEvaluationEntity(): EvaluationEntity {
+    if (this.cacheEvaluationEntity === null) {
+      throw new Error(
+        'Cache Evaluation entity is not load. Call preload() first.',
+      )
+    }
+    return this.cacheEvaluationEntity
+  }
+
+  /**
+   * Save the evaluation entity to the storage.
+   * Also updates the cached entity.
+   */
+  private async save(entity: EvaluationEntity): Promise<void> { 
+    this.storage.set(entity)
+    this.cacheEvaluationEntity = entity
+  }
+
   getByFeatureId(featureId: string): Evaluation | null {
-    const entity = this.getInternal(this.userId)
+    const entity = this.getCachedEvaluationEntity()
     return entity.evaluations[featureId] ?? null
   }
 
-  deleteAllAndInsert(
+  async deleteAllAndInsert(
     evaluationsId: string,
     evaluations: Evaluation[],
     evaluatedAt: string,
-  ): void {
-    const entity = this.getInternal(this.userId)
+  ): Promise<void> {
+    const entity = this.getCachedEvaluationEntity()
     const updated: EvaluationEntity = {
       ...entity,
       userId: this.userId,
@@ -71,16 +116,16 @@ export class EvaluationStorageImpl implements EvaluationStorage {
       evaluatedAt,
     }
 
-    this.storage.set(updated)
+    this.save(updated)
   }
 
-  update(
+  async update(
     evaluationsId: string,
     evaluations: Evaluation[],
     archivedFeatureIds: string[],
     evaluatedAt: string,
-  ): boolean {
-    const entity = this.getInternal(this.userId)
+  ): Promise<boolean> {
+    const entity = this.getCachedEvaluationEntity()
 
     // remove archived evaluations
     const activeEvaluations = Object.fromEntries(
@@ -94,7 +139,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
       activeEvaluations[ev.featureId] = ev
     })
 
-    this.storage.set({
+    this.save({
       ...entity,
       currentEvaluationsId: evaluationsId,
       evaluations: activeEvaluations,
@@ -109,19 +154,19 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   }
 
   getCurrentEvaluationsId(): string | null {
-    return this.getInternal(this.userId).currentEvaluationsId
+    return this.getCachedEvaluationEntity().currentEvaluationsId
   }
 
   getEvaluatedAt(): string | null {
-    return this.getInternal(this.userId).evaluatedAt
+    return this.getCachedEvaluationEntity().evaluatedAt
   }
 
-  updateFeatureTag(featureTag: string): boolean {
-    const entity = this.getInternal(this.userId)
+  async updateFeatureTag(featureTag: string): Promise<boolean> {
+    const entity = this.getCachedEvaluationEntity()
     const changed = entity.currentFeatureTag !== featureTag
 
     if (changed) {
-      this.storage.set({
+      this.save({
         ...entity,
         currentFeatureTag: featureTag,
         currentEvaluationsId: null,
@@ -131,33 +176,34 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     return changed
   }
 
-  setUserAttributesUpdated(): void {
-    const entity = this.getInternal(this.userId)
+  async setUserAttributesUpdated(): Promise<void> {
+    const entity = this.getCachedEvaluationEntity()
 
-    this.storage.set({
+    this.save({
       ...entity,
       userAttributesUpdated: true,
     })
   }
 
   getUserAttributesUpdated(): boolean {
-    return this.getInternal(this.userId).userAttributesUpdated
+    return this.getCachedEvaluationEntity().userAttributesUpdated
   }
 
-  clearUserAttributesUpdated(): void {
-    const entity = this.getInternal(this.userId)
+  async clearUserAttributesUpdated(): Promise<void> {
+    const entity = this.getCachedEvaluationEntity()
 
-    this.storage.set({
+    this.save({
       ...entity,
       userAttributesUpdated: false,
     })
   }
 
-  clear(): void {
+  async clear(): Promise<void> {
     this.storage.clear()
+    this.cacheEvaluationEntity = null
   }
 
-  private getInternal(userId: string): EvaluationEntity {
+  private async getInternal(userId: string): Promise<EvaluationEntity> {
     const entity = this.storage.get()
     if (!entity || entity.userId !== userId) {
       // entity doesn't exist or userId is different

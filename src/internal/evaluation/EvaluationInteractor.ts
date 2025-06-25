@@ -23,6 +23,7 @@ export class EvaluationInteractor {
     user: User,
     timeoutMillis?: number,
   ): Promise<GetEvaluationsResult> {
+    await this.evaluationStorage.refreshCache()
     const currentEvaluationsId =
       this.evaluationStorage.getCurrentEvaluationsId() ?? ''
 
