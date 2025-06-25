@@ -49,6 +49,7 @@ import { DefaultComponent } from '../src/internal/di/Component'
 import { DataModule } from '../src/internal/di/DataModule'
 import { InteractorModule } from '../src/internal/di/InteractorModule'
 import { BKTEvaluationDetails } from '../src/BKTEvaluationDetails'
+import { requiredInternalConfig } from '../src/internal/InternalConfig'
 
 suite('BKTClient', () => {
   let server: SetupServer
@@ -74,7 +75,7 @@ suite('BKTClient', () => {
 
     component = new DefaultComponent(
       new TestPlatformModule(),
-      new DataModule(user1, config),
+      new DataModule(user1, requiredInternalConfig(config)),
       new InteractorModule(),
     )
   })
@@ -595,11 +596,11 @@ suite('BKTClient', () => {
 
     assert(client !== null)
 
-    client.track('goal_id_value', 0.4)
+    await client.track('goal_id_value', 0.4)
 
     const storage = getDefaultComponent(client).dataModule.eventStorage()
 
-    const lastEvent = storage.getAll().at(-1)
+    const lastEvent = (await storage.getAll()).at(-1)
 
     assert(lastEvent?.type === EventType.GOAL)
 
@@ -674,13 +675,18 @@ suite('BKTClient', () => {
     const storage = getDefaultComponent(client).dataModule.evaluationStorage()
 
     expect(userHolder.get().data).toStrictEqual({ age: '28' })
-    expect(storage.getCurrentEvaluationsId()).toBe('user_evaluation_id_value')
+    expect(await storage.getCurrentEvaluationsId()).toBe('user_evaluation_id_value')
 
+    // 1. Update user attributes
+    // Important: should unawaited  
     client.updateUserAttributes({ key: 'value' })
 
     expect(userHolder.get().data).toStrictEqual({ key: 'value' })
-    expect(storage.getCurrentEvaluationsId()).toBe('user_evaluation_id_value')
-    expect(storage.getUserAttributesUpdated()).toBeTruthy()
+    expect((await storage.getCurrentEvaluationsId())).toBe('user_evaluation_id_value')
+    // 2. Even if we update user attributes without awaiting, 
+    // the storage is still updated, so getUserAttributesUpdated should return true.
+    // because we are using mutex lock in setUserAttributesUpdated
+    expect(await storage.getUserAttributesUpdated()).toBeTruthy()
   })
 
   suite('fetchEvaluations', async () => {
@@ -862,11 +868,11 @@ suite('BKTClient', () => {
 
       const eventStorage = getDefaultComponent(client).dataModule.eventStorage()
 
-      expect(eventStorage.getAll().length).toBe(2)
+      expect((await eventStorage.getAll()).length).toBe(2)
 
       await client.flush()
 
-      expect(eventStorage.getAll().length).toBe(0)
+      expect((await eventStorage.getAll()).length).toBe(0)
     })
 
     test('failure', async () => {
@@ -910,13 +916,13 @@ suite('BKTClient', () => {
 
       const eventStorage = getDefaultComponent(client).dataModule.eventStorage()
 
-      expect(eventStorage.getAll().length).toBe(2)
+      expect((await eventStorage.getAll()).length).toBe(2)
 
       await expect(() => client.flush()).rejects.toThrow(
         InternalServerErrorException,
       )
 
-      expect(eventStorage.getAll().length).toBe(2)
+      expect((await eventStorage.getAll()).length).toBe(2)
     })
   })
 

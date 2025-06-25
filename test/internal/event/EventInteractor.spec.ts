@@ -110,11 +110,11 @@ suite('internal/event/EventInteractor', () => {
     server.close()
   })
 
-  test('trackEvaluationEvent', () => {
+  test('trackEvaluationEvent', async () => {
     const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
-    interactor.trackEvaluationEvent('feature_tag_value', user1, evaluation1)
+    await interactor.trackEvaluationEvent('feature_tag_value', user1, evaluation1)
 
     const expected: Event[] = [
       {
@@ -142,17 +142,17 @@ suite('internal/event/EventInteractor', () => {
       },
     ]
 
-    expect(eventStorage.getAll()).toEqual(expected)
+    expect(await eventStorage.getAll()).toEqual(expected)
 
     expect(mockListener).toHaveBeenCalledOnce()
     expect(mockListener).toHaveBeenCalledWith(expected)
   })
 
-  test('trackDefaultEvaluationEvent', () => {
+  test('trackDefaultEvaluationEvent', async () => {
     const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
-    interactor.trackDefaultEvaluationEvent(
+    await interactor.trackDefaultEvaluationEvent(
       'feature_tag_value',
       user1,
       'feature_id_value',
@@ -184,17 +184,17 @@ suite('internal/event/EventInteractor', () => {
       },
     ]
 
-    expect(eventStorage.getAll()).toEqual(expected)
+    expect(await eventStorage.getAll()).toEqual(expected)
 
     expect(mockListener).toHaveBeenCalledOnce()
     expect(mockListener).toHaveBeenCalledWith(expected)
   })
 
-  test('trackGoalEvent', () => {
+  test('trackGoalEvent', async () => {
     const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
-    interactor.trackGoalEvent('feature_tag_value', user1, 'goal_id_value', 0.5)
+    await interactor.trackGoalEvent('feature_tag_value', user1, 'goal_id_value', 0.5)
 
     const expected: Event[] = [
       {
@@ -218,17 +218,17 @@ suite('internal/event/EventInteractor', () => {
       },
     ]
 
-    expect(eventStorage.getAll()).toEqual(expected)
+    expect(await eventStorage.getAll()).toEqual(expected)
 
     expect(mockListener).toHaveBeenCalledOnce()
     expect(mockListener).toHaveBeenCalledWith(expected)
   })
 
-  test('trackSuccess', () => {
+  test('trackSuccess', async () => {
     const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
-    interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
+    await interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
 
     const expected: Event[] = [
       {
@@ -273,7 +273,7 @@ suite('internal/event/EventInteractor', () => {
       },
     ]
 
-    expect(eventStorage.getAll()).toEqual(expected)
+    expect(await eventStorage.getAll()).toEqual(expected)
 
     expect(mockListener).toHaveBeenCalledOnce()
     expect(mockListener).toHaveBeenCalledWith(expected)
@@ -312,11 +312,11 @@ suite('internal/event/EventInteractor', () => {
       type: MetricsEventType.TimeoutError,
       extraLabels: { timeout: '1.5' },
     },
-  ])('trackFailure: $errr -> type: $type', ({ error, type, extraLabels }) => {
+  ])('trackFailure: $errr -> type: $type', async ({ error, type, extraLabels }) => {
     const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
-    interactor.trackFailure(ApiId.GET_EVALUATION, 'feature_tag_value', error)
+    await interactor.trackFailure(ApiId.GET_EVALUATION, 'feature_tag_value', error)
 
     const expected = [
       {
@@ -340,29 +340,29 @@ suite('internal/event/EventInteractor', () => {
       },
     ]
 
-    expect(eventStorage.getAll()).toEqual(expected)
+    expect(await eventStorage.getAll()).toEqual(expected)
 
     expect(mockListener).toHaveBeenCalledOnce()
     expect(mockListener).toHaveBeenCalledWith(expected)
   })
 
-  test('Do not save dupilicate MetricsEvents', () => {
+  test('Do not save dupilicate MetricsEvents', async () => {
     // trackSuccess saves two Events in each call
     // -> should save 4
-    interactor.trackSuccess(
+    await interactor.trackSuccess(
       ApiId.GET_EVALUATIONS,
       'feature_tag_value_1',
       1,
       723,
     )
-    interactor.trackSuccess(
+    await interactor.trackSuccess(
       ApiId.REGISTER_EVENTS,
       'feature_tag_value_1',
       1,
       724,
     )
     // this should be ignored
-    interactor.trackSuccess(
+    await interactor.trackSuccess(
       ApiId.GET_EVALUATIONS,
       'feature_tag_value_2',
       1,
@@ -370,30 +370,29 @@ suite('internal/event/EventInteractor', () => {
     )
 
     // trackFailure saves one Event in each call
-    interactor.trackFailure(
+    await interactor.trackFailure(
       ApiId.GET_EVALUATIONS,
       'feature_tag_value',
       new BadRequestException(),
     )
-    interactor.trackFailure(
+    await interactor.trackFailure(
       ApiId.GET_EVALUATIONS,
       'feature_tag_value_1',
       new NetworkException(),
     )
-    interactor.trackFailure(
+    await interactor.trackFailure(
       ApiId.REGISTER_EVENTS,
       'feature_tag_value_1',
       new InternalServerErrorException(),
     )
     // this should be ignored
-    interactor.trackFailure(
+    await interactor.trackFailure(
       ApiId.GET_EVALUATIONS,
       'feature_tag_value_2',
       new BadRequestException(),
     )
 
-    const events = eventStorage
-      .getAll()
+    const events = (await eventStorage.getAll())
       .map((e) => interactor.getMetricsEventUniqueKey(e.event as MetricsEvent))
 
     expect(events).toStrictEqual([
@@ -407,26 +406,25 @@ suite('internal/event/EventInteractor', () => {
     ])
   })
 
-  test('Skip generating error events for unauthorized or forbidden errors', () => {
+  test('Skip generating error events for unauthorized or forbidden errors', async () => {
     // trackFailure saves one Event in each call
-    interactor.trackFailure(
+    await interactor.trackFailure(
       ApiId.GET_EVALUATIONS,
       'feature_tag_value',
       new UnauthorizedException(),
     )
-    interactor.trackFailure(
+    await interactor.trackFailure(
       ApiId.GET_EVALUATIONS,
       'feature_tag_value_1',
       new ForbiddenException(),
     )
-    interactor.trackFailure(
+    await interactor.trackFailure(
       ApiId.REGISTER_EVENTS,
       'feature_tag_value_1',
       new InternalServerErrorException(),
     )
 
-    const events = eventStorage
-      .getAll()
+    const events = (await eventStorage.getAll())
       .map((e) => interactor.getMetricsEventUniqueKey(e.event as MetricsEvent))
 
     expect(events).toStrictEqual([
@@ -450,21 +448,21 @@ suite('internal/event/EventInteractor', () => {
         }),
       )
 
-      interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
-      interactor.trackGoalEvent(
+      await interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
+      await interactor.trackGoalEvent(
         'feature_tag_value',
         user1,
         'goal_id_value',
         0.5,
       )
-      interactor.trackGoalEvent(
+      await interactor.trackGoalEvent(
         'feature_tag_value',
         user1,
         'goal_id_value2',
         0.4,
       )
 
-      expect(eventStorage.getAll()).toHaveLength(4)
+      expect(await eventStorage.getAll()).toHaveLength(4)
 
       const result = await interactor.sendEvents()
 
@@ -472,7 +470,7 @@ suite('internal/event/EventInteractor', () => {
 
       expect(result.sent).toBe(true)
 
-      const remainingEvents = eventStorage.getAll()
+      const remainingEvents = await eventStorage.getAll()
 
       expect(remainingEvents).toHaveLength(1)
       expect(remainingEvents[0].type).toBe(EventType.GOAL)
@@ -502,15 +500,15 @@ suite('internal/event/EventInteractor', () => {
         }),
       )
 
-      interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
-      interactor.trackGoalEvent(
+      await interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
+      await interactor.trackGoalEvent(
         'feature_tag_value',
         user1,
         'goal_id_value',
         0.5,
       )
 
-      expect(eventStorage.getAll()).toHaveLength(3)
+      expect(await eventStorage.getAll()).toHaveLength(3)
 
       const result = await interactor.sendEvents()
 
@@ -518,7 +516,7 @@ suite('internal/event/EventInteractor', () => {
 
       expect(result.sent).toBe(true)
 
-      const remainingEvents = eventStorage.getAll()
+      const remainingEvents = await eventStorage.getAll()
 
       // retriable error should be saved
       expect(remainingEvents).toHaveLength(1)
@@ -544,15 +542,15 @@ suite('internal/event/EventInteractor', () => {
         ),
       )
 
-      interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
-      interactor.trackGoalEvent(
+      await interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
+      await interactor.trackGoalEvent(
         'feature_tag_value',
         user1,
         'goal_id_value',
         0.5,
       )
 
-      expect(eventStorage.getAll()).toHaveLength(3)
+      expect(await eventStorage.getAll()).toHaveLength(3)
 
       const result = await interactor.sendEvents()
 
@@ -561,13 +559,13 @@ suite('internal/event/EventInteractor', () => {
       expect(result.error).toBeInstanceOf(BadRequestException)
 
       // events should still exists in storage in case of failure
-      expect(eventStorage.getAll()).toHaveLength(3)
+      expect(await eventStorage.getAll()).toHaveLength(3)
     })
 
     test('current cache is less than `eventsMaxQueueSize`', async () => {
-      interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
+      await interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
 
-      expect(eventStorage.getAll()).toHaveLength(2)
+      expect(await eventStorage.getAll()).toHaveLength(2)
 
       const result = await interactor.sendEvents()
 
@@ -575,7 +573,7 @@ suite('internal/event/EventInteractor', () => {
 
       expect(result.sent).toBe(false)
 
-      expect(eventStorage.getAll()).toHaveLength(2)
+      expect(await eventStorage.getAll()).toHaveLength(2)
     })
 
     test('force=true', async () => {
@@ -591,9 +589,9 @@ suite('internal/event/EventInteractor', () => {
         }),
       )
 
-      interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
+      await interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
 
-      expect(eventStorage.getAll()).toHaveLength(2)
+      expect(await eventStorage.getAll()).toHaveLength(2)
 
       const result = await interactor.sendEvents(/* force */ true)
 
@@ -602,7 +600,7 @@ suite('internal/event/EventInteractor', () => {
       // api request did not happen
       expect(result.sent).toBe(true)
 
-      expect(eventStorage.getAll()).toHaveLength(0)
+      expect(await eventStorage.getAll()).toHaveLength(0)
     })
   })
 })

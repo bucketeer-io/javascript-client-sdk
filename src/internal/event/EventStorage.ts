@@ -1,5 +1,7 @@
 import { Event } from '../model/Event'
 import { BKTStorage } from '../../BKTStorage'
+import { Mutex } from 'async-mutex'
+import { runWithMutex } from '../mutex'
 
 export interface EventEntity {
   userId: string
@@ -7,47 +9,56 @@ export interface EventEntity {
 }
 
 export interface EventStorage {
-  getAll(): Event[]
-  add(event: Event): void
-  addAll(events: Event[]): void
-  deleteByIds(ids: string[]): void
-  clear(): void
+  getAll(): Promise<Event[]>
+  add(event: Event): Promise<void>
+  addAll(events: Event[]): Promise<void>
+  deleteByIds(ids: string[]): Promise<void>
+  clear(): Promise<void>
 }
 
 export class EventStorageImpl implements EventStorage {
   constructor(
     public userId: string,
     public storage: BKTStorage<EventEntity>,
-  ) {}
+  ) { }
 
-  add(event: Event): void {
-    const entity = this.getInternal(this.userId)
-    entity.events.push(event)
-    this.storage.set(entity)
+  private mutex = new Mutex()
+
+  async add(event: Event): Promise<void> {
+    return this.addAll([event])
   }
 
-  addAll(events: Event[]): void {
-    const entity = this.getInternal(this.userId)
-    entity.events.push(...events)
-    this.storage.set(entity)
+  async addAll(events: Event[]): Promise<void> {
+    await runWithMutex(this.mutex, async () => {
+      const entity = await this.getInternal(this.userId)
+      entity.events.push(...events)
+      await this.storage.set(entity)
+    })
   }
 
-  getAll(): Event[] {
-    return this.getInternal(this.userId).events
+  async getAll(): Promise<Event[]> {
+    return runWithMutex(this.mutex, async () => {
+      const events = (await this.getInternal(this.userId)).events
+      return events
+    })
   }
 
-  deleteByIds(ids: string[]): void {
-    const entity = this.getInternal(this.userId)
-    entity.events = entity.events.filter((e) => !ids.includes(e.id))
-    this.storage.set(entity)
+  async deleteByIds(ids: string[]): Promise<void> {
+    await runWithMutex(this.mutex, async () => {
+      const entity = await this.getInternal(this.userId)
+      entity.events = entity.events.filter((e) => !ids.includes(e.id))
+      await this.storage.set(entity)
+    })
   }
 
-  clear(): void {
-    this.storage.clear()
+  async clear(): Promise<void> {
+    await runWithMutex(this.mutex, async () => {
+      await this.storage.clear()
+    })
   }
 
-  private getInternal(userId: string): EventEntity {
-    const entity = this.storage.get()
+  private async getInternal(userId: string): Promise<EventEntity> {
+    const entity = await this.storage.get()
     if (!entity || entity.userId !== userId) {
       // entity doesn't exist or userId is different
       return {
