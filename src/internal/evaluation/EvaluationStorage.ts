@@ -40,7 +40,7 @@ export interface EvaluationStorage {
    */
   updateFeatureTag(featureTag: string): Promise<boolean>
 
-  setUserAttributesUpdated(): Promise<void>
+  setUserAttributesUpdated(): void
   getUserAttributesUpdated(): boolean
   clearUserAttributesUpdated(): Promise<void>
 
@@ -82,9 +82,22 @@ export class EvaluationStorageImpl implements EvaluationStorage {
    * Save the evaluation entity to the storage.
    * Also updates the cached entity.
    */
-  private async save(entity: EvaluationEntity): Promise<void> { 
-    this.storage.set(entity)
+  private async saveAsync(entity: EvaluationEntity): Promise<void> { 
     this.cacheEvaluationEntity = entity
+    await this.storage.set(entity)
+  }
+
+  // Save unawaited and silently the error if it occurs.
+  // If there is any error related to the underlying storage,
+  // it will be thrown when the next operation is called.
+  // e.g. fetching the evaluation entity.
+  private save(entity: EvaluationEntity): void { 
+    this.cacheEvaluationEntity = entity
+    this.storage.set(entity).then(() => {
+      // Do nothing
+    }).catch((error) => {
+      console.error('Failed to save evaluation entity:', error)
+    })
   }
 
   getByFeatureId(featureId: string): Evaluation | null {
@@ -111,7 +124,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
       evaluatedAt,
     }
 
-    await this.save(updated)
+    await this.saveAsync(updated)
   }
 
   async update(
@@ -134,7 +147,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
       activeEvaluations[ev.featureId] = ev
     })
 
-    await this.save({
+    await this.saveAsync({
       ...entity,
       currentEvaluationsId: evaluationsId,
       evaluations: activeEvaluations,
@@ -161,7 +174,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     const changed = entity.currentFeatureTag !== featureTag
 
     if (changed) {
-      await this.save({
+      await this.saveAsync({
         ...entity,
         currentFeatureTag: featureTag,
         currentEvaluationsId: null,
@@ -171,10 +184,9 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     return changed
   }
 
-  async setUserAttributesUpdated(): Promise<void> {
+  setUserAttributesUpdated(): void {
     const entity = this.getCachedEvaluationEntity()
-
-    await this.save({
+    this.save({
       ...entity,
       userAttributesUpdated: true,
     })
@@ -187,19 +199,19 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   async clearUserAttributesUpdated(): Promise<void> {
     const entity = this.getCachedEvaluationEntity()
 
-    await this.save({
+    await this.saveAsync({
       ...entity,
       userAttributesUpdated: false,
     })
   }
 
   async clear(): Promise<void> {
-    this.storage.clear()
+    await this.storage.clear()
     this.cacheEvaluationEntity = null
   }
 
   private async getInternal(userId: string): Promise<EvaluationEntity> {
-    const entity = this.storage.get()
+    const entity = await this.storage.get()
     if (!entity || entity.userId !== userId) {
       // entity doesn't exist or userId is different
       return {

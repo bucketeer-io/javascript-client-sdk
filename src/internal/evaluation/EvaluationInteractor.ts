@@ -54,7 +54,7 @@ export class EvaluationInteractor {
       if (response.evaluations.forceUpdate) {
         // 1- Delete all the evaluations from local storage, and save the latest evaluations from the response into the local storage
         // 2- Save the UserEvaluations.CreatedAt in the response as evaluatedAt in the localStorage
-        this.evaluationStorage.deleteAllAndInsert(
+        await this.evaluationStorage.deleteAllAndInsert(
           response.userEvaluationsId,
           response.evaluations.evaluations ?? [],
           response.evaluations.createdAt,
@@ -72,7 +72,7 @@ export class EvaluationInteractor {
         )
       }
 
-      this.evaluationStorage.clearUserAttributesUpdated()
+      await this.evaluationStorage.clearUserAttributesUpdated()
 
       if (shouldNotify) {
         Object.values(this.updateListeners).forEach((listener) => listener())
