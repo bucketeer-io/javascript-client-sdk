@@ -49,6 +49,7 @@ import { DefaultComponent } from '../src/internal/di/Component'
 import { DataModule } from '../src/internal/di/DataModule'
 import { InteractorModule } from '../src/internal/di/InteractorModule'
 import { BKTEvaluationDetails } from '../src/BKTEvaluationDetails'
+import { requiredInternalConfig } from '../src/internal/InternalConfig'
 
 suite('BKTClient', () => {
   let server: SetupServer
@@ -74,7 +75,7 @@ suite('BKTClient', () => {
 
     component = new DefaultComponent(
       new TestPlatformModule(),
-      new DataModule(user1, config),
+      new DataModule(user1, requiredInternalConfig(config)),
       new InteractorModule(),
     )
   })

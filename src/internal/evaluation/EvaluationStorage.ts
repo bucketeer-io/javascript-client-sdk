@@ -17,7 +17,7 @@ export interface EvaluationStorage {
    * Preload the storage from the underlying storage.
    * This is useful to ensure that the storage is ready before any operations.
    */
-  refreshCache(): Promise<void>
+  loadCache(): Promise<void>
 
   deleteAllAndInsert(
     evaluationsId: string,
@@ -47,16 +47,6 @@ export interface EvaluationStorage {
   clear(): Promise<void>
 }
 
-/**
-
-IMPORTANT: Always load fresh data from storage before each write operation.
-Rationale:
-In browser environments, each tab/window runs in its own process with its own in-memory cache.
-The underlying storage (e.g., localStorage, IndexedDB) is shared across tabs.
-If another tab modifies the storage, our in-memory cache becomes stale.
-By reading from storage before every write, we reduce the risk of overwriting changes made by other tabs.
-This approach improves consistency and safety in multi-tab scenarios, at the cost of some performance.
-*/
 export class EvaluationStorageImpl implements EvaluationStorage {
   constructor(
     public userId: string,
@@ -70,14 +60,14 @@ export class EvaluationStorageImpl implements EvaluationStorage {
    */
   public cacheEvaluationEntity: EvaluationEntity | null = null
 
-  async refreshCache(): Promise<void> {
+  async loadCache(): Promise<void> {
     this.cacheEvaluationEntity = await this.getInternal(this.userId)
   }
 
   private getCachedEvaluationEntity(): EvaluationEntity {
     if (this.cacheEvaluationEntity === null) {
       throw new Error(
-        'Cache Evaluation entity is not load. Call preload() first.',
+        'Cache Evaluation entity is not load. Call loadCache() first.',
       )
     }
     return this.cacheEvaluationEntity

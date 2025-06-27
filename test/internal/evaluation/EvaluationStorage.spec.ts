@@ -13,10 +13,11 @@ suite('internal/evaluation/EvaluationStorage', () => {
   let evaluationStorage: EvaluationStorage
   let clock: FakeClock
 
-  beforeEach(() => {
+  beforeEach( async () => {
     storage = createBKTStorage('bkt_evaluation')
     evaluationStorage = new EvaluationStorageImpl('user_id_1', storage)
     clock = new FakeClock()
+    await evaluationStorage.loadCache()
   })
 
   afterEach(() => {
