@@ -77,7 +77,7 @@ export class BKTClientImpl implements BKTClient {
 
   async initializeInternal(timeoutMillis: number): Promise<void> {
     this.scheduleTasks()
-    await this.component.evaluationInteractor().initializeInternal()
+    await this.component.evaluationInteractor().initialize()
     return this.fetchEvaluations(timeoutMillis)
   }
 

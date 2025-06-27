@@ -16,11 +16,12 @@ export class EvaluationInteractor {
   // visible for testing. should only be accessed from test code
   updateListeners: Record<string, () => void> = {}
 
-  async initializeInternal(): Promise<void> {
+  // Important: should call this method before using the interactor.
+  async initialize(): Promise<void> {
     // This method is used to initialize the interactor internally.
     // It can be used to perform any setup required before using the interactor.
     // check if the new featureTag is different from the saved one
-    await this.evaluationStorage.loadCache()
+    await this.evaluationStorage.initialize()
     // If the featureTag is different, update it in the storage and clear currentEvaluationsId
     await this.evaluationStorage.updateFeatureTag(this.featureTag)
   }

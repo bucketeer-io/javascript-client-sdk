@@ -61,7 +61,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     )
 
     interactor = component.evaluationInteractor()
-    await interactor.initializeInternal()
+    await interactor.initialize()
     evaluationStorage =
       component.dataModule.evaluationStorage() as EvaluationStorageImpl
 
@@ -271,7 +271,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: false,
       })
-      await evaluationStorage.loadCache()
+      await evaluationStorage.initialize()
       const result = interactor.getLatest(evaluation1.featureId)
 
       expect(result).toStrictEqual(evaluation1)
@@ -412,7 +412,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         evaluatedAt: clock.currentTimeMillis().toString(),
         userAttributesUpdated: false,
       })
-      await evaluationStorage.loadCache()
+      await evaluationStorage.initialize()
       const mockListener = vi.fn()
 
       interactor.addUpdateListener(mockListener)

@@ -36,7 +36,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
-      await evaluationStorage.loadCache()
+      await evaluationStorage.initialize()
       const result = evaluationStorage.getByFeatureId(evaluation1.featureId)
 
       expect(result).toStrictEqual(evaluation1)
@@ -54,7 +54,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
-      await evaluationStorage.loadCache()
+      await evaluationStorage.initialize()
       const result = evaluationStorage.getByFeatureId('feature_id_3')
 
       expect(result).toBeNull()
@@ -74,7 +74,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
       userAttributesUpdated: true,
     })
 
-    await evaluationStorage.loadCache()
+    await evaluationStorage.initialize()
 
     evaluationStorage.deleteAllAndInsert(
       'evaluatIons_id_2',
@@ -108,7 +108,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         userAttributesUpdated: true,
       })
 
-      await evaluationStorage.loadCache()
+      await evaluationStorage.initialize()
 
       const result = evaluationStorage.getCurrentEvaluationsId()
 
@@ -116,7 +116,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
     })
 
     test('return null if saved data is not present', async () => {
-      await evaluationStorage.loadCache()
+      await evaluationStorage.initialize()
       const result = evaluationStorage.getCurrentEvaluationsId()
 
       expect(result).toBeNull()
@@ -131,7 +131,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
-      await evaluationStorage.loadCache()
+      await evaluationStorage.initialize()
       const result = evaluationStorage.getCurrentEvaluationsId()
 
       expect(result).toBeNull()
@@ -146,7 +146,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
-      await evaluationStorage.loadCache()
+      await evaluationStorage.initialize()
       const result = evaluationStorage.getCurrentEvaluationsId()
 
       expect(result).toBeNull()
@@ -155,7 +155,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
 
   suite('getEvaluatedAt', () => {
     test('null if not saved', async () => {
-      await evaluationStorage.loadCache()
+      await evaluationStorage.initialize()
       const result = evaluationStorage.getEvaluatedAt()
 
       expect(result).toBeNull()
@@ -175,7 +175,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
-      await evaluationStorage.loadCache()
+      await evaluationStorage.initialize()
       const updated = await evaluationStorage.updateFeatureTag('feature_tag_2')
 
       expect(updated).toBeTruthy()
@@ -198,7 +198,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
-      await evaluationStorage.loadCache()
+      await evaluationStorage.initialize()
       const updated = await evaluationStorage.updateFeatureTag('feature_tag_1')
 
       expect(updated).toBeFalsy()
@@ -211,7 +211,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
   })
 
   test('setUserAttributesUpdated', async () => {
-    await evaluationStorage.loadCache()
+    await evaluationStorage.initialize()
     evaluationStorage.setUserAttributesUpdated()
     expect(storage.get()?.userAttributesUpdated).toBeTruthy()
   })
@@ -228,7 +228,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
       evaluatedAt: '1234567890',
       userAttributesUpdated: true,
     })
-    await evaluationStorage.loadCache()
+    await evaluationStorage.initialize()
     expect(evaluationStorage.getUserAttributesUpdated()).toBeTruthy()
   })
 
@@ -244,7 +244,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
       evaluatedAt: '1234567890',
       userAttributesUpdated: true,
     })
-    await evaluationStorage.loadCache()
+    await evaluationStorage.initialize()
     await evaluationStorage.clearUserAttributesUpdated()
 
     expect(storage.get()?.userAttributesUpdated).toBeFalsy()

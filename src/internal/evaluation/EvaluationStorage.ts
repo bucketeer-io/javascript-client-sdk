@@ -1,6 +1,5 @@
 import { Evaluation } from '../model/Evaluation'
 import { BKTStorage } from '../../BKTStorage'
-import { InMemoryCache } from '../InMemoryCache'
 
 export interface EvaluationEntity {
   userId: string
@@ -18,7 +17,7 @@ export interface EvaluationStorage {
    * Preload the storage from the underlying storage.
    * This is useful to ensure that the storage is ready before any operations.
    */
-  loadCache(): Promise<void>
+  initialize(): Promise<void>
 
   deleteAllAndInsert(
     evaluationsId: string,
@@ -61,14 +60,14 @@ export class EvaluationStorageImpl implements EvaluationStorage {
    */
   public cacheEvaluationEntity: EvaluationEntity | null = null
 
-  async loadCache(): Promise<void> {
+  async initialize(): Promise<void> {
     this.cacheEvaluationEntity = await this.getInternal(this.userId)
   }
 
   private getCachedEvaluationEntity(): EvaluationEntity {
     if (this.cacheEvaluationEntity === null) {
       throw new Error(
-        'Cache Evaluation entity is not load. Call loadCache() first.',
+        'Cache Evaluation entity is not loaded. Call loadCache() first.',
       )
     }
     return this.cacheEvaluationEntity
