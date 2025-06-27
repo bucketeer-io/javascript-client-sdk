@@ -46,7 +46,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     server = setupServerAndListen()
   })
 
-  beforeEach(async () => {
+  beforeEach( async () => {
     config = defineBKTConfig({
       apiKey: 'api_key_value',
       apiEndpoint: 'https://api.bucketeer.io',
@@ -61,16 +61,15 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     )
 
     interactor = component.evaluationInteractor()
-    await interactor.initialize()
     evaluationStorage =
       component.dataModule.evaluationStorage() as EvaluationStorageImpl
 
     clock = new FakeClock()
   })
 
-  afterEach(() => {
+  afterEach( async () => {
     server.resetHandlers()
-    evaluationStorage.clear()
+    await evaluationStorage.clear()
   })
 
   afterAll(() => {

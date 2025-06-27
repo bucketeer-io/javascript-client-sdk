@@ -23,6 +23,114 @@ suite('internal/evaluation/EvaluationStorage', () => {
     storage.clear()
   })
 
+  suite('initialize', () => { 
+    test('should load existing data for correct user', async () => {
+      storage.set({
+        userId: 'user_id_1',
+        currentEvaluationsId: 'evaluations_id_1',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+          [evaluation2.featureId]: evaluation2,
+        },
+        currentFeatureTag: 'feature_tag_1',
+        evaluatedAt: '1234567890',
+        userAttributesUpdated: true,
+      })
+
+      await evaluationStorage.initialize()
+
+      expect(evaluationStorage.getCurrentEvaluationsId()).toBe('evaluations_id_1')
+      expect(evaluationStorage.getByFeatureId(evaluation1.featureId)).toStrictEqual(evaluation1)
+      expect(evaluationStorage.getUserAttributesUpdated()).toBe(true)
+    })
+
+    test('should initialize with default data when storage is empty', async () => {
+      await evaluationStorage.initialize()
+
+      expect(evaluationStorage.getCurrentEvaluationsId()).toBeNull()
+      expect(evaluationStorage.getEvaluatedAt()).toBeNull()
+      expect(evaluationStorage.getUserAttributesUpdated()).toBe(false)
+      expect(evaluationStorage.getByFeatureId('any_feature')).toBeNull()
+    })
+
+    test('should initialize with default data when userId is different', async () => {
+      storage.set({
+        userId: 'different_user_id',
+        currentEvaluationsId: 'evaluations_id_1',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+        },
+        currentFeatureTag: 'feature_tag_1',
+        evaluatedAt: '1234567890',
+        userAttributesUpdated: true,
+      })
+
+      await evaluationStorage.initialize()
+
+      expect(evaluationStorage.getCurrentEvaluationsId()).toBeNull()
+      expect(evaluationStorage.getEvaluatedAt()).toBeNull()
+      expect(evaluationStorage.getUserAttributesUpdated()).toBe(false)
+      expect(evaluationStorage.getByFeatureId(evaluation1.featureId)).toBeNull()
+    })
+
+    test('should throw error if called multiple times without clear', async () => {
+      await evaluationStorage.initialize()
+      
+      // Second call should throw an error
+      await expect(evaluationStorage.initialize()).rejects.toThrow(
+        'Evaluation storage is already initialized. Call clear() to reset.'
+      )
+    })
+
+    test('should allow re-initialization after clear', async () => {
+      storage.set({
+        userId: 'user_id_1',
+        currentEvaluationsId: 'evaluations_id_1',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+        },
+        currentFeatureTag: 'feature_tag_1',
+        evaluatedAt: '1234567890',
+        userAttributesUpdated: true,
+      })
+
+      await evaluationStorage.initialize()
+      expect(evaluationStorage.getCurrentEvaluationsId()).toBe('evaluations_id_1')
+
+      // Clear and set new data
+      await evaluationStorage.clear()
+      storage.set({
+        userId: 'user_id_1',
+        currentEvaluationsId: 'evaluations_id_2',
+        evaluations: {
+          [evaluation2.featureId]: evaluation2,
+        },
+        currentFeatureTag: 'feature_tag_2',
+        evaluatedAt: '9876543210',
+        userAttributesUpdated: false,
+      })
+
+      // Should be able to initialize again after clear
+      await evaluationStorage.initialize()
+      expect(evaluationStorage.getCurrentEvaluationsId()).toBe('evaluations_id_2')
+      expect(evaluationStorage.getByFeatureId(evaluation2.featureId)).toStrictEqual(evaluation2)
+      expect(evaluationStorage.getByFeatureId(evaluation1.featureId)).toBeNull()
+    })
+
+    test('should throw error when trying to access cache before initialization', () => {
+      expect(() => evaluationStorage.getCurrentEvaluationsId()).toThrow(
+        'Cache Evaluation entity is not loaded. Call initialize() first.'
+      )
+      expect(() => evaluationStorage.getByFeatureId('any_feature')).toThrow(
+        'Cache Evaluation entity is not loaded. Call initialize() first.'
+      )
+      expect(() => evaluationStorage.getUserAttributesUpdated()).toThrow(
+        'Cache Evaluation entity is not loaded. Call initialize() first.'
+      )
+    })
+  })
+
+
   suite('getByFeatureId', () => {
     test('return feature if saved data is present', async () => {
       storage.set({

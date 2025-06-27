@@ -61,13 +61,18 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   public cacheEvaluationEntity: EvaluationEntity | null = null
 
   async initialize(): Promise<void> {
+     if (this.cacheEvaluationEntity) {
+      throw new Error(
+        'Evaluation storage is already initialized. Call clear() to reset.',
+      )
+    }
     this.cacheEvaluationEntity = await this.getInternal(this.userId)
   }
 
   private getCachedEvaluationEntity(): EvaluationEntity {
     if (this.cacheEvaluationEntity === null) {
       throw new Error(
-        'Cache Evaluation entity is not loaded. Call loadCache() first.',
+        'Cache Evaluation entity is not loaded. Call initialize() first.',
       )
     }
     return this.cacheEvaluationEntity
