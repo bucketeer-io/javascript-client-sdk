@@ -127,6 +127,8 @@ suite('e2e/events', () => {
     // clear event storage to mimic no-cache state
     const component = getDefaultComponent(client)
     component.dataModule.evaluationStorage().clear()
+    // load cache
+    await component.dataModule.evaluationStorage().initialize()
 
     expect(client.stringVariation(FEATURE_ID_STRING, 'value-default')).toBe(
       'value-default',
