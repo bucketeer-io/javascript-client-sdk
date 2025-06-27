@@ -17,7 +17,6 @@ suite('internal/evaluation/EvaluationStorage', () => {
     storage = createBKTStorage('bkt_evaluation')
     evaluationStorage = new EvaluationStorageImpl('user_id_1', storage)
     clock = new FakeClock()
-    await evaluationStorage.loadCache()
   })
 
   afterEach(() => {
@@ -25,7 +24,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
   })
 
   suite('getByFeatureId', () => {
-    test('return feature if saved data is present', () => {
+    test('return feature if saved data is present', async () => {
       storage.set({
         userId: 'user_id_1',
         currentEvaluationsId: 'evaluations_id_1',
@@ -37,13 +36,13 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
-
+      await evaluationStorage.loadCache()
       const result = evaluationStorage.getByFeatureId(evaluation1.featureId)
 
       expect(result).toStrictEqual(evaluation1)
     })
 
-    test('return null if saved data is not present', () => {
+    test('return null if saved data is not present', async () => {
       storage.set({
         userId: 'user_id_1',
         currentEvaluationsId: 'evaluations_id_1',
@@ -55,14 +54,14 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
-
+      await evaluationStorage.loadCache()
       const result = evaluationStorage.getByFeatureId('feature_id_3')
 
       expect(result).toBeNull()
     })
   })
 
-  test('deleteAllAndInsert', () => {
+  test('deleteAllAndInsert', async () => {
     storage.set({
       userId: 'user_id_1',
       currentEvaluationsId: 'evaluations_id_1',
@@ -74,6 +73,8 @@ suite('internal/evaluation/EvaluationStorage', () => {
       evaluatedAt: '1234567890',
       userAttributesUpdated: true,
     })
+
+    await evaluationStorage.loadCache()
 
     evaluationStorage.deleteAllAndInsert(
       'evaluatIons_id_2',
@@ -94,7 +95,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
   })
 
   suite('getCurrentEvaluationsId', () => {
-    test('return currentEvaluationsId if saved data is present', () => {
+    test('return currentEvaluationsId if saved data is present', async () => {
       storage.set({
         userId: 'user_id_1',
         currentEvaluationsId: 'evaluations_id_1',
@@ -107,18 +108,21 @@ suite('internal/evaluation/EvaluationStorage', () => {
         userAttributesUpdated: true,
       })
 
+      await evaluationStorage.loadCache()
+
       const result = evaluationStorage.getCurrentEvaluationsId()
 
       expect(result).toBe('evaluations_id_1')
     })
 
-    test('return null if saved data is not present', () => {
+    test('return null if saved data is not present', async () => {
+      await evaluationStorage.loadCache()
       const result = evaluationStorage.getCurrentEvaluationsId()
 
       expect(result).toBeNull()
     })
 
-    test('return null if currentEvaluationsId is not present', () => {
+    test('return null if currentEvaluationsId is not present', async () => {
       storage.set({
         userId: 'user_id_1',
         currentEvaluationsId: null,
@@ -127,13 +131,13 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
-
+      await evaluationStorage.loadCache()
       const result = evaluationStorage.getCurrentEvaluationsId()
 
       expect(result).toBeNull()
     })
 
-    test('return null if saved data is for different user', () => {
+    test('return null if saved data is for different user', async () => {
       storage.set({
         userId: 'user_id_2',
         currentEvaluationsId: 'evaluations_id_1',
@@ -142,7 +146,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
-
+      await evaluationStorage.loadCache()
       const result = evaluationStorage.getCurrentEvaluationsId()
 
       expect(result).toBeNull()
@@ -150,7 +154,8 @@ suite('internal/evaluation/EvaluationStorage', () => {
   })
 
   suite('getEvaluatedAt', () => {
-    test('null if not saved', () => {
+    test('null if not saved', async () => {
+      await evaluationStorage.loadCache()
       const result = evaluationStorage.getEvaluatedAt()
 
       expect(result).toBeNull()
@@ -158,7 +163,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
   })
 
   suite('updateFeatureTag', () => {
-    test('clear currentEvaluationId if featureTag is different', () => {
+    test('clear currentEvaluationId if featureTag is different', async () => {
       storage.set({
         userId: 'user_id_1',
         currentEvaluationsId: 'evaluations_id_1',
@@ -170,8 +175,8 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
-
-      const updated = evaluationStorage.updateFeatureTag('feature_tag_2')
+      await evaluationStorage.loadCache()
+      const updated = await evaluationStorage.updateFeatureTag('feature_tag_2')
 
       expect(updated).toBeTruthy()
 
@@ -181,7 +186,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
       expect(result?.currentFeatureTag).toBe('feature_tag_2')
     })
 
-    test('do not clear currentEvaluationId if featureTag is same', () => {
+    test('do not clear currentEvaluationId if featureTag is same', async () => {
       storage.set({
         userId: 'user_id_1',
         currentEvaluationsId: 'evaluations_id_1',
@@ -193,8 +198,8 @@ suite('internal/evaluation/EvaluationStorage', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: true,
       })
-
-      const updated = evaluationStorage.updateFeatureTag('feature_tag_1')
+      await evaluationStorage.loadCache()
+      const updated = await evaluationStorage.updateFeatureTag('feature_tag_1')
 
       expect(updated).toBeFalsy()
 
@@ -205,13 +210,13 @@ suite('internal/evaluation/EvaluationStorage', () => {
     })
   })
 
-  test('setUserAttributesUpdated', () => {
+  test('setUserAttributesUpdated', async () => {
+    await evaluationStorage.loadCache()
     evaluationStorage.setUserAttributesUpdated()
-
     expect(storage.get()?.userAttributesUpdated).toBeTruthy()
   })
 
-  test('getUserAttributesUpdated', () => {
+  test('getUserAttributesUpdated', async () => {
     storage.set({
       userId: 'user_id_1',
       currentEvaluationsId: 'evaluations_id_1',
@@ -223,11 +228,11 @@ suite('internal/evaluation/EvaluationStorage', () => {
       evaluatedAt: '1234567890',
       userAttributesUpdated: true,
     })
-
+    await evaluationStorage.loadCache()
     expect(evaluationStorage.getUserAttributesUpdated()).toBeTruthy()
   })
 
-  test('clearUserAttributesUpdated', () => {
+  test('clearUserAttributesUpdated', async () => {
     storage.set({
       userId: 'user_id_1',
       currentEvaluationsId: 'evaluations_id_1',
@@ -239,8 +244,8 @@ suite('internal/evaluation/EvaluationStorage', () => {
       evaluatedAt: '1234567890',
       userAttributesUpdated: true,
     })
-
-    evaluationStorage.clearUserAttributesUpdated()
+    await evaluationStorage.loadCache()
+    await evaluationStorage.clearUserAttributesUpdated()
 
     expect(storage.get()?.userAttributesUpdated).toBeFalsy()
   })

@@ -259,7 +259,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
   })
 
   suite('getLatest', () => {
-    test('has cache', () => {
+    test('has cache', async () => {
       evaluationStorage.storage.set({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value',
@@ -271,7 +271,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: false,
       })
-
+      await evaluationStorage.loadCache()
       const result = interactor.getLatest(evaluation1.featureId)
 
       expect(result).toStrictEqual(evaluation1)
@@ -412,7 +412,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         evaluatedAt: clock.currentTimeMillis().toString(),
         userAttributesUpdated: false,
       })
-
+      await evaluationStorage.loadCache()
       const mockListener = vi.fn()
 
       interactor.addUpdateListener(mockListener)

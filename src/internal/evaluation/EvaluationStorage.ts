@@ -1,5 +1,6 @@
 import { Evaluation } from '../model/Evaluation'
 import { BKTStorage } from '../../BKTStorage'
+import { InMemoryCache } from '../InMemoryCache'
 
 export interface EvaluationEntity {
   userId: string
@@ -106,7 +107,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
       evaluatedAt,
     }
 
-    this.save(updated)
+    await this.save(updated)
   }
 
   async update(
@@ -129,7 +130,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
       activeEvaluations[ev.featureId] = ev
     })
 
-    this.save({
+    await this.save({
       ...entity,
       currentEvaluationsId: evaluationsId,
       evaluations: activeEvaluations,
@@ -156,7 +157,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     const changed = entity.currentFeatureTag !== featureTag
 
     if (changed) {
-      this.save({
+      await this.save({
         ...entity,
         currentFeatureTag: featureTag,
         currentEvaluationsId: null,
@@ -169,7 +170,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   async setUserAttributesUpdated(): Promise<void> {
     const entity = this.getCachedEvaluationEntity()
 
-    this.save({
+    await this.save({
       ...entity,
       userAttributesUpdated: true,
     })
@@ -182,7 +183,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   async clearUserAttributesUpdated(): Promise<void> {
     const entity = this.getCachedEvaluationEntity()
 
-    this.save({
+    await this.save({
       ...entity,
       userAttributesUpdated: false,
     })
