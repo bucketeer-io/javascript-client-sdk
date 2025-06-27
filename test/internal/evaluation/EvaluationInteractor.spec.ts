@@ -46,7 +46,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     server = setupServerAndListen()
   })
 
-  beforeEach(() => {
+  beforeEach( async () => {
     config = defineBKTConfig({
       apiKey: 'api_key_value',
       apiEndpoint: 'https://api.bucketeer.io',
@@ -67,9 +67,9 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     clock = new FakeClock()
   })
 
-  afterEach(() => {
+  afterEach( async () => {
     server.resetHandlers()
-    evaluationStorage.clear()
+    await evaluationStorage.clear()
   })
 
   afterAll(() => {
@@ -258,7 +258,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
   })
 
   suite('getLatest', () => {
-    test('has cache', () => {
+    test('has cache', async () => {
       evaluationStorage.storage.set({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value',
@@ -270,7 +270,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: false,
       })
-
+      await evaluationStorage.initialize()
       const result = interactor.getLatest(evaluation1.featureId)
 
       expect(result).toStrictEqual(evaluation1)
@@ -411,7 +411,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         evaluatedAt: clock.currentTimeMillis().toString(),
         userAttributesUpdated: false,
       })
-
+      await evaluationStorage.initialize()
       const mockListener = vi.fn()
 
       interactor.addUpdateListener(mockListener)

@@ -13,17 +13,23 @@ export interface EvaluationEntity {
 export interface EvaluationStorage {
   getByFeatureId(featureId: string): Evaluation | null
 
+  /**
+   * Preload the storage from the underlying storage.
+   * This is useful to ensure that the storage is ready before any operations.
+   */
+  initialize(): Promise<void>
+
   deleteAllAndInsert(
     evaluationsId: string,
     evaluations: Evaluation[],
     evaluatedAt: string,
-  ): void
+  ): Promise<void>
   update(
     evaluationsId: string,
     evaluations: Evaluation[],
     archivedFeatureIds: string[],
     evaluatedAt: string,
-  ): boolean
+  ): Promise<boolean>
 
   getCurrentEvaluationsId(): string | null
 
@@ -32,13 +38,13 @@ export interface EvaluationStorage {
   /**
    * @returns true if featureTag has been updated
    */
-  updateFeatureTag(featureTag: string): boolean
+  updateFeatureTag(featureTag: string): Promise<boolean>
 
   setUserAttributesUpdated(): void
   getUserAttributesUpdated(): boolean
-  clearUserAttributesUpdated(): void
+  clearUserAttributesUpdated(): Promise<void>
 
-  clear(): void
+  clear(): Promise<void>
 }
 
 export class EvaluationStorageImpl implements EvaluationStorage {
@@ -47,17 +53,64 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     public storage: BKTStorage<EvaluationEntity>,
   ) {}
 
+  /**
+   * Cached evaluation entity for fast access.
+   * It is initialized to null, meaning that the storage has not been loaded yet.
+   * It is set to null when the storage is cleared.
+   */
+  public cacheEvaluationEntity: EvaluationEntity | null = null
+
+  async initialize(): Promise<void> {
+     if (this.cacheEvaluationEntity) {
+      throw new Error(
+        'Evaluation storage is already initialized. Call clear() to reset.',
+      )
+    }
+    this.cacheEvaluationEntity = await this.getInternal(this.userId)
+  }
+
+  private getCachedEvaluationEntity(): EvaluationEntity {
+    if (this.cacheEvaluationEntity === null) {
+      throw new Error(
+        'Cache Evaluation entity is not loaded. Call initialize() first.',
+      )
+    }
+    return this.cacheEvaluationEntity
+  }
+
+  /**
+   * Save the evaluation entity to the storage.
+   * Also updates the cached entity.
+   */
+  private async saveAsync(entity: EvaluationEntity): Promise<void> { 
+    this.cacheEvaluationEntity = entity
+    await this.storage.set(entity)
+  }
+
+  // Save unawaited and silently the error if it occurs.
+  // If there is any error related to the underlying storage,
+  // it will be thrown when the next operation is called.
+  // e.g. fetching the evaluation entity.
+  private save(entity: EvaluationEntity): void { 
+    this.cacheEvaluationEntity = entity
+    this.storage.set(entity).then(() => {
+      // Do nothing
+    }).catch((error) => {
+      console.error('Failed to save evaluation entity:', error)
+    })
+  }
+
   getByFeatureId(featureId: string): Evaluation | null {
-    const entity = this.getInternal(this.userId)
+    const entity = this.getCachedEvaluationEntity()
     return entity.evaluations[featureId] ?? null
   }
 
-  deleteAllAndInsert(
+  async deleteAllAndInsert(
     evaluationsId: string,
     evaluations: Evaluation[],
     evaluatedAt: string,
-  ): void {
-    const entity = this.getInternal(this.userId)
+  ): Promise<void> {
+    const entity = this.getCachedEvaluationEntity()
     const updated: EvaluationEntity = {
       ...entity,
       userId: this.userId,
@@ -71,16 +124,16 @@ export class EvaluationStorageImpl implements EvaluationStorage {
       evaluatedAt,
     }
 
-    this.storage.set(updated)
+    await this.saveAsync(updated)
   }
 
-  update(
+  async update(
     evaluationsId: string,
     evaluations: Evaluation[],
     archivedFeatureIds: string[],
     evaluatedAt: string,
-  ): boolean {
-    const entity = this.getInternal(this.userId)
+  ): Promise<boolean> {
+    const entity = this.getCachedEvaluationEntity()
 
     // remove archived evaluations
     const activeEvaluations = Object.fromEntries(
@@ -94,7 +147,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
       activeEvaluations[ev.featureId] = ev
     })
 
-    this.storage.set({
+    await this.saveAsync({
       ...entity,
       currentEvaluationsId: evaluationsId,
       evaluations: activeEvaluations,
@@ -109,19 +162,19 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   }
 
   getCurrentEvaluationsId(): string | null {
-    return this.getInternal(this.userId).currentEvaluationsId
+    return this.getCachedEvaluationEntity().currentEvaluationsId
   }
 
   getEvaluatedAt(): string | null {
-    return this.getInternal(this.userId).evaluatedAt
+    return this.getCachedEvaluationEntity().evaluatedAt
   }
 
-  updateFeatureTag(featureTag: string): boolean {
-    const entity = this.getInternal(this.userId)
+  async updateFeatureTag(featureTag: string): Promise<boolean> {
+    const entity = this.getCachedEvaluationEntity()
     const changed = entity.currentFeatureTag !== featureTag
 
     if (changed) {
-      this.storage.set({
+      await this.saveAsync({
         ...entity,
         currentFeatureTag: featureTag,
         currentEvaluationsId: null,
@@ -132,33 +185,33 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   }
 
   setUserAttributesUpdated(): void {
-    const entity = this.getInternal(this.userId)
-
-    this.storage.set({
+    const entity = this.getCachedEvaluationEntity()
+    this.save({
       ...entity,
       userAttributesUpdated: true,
     })
   }
 
   getUserAttributesUpdated(): boolean {
-    return this.getInternal(this.userId).userAttributesUpdated
+    return this.getCachedEvaluationEntity().userAttributesUpdated
   }
 
-  clearUserAttributesUpdated(): void {
-    const entity = this.getInternal(this.userId)
+  async clearUserAttributesUpdated(): Promise<void> {
+    const entity = this.getCachedEvaluationEntity()
 
-    this.storage.set({
+    await this.saveAsync({
       ...entity,
       userAttributesUpdated: false,
     })
   }
 
-  clear(): void {
-    this.storage.clear()
+  async clear(): Promise<void> {
+    await this.storage.clear()
+    this.cacheEvaluationEntity = null
   }
 
-  private getInternal(userId: string): EvaluationEntity {
-    const entity = this.storage.get()
+  private async getInternal(userId: string): Promise<EvaluationEntity> {
+    const entity = await this.storage.get()
     if (!entity || entity.userId !== userId) {
       // entity doesn't exist or userId is different
       return {

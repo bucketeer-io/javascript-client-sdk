@@ -22,6 +22,7 @@ import { user1Evaluations } from '../../mocks/evaluations'
 import { EvaluationTask } from '../../../src/internal/scheduler/EvaluationTask'
 import { GetEvaluationsRequest } from '../../../src/internal/model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../../../src/internal/model/response/GetEvaluationsResponse'
+import { requiredInternalConfig } from '../../../src/internal/InternalConfig'
 
 suite('internal/scheduler/EventTask', () => {
   let server: SetupServer
@@ -33,7 +34,7 @@ suite('internal/scheduler/EventTask', () => {
     server = setupServerAndListen()
   })
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.useFakeTimers()
 
     config = defineBKTConfig({
@@ -48,9 +49,11 @@ suite('internal/scheduler/EventTask', () => {
 
     component = new DefaultComponent(
       new TestPlatformModule(),
-      new DataModule(user1, config),
+      new DataModule(user1, requiredInternalConfig(config)),
       new InteractorModule(),
     )
+    // Initialize the evaluation interactor
+    await component.evaluationInteractor().initialize()
   })
 
   afterEach(() => {
@@ -190,16 +193,24 @@ suite('internal/scheduler/EventTask', () => {
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, () => {
-          return HttpResponse.json(null, { status: 500 })
-        }, { once: true }),
+        >(
+          `${config.apiEndpoint}/get_evaluations`,
+          () => {
+            return HttpResponse.json(null, { status: 500 })
+          },
+          { once: true },
+        ),
         http.post<
           Record<string, never>,
           GetEvaluationsRequest,
           GetEvaluationsResponse
-        >(`${config.apiEndpoint}/get_evaluations`, () => {
-          return HttpResponse.json(null, { status: 500 })
-        }, {once: true}),
+        >(
+          `${config.apiEndpoint}/get_evaluations`,
+          () => {
+            return HttpResponse.json(null, { status: 500 })
+          },
+          { once: true },
+        ),
         http.post<
           Record<string, never>,
           GetEvaluationsRequest,

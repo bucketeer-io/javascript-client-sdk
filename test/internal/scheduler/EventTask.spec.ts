@@ -23,6 +23,7 @@ import { TestPlatformModule, setupServerAndListen } from '../../utils'
 import { InteractorModule } from '../../../src/internal/di/InteractorModule'
 import { user1 } from '../../mocks/users'
 import { evaluation1, evaluation2 } from '../../mocks/evaluations'
+import { requiredInternalConfig } from '../../../src/internal/InternalConfig'
 
 suite('internal/scheduler/EventTask', () => {
   let server: SetupServer
@@ -49,7 +50,7 @@ suite('internal/scheduler/EventTask', () => {
 
     component = new DefaultComponent(
       new TestPlatformModule(),
-      new DataModule(user1, config),
+      new DataModule(user1, requiredInternalConfig(config)),
       new InteractorModule(),
     )
   })

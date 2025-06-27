@@ -11,13 +11,20 @@ export class EvaluationInteractor {
     private apiClient: ApiClient,
     private evaluationStorage: EvaluationStorage,
     private idGenerator: IdGenerator,
-  ) {
-    // check if the new featureTag is different from the saved one
-    this.evaluationStorage.updateFeatureTag(this.featureTag)
-  }
+  ) {}
 
   // visible for testing. should only be accessed from test code
   updateListeners: Record<string, () => void> = {}
+
+  // Important: should call this method before using the interactor.
+  async initialize(): Promise<void> {
+    // This method is used to initialize the interactor internally.
+    // It can be used to perform any setup required before using the interactor.
+    // check if the new featureTag is different from the saved one
+    await this.evaluationStorage.initialize()
+    // If the featureTag is different, update it in the storage and clear currentEvaluationsId
+    await this.evaluationStorage.updateFeatureTag(this.featureTag)
+  }
 
   async fetch(
     user: User,
@@ -47,7 +54,7 @@ export class EvaluationInteractor {
       if (response.evaluations.forceUpdate) {
         // 1- Delete all the evaluations from local storage, and save the latest evaluations from the response into the local storage
         // 2- Save the UserEvaluations.CreatedAt in the response as evaluatedAt in the localStorage
-        this.evaluationStorage.deleteAllAndInsert(
+        await this.evaluationStorage.deleteAllAndInsert(
           response.userEvaluationsId,
           response.evaluations.evaluations ?? [],
           response.evaluations.createdAt,
@@ -57,7 +64,7 @@ export class EvaluationInteractor {
         // 1- Check the evaluation list in the response and upsert them in the localStorage if the list is not empty
         // 2- Check the archivedFeatureIds list and delete them from the localStorage if is not empty
         // 3- Save the UserEvaluations.CreatedAt in the response as evaluatedAt in the localStorage
-        shouldNotify = this.evaluationStorage.update(
+        shouldNotify = await this.evaluationStorage.update(
           response.userEvaluationsId,
           response.evaluations.evaluations ?? [],
           response.evaluations.archivedFeatureIds ?? [],
@@ -65,7 +72,7 @@ export class EvaluationInteractor {
         )
       }
 
-      this.evaluationStorage.clearUserAttributesUpdated()
+      await this.evaluationStorage.clearUserAttributesUpdated()
 
       if (shouldNotify) {
         Object.values(this.updateListeners).forEach((listener) => listener())
