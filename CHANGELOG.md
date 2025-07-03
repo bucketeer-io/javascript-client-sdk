@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.6](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.5...v2.2.6) (2025-07-03)
+
+
+### Build System
+
+* **deps:** update all non-major dependencies ([#227](https://github.com/bucketeer-io/javascript-client-sdk/issues/227)) ([dd279b1](https://github.com/bucketeer-io/javascript-client-sdk/commit/dd279b17c0b0be7295e1a61893c10edecbcfaa0b))
+
 ## [2.2.5](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.4...v2.2.5) (2025-06-17)
 
 
