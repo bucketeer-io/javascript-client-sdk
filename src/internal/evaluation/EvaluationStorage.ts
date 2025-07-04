@@ -100,21 +100,22 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     evaluations: Evaluation[],
     evaluatedAt: string,
   ): Promise<void> {
-    const entity = this.getCachedEvaluationEntity()
-    const updated: EvaluationEntity = {
-      ...entity,
-      userId: this.userId,
-      currentEvaluationsId: evaluationsId,
-      evaluations: evaluations.reduce<EvaluationEntity['evaluations']>(
-        (acc, cur) => {
-          return { ...acc, [cur.featureId]: cur }
-        },
-        {},
-      ),
-      evaluatedAt,
-    }
-
-    await this.saveAsync(updated)
+    await runWithMutex(this.mutex, async () => {
+      const entity = this.getCachedEvaluationEntity()
+      const updated: EvaluationEntity = {
+        ...entity,
+        userId: this.userId,
+        currentEvaluationsId: evaluationsId,
+        evaluations: evaluations.reduce<EvaluationEntity['evaluations']>(
+          (acc, cur) => {
+            return { ...acc, [cur.featureId]: cur }
+          },
+          {},
+        ),
+        evaluatedAt,
+      }
+      await this.saveAsync(updated)
+    })
   }
 
   async update(
@@ -123,32 +124,34 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     archivedFeatureIds: string[],
     evaluatedAt: string,
   ): Promise<boolean> {
-    const entity = this.getCachedEvaluationEntity()
+    return await runWithMutex(this.mutex, async () => {
+      const entity = this.getCachedEvaluationEntity()
 
-    // remove archived evaluations
-    const activeEvaluations = Object.fromEntries(
-      Object.entries(entity.evaluations).filter(
-        ([key]) => !archivedFeatureIds.includes(key),
-      ),
-    )
+      // remove archived evaluations
+      const activeEvaluations = Object.fromEntries(
+        Object.entries(entity.evaluations).filter(
+          ([key]) => !archivedFeatureIds.includes(key),
+        ),
+      )
 
-    // update/add evaluations
-    evaluations.forEach((ev) => {
-      activeEvaluations[ev.featureId] = ev
+      // update/add evaluations
+      evaluations.forEach((ev) => {
+        activeEvaluations[ev.featureId] = ev
+      })
+
+      await this.saveAsync({
+        ...entity,
+        currentEvaluationsId: evaluationsId,
+        evaluations: activeEvaluations,
+        evaluatedAt,
+      })
+
+      return (
+        entity.currentEvaluationsId !== evaluationsId ||
+        evaluations.length > 0 ||
+        archivedFeatureIds.length > 0
+      )
     })
-
-    await this.saveAsync({
-      ...entity,
-      currentEvaluationsId: evaluationsId,
-      evaluations: activeEvaluations,
-      evaluatedAt,
-    })
-
-    return (
-      entity.currentEvaluationsId !== evaluationsId ||
-      evaluations.length > 0 ||
-      archivedFeatureIds.length > 0
-    )
   }
 
   async getCurrentEvaluationsId(): Promise<string | null> {
@@ -160,18 +163,20 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   }
 
   async updateFeatureTag(featureTag: string): Promise<boolean> {
-    const entity = this.getCachedEvaluationEntity()
-    const changed = entity.currentFeatureTag !== featureTag
+    return await runWithMutex(this.mutex, async () => {
+      const entity = this.getCachedEvaluationEntity()
+      const changed = entity.currentFeatureTag !== featureTag
 
-    if (changed) {
-      await this.saveAsync({
-        ...entity,
-        currentFeatureTag: featureTag,
-        currentEvaluationsId: null,
-      })
-    }
+      if (changed) {
+        await this.saveAsync({
+          ...entity,
+          currentFeatureTag: featureTag,
+          currentEvaluationsId: null,
+        })
+      }
 
-    return changed
+      return changed
+    })
   }
 
   async setUserAttributesUpdated(): Promise<void> {
@@ -192,16 +197,20 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   }
 
   async clearUserAttributesUpdated(): Promise<void> {
-    const entity = this.getCachedEvaluationEntity()
-    await this.saveAsync({
-      ...entity,
-      userAttributesUpdated: false,
+    await runWithMutex(this.mutex, async () => {
+      const entity = this.getCachedEvaluationEntity()
+      await this.saveAsync({
+        ...entity,
+        userAttributesUpdated: false,
+      })
     })
   }
 
   async clear(): Promise<void> {
-    await this.storage.clear()
-    this.cacheEvaluationEntity = null
+    await runWithMutex(this.mutex, async () => {
+      await this.storage.clear()
+      this.cacheEvaluationEntity = null
+    })
   }
 
   private async getInternal(userId: string): Promise<EvaluationEntity> {
