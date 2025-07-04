@@ -1,7 +1,7 @@
 import { Event } from '../model/Event'
 import { BKTStorage } from '../../BKTStorage'
 import { Mutex } from 'async-mutex'
-import { runWithMutex } from '../mutext'
+import { runWithMutex } from '../mutex'
 
 export interface EventEntity {
   userId: string

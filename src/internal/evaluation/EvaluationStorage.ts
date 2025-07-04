@@ -1,7 +1,7 @@
 import { Evaluation } from '../model/Evaluation'
 import { BKTStorage } from '../../BKTStorage'
 import { Mutex } from 'async-mutex'
-import { runWithMutex } from '../mutext'
+import { runWithMutex } from '../mutex'
 
 export interface EvaluationEntity {
   userId: string
@@ -35,7 +35,7 @@ export interface EvaluationStorage {
 
   getCurrentEvaluationsId(): Promise<string | null>
 
-  getEvaluatedAt(): string | Promise<string | null>
+  getEvaluatedAt(): Promise<string | null>
 
   /**
    * @returns true if featureTag has been updated

@@ -356,7 +356,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
       userAttributesUpdated: false,
     })
     await evaluationStorage.initialize()
-    // Asset that userAttributesUpdated is false before setting it
+    // asset that userAttributesUpdated is false before setting it
     expect(await evaluationStorage.getUserAttributesUpdated()).toBeFalsy()
     // Importaint: should unawaited  
     evaluationStorage.setUserAttributesUpdated() 

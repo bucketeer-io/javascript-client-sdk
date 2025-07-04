@@ -177,7 +177,7 @@ export class EventInteractor {
     const added = await this.addMetricsEvents(metricsEvents)
 
     if (added) {
-      this.notifyEventsUpdated()
+      await this.notifyEventsUpdated()
     }
   }
 
@@ -215,7 +215,7 @@ export class EventInteractor {
     const added = await this.addMetricsEvents(metricsEvents)
 
     if (added) {
-      this.notifyEventsUpdated()
+      await this.notifyEventsUpdated()
     }
   }
 

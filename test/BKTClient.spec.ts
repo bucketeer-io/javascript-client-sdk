@@ -677,7 +677,8 @@ suite('BKTClient', () => {
     expect(userHolder.get().data).toStrictEqual({ age: '28' })
     expect(await storage.getCurrentEvaluationsId()).toBe('user_evaluation_id_value')
 
-    // 1. Update user attributes unawait
+    // 1. Update user attributes
+    // Importaint: should unawaited  
     client.updateUserAttributes({ key: 'value' })
 
     expect(userHolder.get().data).toStrictEqual({ key: 'value' })
@@ -685,7 +686,7 @@ suite('BKTClient', () => {
     // 2. Even if we update user attributes without awaiting, 
     // the storage is still updated, so getUserAttributesUpdated should return true.
     // because we are using mutex lock in setUserAttributesUpdated
-    expect(storage.getUserAttributesUpdated()).toBeTruthy()
+    expect(await storage.getUserAttributesUpdated()).toBeTruthy()
   })
 
   suite('fetchEvaluations', async () => {
