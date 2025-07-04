@@ -102,8 +102,6 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
     })
 
     const component = getDefaultComponent(client)
-    // Await 1 second to ensure the evaluation event is created
-    await new Promise((resolve) => setTimeout(resolve, 5000))
     const events = await component.dataModule.eventStorage().getAll()
     // It includes the Latency and ResponseSize metrics
     expect(events).toHaveLength(8)
