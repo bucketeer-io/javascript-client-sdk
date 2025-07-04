@@ -22,7 +22,6 @@ import { EventTask } from '../../../src/internal/scheduler/EventTask'
 import { TestPlatformModule, setupServerAndListen } from '../../utils'
 import { InteractorModule } from '../../../src/internal/di/InteractorModule'
 import { user1 } from '../../mocks/users'
-import { evaluation1, evaluation2 } from '../../mocks/evaluations'
 import { requiredInternalConfig } from '../../../src/internal/InternalConfig'
 import { ApiId } from '../../../src/internal/model/MetricsEventData'
 
