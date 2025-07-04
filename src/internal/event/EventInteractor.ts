@@ -44,12 +44,12 @@ export class EventInteractor {
     this.eventUpdateListener = listener
   }
 
-  trackEvaluationEvent(
+  async trackEvaluationEvent(
     featureTag: string,
     user: User,
     evaluation: Evaluation,
-  ): void {
-    this.eventStorage.add({
+  ): Promise<void> {
+    await this.eventStorage.add({
       id: this.idGenerator.newId(),
       type: EventType.EVALUATION,
       event: newEvaluationEvent(
@@ -71,15 +71,15 @@ export class EventInteractor {
       ),
     })
 
-    this.notifyEventsUpdated()
+    await this.notifyEventsUpdated()
   }
 
-  trackDefaultEvaluationEvent(
+  async trackDefaultEvaluationEvent(
     featureTag: string,
     user: User,
     featureId: string,
-  ): void {
-    this.eventStorage.add({
+  ): Promise<void> {
+    await this.eventStorage.add({
       id: this.idGenerator.newId(),
       type: EventType.EVALUATION,
       event: newDefaultEvaluationEvent(
@@ -103,16 +103,16 @@ export class EventInteractor {
       ),
     })
 
-    this.notifyEventsUpdated()
+    await this.notifyEventsUpdated()
   }
 
-  trackGoalEvent(
+  async trackGoalEvent(
     featureTag: string,
     user: User,
     goalId: string,
     value: number,
-  ): void {
-    this.eventStorage.add({
+  ): Promise<void> {
+    await this.eventStorage.add({
       id: this.idGenerator.newId(),
       type: EventType.GOAL,
       event: newGoalEvent(
@@ -132,15 +132,15 @@ export class EventInteractor {
       ),
     })
 
-    this.notifyEventsUpdated()
+    await this.notifyEventsUpdated()
   }
 
-  trackSuccess(
+  async trackSuccess(
     apiId: ApiId,
     featureTag: string,
     seconds: number,
     sizeByte: number,
-  ): void {
+  ): Promise<void> {
     const metricsEvents: Event[] = [
       {
         id: this.idGenerator.newId(),
@@ -174,14 +174,14 @@ export class EventInteractor {
       },
     ]
 
-    const added = this.addMetricsEvents(metricsEvents)
+    const added = await this.addMetricsEvents(metricsEvents)
 
     if (added) {
-      this.notifyEventsUpdated()
+      await this.notifyEventsUpdated()
     }
   }
 
-  trackFailure(apiId: ApiId, featureTag: string, error: BKTException): void {
+  async trackFailure(apiId: ApiId, featureTag: string, error: BKTException): Promise<void> {
     if (error.type === MetricsEventType.UnauthorizedError) {
       console.error(
         'An unauthorized error occurred. Please check your API Key.',
@@ -212,15 +212,15 @@ export class EventInteractor {
       },
     ]
 
-    const added = this.addMetricsEvents(metricsEvents)
+    const added = await this.addMetricsEvents(metricsEvents)
 
     if (added) {
-      this.notifyEventsUpdated()
+      await this.notifyEventsUpdated()
     }
   }
 
   async sendEvents(force = false): Promise<SendEventsResult> {
-    const current = this.eventStorage.getAll()
+    const current = await this.eventStorage.getAll()
 
     if (current.length === 0) {
       return {
@@ -250,7 +250,7 @@ export class EventInteractor {
           return !error.retriable
         })
 
-      this.eventStorage.deleteByIds(deleteIds)
+      await this.eventStorage.deleteByIds(deleteIds)
       return {
         type: 'success',
         sent: true,
@@ -263,10 +263,10 @@ export class EventInteractor {
     }
   }
 
-  private notifyEventsUpdated(): void {
+  private async notifyEventsUpdated(): Promise<void> {
     const listener = this.eventUpdateListener
     if (listener) {
-      const events = this.eventStorage.getAll()
+      const events = await this.eventStorage.getAll()
       listener(events)
     }
   }
@@ -291,8 +291,8 @@ export class EventInteractor {
    * @param events array of Event
    * @returns true if new metrics events added, false otherwise
    */
-  addMetricsEvents(events: Event[]): boolean {
-    const storedEvents = this.eventStorage.getAll()
+  async addMetricsEvents(events: Event[]): Promise<boolean> {
+    const storedEvents = await this.eventStorage.getAll()
     const metricsEventUniqueKeys: string[] = storedEvents
       .filter((v) => v.type === EventType.METRICS)
       .map((v) => this.getMetricsEventUniqueKey(v.event as MetricsEvent))
@@ -306,7 +306,7 @@ export class EventInteractor {
     )
 
     if (newEvents.length > 0) {
-      this.eventStorage.addAll(newEvents)
+      await this.eventStorage.addAll(newEvents)
       return true
     }
 

@@ -25,39 +25,39 @@ suite('internal/event/EventStorage', () => {
   })
 
   suite('getAll', () => {
-    test('return events if saved data is present', () => {
-      storage.set({
+    test('return events if saved data is present', async () => {
+      await storage.set({
         userId: 'user_id_1',
         events: [evaluationEvent1, goalEvent1],
       })
 
-      const result = eventStorage.getAll()
+      const result = await eventStorage.getAll()
 
       expect(result).toStrictEqual([evaluationEvent1, goalEvent1])
     })
 
-    test('return empty array if saved data is not present', () => {
-      storage.set({
+    test('return empty array if saved data is not present', async () => {
+      await storage.set({
         userId: 'user_id_1',
         events: [],
       })
 
-      const result = eventStorage.getAll()
+      const result = await eventStorage.getAll()
 
       expect(result).toStrictEqual([])
     })
   })
 
   suite('add', () => {
-    test('add event to storage', () => {
-      storage.set({
+    test('add event to storage', async () => {
+      await storage.set({
         userId: 'user_id_1',
         events: [goalEvent1],
       })
 
-      eventStorage.add(evaluationEvent1)
+      await eventStorage.add(evaluationEvent1)
 
-      expect(storage.get()?.events).toStrictEqual([
+      expect((await storage.get())?.events).toStrictEqual([
         goalEvent1,
         evaluationEvent1,
       ])
@@ -65,15 +65,15 @@ suite('internal/event/EventStorage', () => {
   })
 
   suite('addAll', () => {
-    test('add events to storage', () => {
-      storage.set({
+    test('add events to storage', async () => {
+      await storage.set({
         userId: 'user_id_1',
         events: [goalEvent1],
       })
 
-      eventStorage.addAll([evaluationEvent1, evaluationEvent2])
+      await eventStorage.addAll([evaluationEvent1, evaluationEvent2])
 
-      expect(storage.get()?.events).toStrictEqual([
+      expect((await storage.get())?.events).toStrictEqual([
         goalEvent1,
         evaluationEvent1,
         evaluationEvent2,
@@ -82,28 +82,28 @@ suite('internal/event/EventStorage', () => {
   })
 
   suite('deleteByIds', () => {
-    test('delete events by ids', () => {
-      storage.set({
+    test('delete events by ids', async () => {
+      await storage.set({
         userId: 'user_id_1',
         events: [evaluationEvent1, evaluationEvent2, goalEvent1],
       })
 
-      eventStorage.deleteByIds([evaluationEvent1.id, goalEvent1.id])
+      await eventStorage.deleteByIds([evaluationEvent1.id, goalEvent1.id])
 
-      expect(storage.get()?.events).toStrictEqual([evaluationEvent2])
+      expect((await storage.get())?.events).toStrictEqual([evaluationEvent2])
     })
   })
 
   suite('clear', () => {
-    test('clear events', () => {
-      storage.set({
+    test('clear events', async () => {
+      await storage.set({
         userId: 'user_id_1',
         events: [evaluationEvent1, evaluationEvent2, goalEvent1],
       })
 
-      eventStorage.clear()
+      await eventStorage.clear()
 
-      expect(storage.get()).toBeNull()
+      expect((await storage.get())).toBeNull()
     })
   })
 })
