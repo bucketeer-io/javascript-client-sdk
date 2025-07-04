@@ -10,11 +10,11 @@ export interface BKTStorage<T> {
 export class BrowserLocalStorage<T> implements BKTStorage<T> {
   constructor(private key: string) {}
 
-  public async set<T>(value: T | null) {
+  public async set(value: T | null) {
     localStorage.setItem(this.key, JSON.stringify(value))
   }
 
-  public async get<T>(): Promise<T | null> {
+  public async get(): Promise<T | null> {
     const result = localStorage.getItem(this.key)
     if (result === null) {
       return null
