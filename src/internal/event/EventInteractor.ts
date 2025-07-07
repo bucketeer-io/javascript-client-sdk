@@ -19,6 +19,7 @@ import {
   newSizeMetricsData,
 } from './EventCreators'
 import { EventStorage } from './EventStorage'
+import { ThreadSafeEventStorage } from './ThreadSafeEventStorage'
 import {
   SendEventsFailure,
   SendEventsResult,
@@ -49,7 +50,7 @@ export class EventInteractor {
     user: User,
     evaluation: Evaluation,
   ): void {
-    this.eventStorage.add({
+    const event = {
       id: this.idGenerator.newId(),
       type: EventType.EVALUATION,
       event: newEvaluationEvent(
@@ -69,8 +70,9 @@ export class EventInteractor {
           tag: featureTag,
         },
       ),
-    })
+    }
 
+    this.addEvent(event)
     this.notifyEventsUpdated()
   }
 
@@ -79,7 +81,7 @@ export class EventInteractor {
     user: User,
     featureId: string,
   ): void {
-    this.eventStorage.add({
+    const event = {
       id: this.idGenerator.newId(),
       type: EventType.EVALUATION,
       event: newDefaultEvaluationEvent(
@@ -101,8 +103,9 @@ export class EventInteractor {
           tag: featureTag,
         },
       ),
-    })
+    }
 
+    this.addEvent(event)
     this.notifyEventsUpdated()
   }
 
@@ -112,7 +115,7 @@ export class EventInteractor {
     goalId: string,
     value: number,
   ): void {
-    this.eventStorage.add({
+    const event = {
       id: this.idGenerator.newId(),
       type: EventType.GOAL,
       event: newGoalEvent(
@@ -130,8 +133,9 @@ export class EventInteractor {
           tag: featureTag,
         },
       ),
-    })
+    }
 
+    this.addEvent(event)
     this.notifyEventsUpdated()
   }
 
@@ -220,7 +224,7 @@ export class EventInteractor {
   }
 
   async sendEvents(force = false): Promise<SendEventsResult> {
-    const current = this.eventStorage.getAll()
+    const current = await this.getAllEvents()
 
     if (current.length === 0) {
       return {
@@ -250,7 +254,7 @@ export class EventInteractor {
           return !error.retriable
         })
 
-      this.eventStorage.deleteByIds(deleteIds)
+      await this.deleteEventsByIds(deleteIds)
       return {
         type: 'success',
         sent: true,
@@ -261,6 +265,61 @@ export class EventInteractor {
         error: result.error,
       } satisfies SendEventsFailure
     }
+  }
+
+  private addEvent(event: Event): void {
+    if (this.isThreadSafeStorage()) {
+      // Use async method but don't await - fire and forget for compatibility
+      ;(this.eventStorage as ThreadSafeEventStorage)
+        .addAsync(event)
+        .catch((error) => {
+          console.warn(
+            'Failed to add event with cross-tab safety, falling back to sync:',
+            error,
+          )
+          this.eventStorage.add(event)
+        })
+    } else {
+      this.eventStorage.add(event)
+    }
+  }
+
+  private async getAllEvents(): Promise<Event[]> {
+    if (this.isThreadSafeStorage()) {
+      try {
+        return await (this.eventStorage as ThreadSafeEventStorage).getAllAsync()
+      } catch (error) {
+        console.warn(
+          'Failed to get events with cross-tab safety, falling back to sync:',
+          error,
+        )
+        return this.eventStorage.getAll()
+      }
+    } else {
+      return this.eventStorage.getAll()
+    }
+  }
+
+  private async deleteEventsByIds(ids: string[]): Promise<void> {
+    if (this.isThreadSafeStorage()) {
+      try {
+        await (this.eventStorage as ThreadSafeEventStorage).deleteByIdsAsync(
+          ids,
+        )
+      } catch (error) {
+        console.warn(
+          'Failed to delete events with cross-tab safety, falling back to sync:',
+          error,
+        )
+        this.eventStorage.deleteByIds(ids)
+      }
+    } else {
+      this.eventStorage.deleteByIds(ids)
+    }
+  }
+
+  private isThreadSafeStorage(): boolean {
+    return this.eventStorage instanceof ThreadSafeEventStorage
   }
 
   private notifyEventsUpdated(): void {
@@ -306,7 +365,21 @@ export class EventInteractor {
     )
 
     if (newEvents.length > 0) {
-      this.eventStorage.addAll(newEvents)
+      // Use thread-safe storage if available
+      if (this.isThreadSafeStorage()) {
+        // Use async method but don't await - fire and forget for compatibility
+        ;(this.eventStorage as ThreadSafeEventStorage)
+          .addAllAsync(newEvents)
+          .catch((error) => {
+            console.warn(
+              'Failed to add metrics events with cross-tab safety, falling back to sync:',
+              error,
+            )
+            this.eventStorage.addAll(newEvents)
+          })
+      } else {
+        this.eventStorage.addAll(newEvents)
+      }
       return true
     }
 
