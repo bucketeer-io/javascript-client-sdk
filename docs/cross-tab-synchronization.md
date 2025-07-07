@@ -31,6 +31,76 @@ When multiple tabs execute this sequence simultaneously:
 
 The solution implements a **Cross-Tab Mutex** using localStorage and Lamport's Fast Mutex algorithm to provide exclusive access to shared resources across browser tabs.
 
+### Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Browser Window"
+        subgraph "Tab 1"
+            T1[BKT Client]
+            T1E[EventStorage]
+            T1M[CrossTabMutex]
+            T1 --> T1E
+            T1E --> T1M
+        end
+
+        subgraph "Tab 2"
+            T2[BKT Client]
+            T2E[EventStorage]
+            T2M[CrossTabMutex]
+            T2 --> T2E
+            T2E --> T2M
+        end
+
+        subgraph "Tab 3"
+            T3[BKT Client]
+            T3E[EventStorage]
+            T3M[CrossTabMutex]
+            T3 --> T3E
+            T3E --> T3M
+        end
+    end
+
+    subgraph "Shared Storage"
+        LS[localStorage]
+        MX[Mutex Keys X & Y]
+        EV[Event Data]
+
+        LS --> MX
+        LS --> EV
+    end
+
+    subgraph "Lamport's Fast Mutex Algorithm"
+        STEP1["1. Write Client ID to X"]
+        STEP2["2. Check if Y is available"]
+        STEP3["3. Write Client ID to Y"]
+        STEP4["4. Verify X & Y ownership"]
+
+        STEP1 --> STEP2
+        STEP2 --> STEP3
+        STEP3 --> STEP4
+    end
+
+    T1M -.-> LS
+    T2M -.-> LS
+    T3M -.-> LS
+
+    subgraph "Race Condition Prevention"
+        RC1["❌ Without Mutex:<br/>Tab A reads events<br/>Tab B reads events<br/>Tab A writes events<br/>Tab B overwrites events"]
+
+        RC2["✅ With Mutex:<br/>Tab A acquires lock<br/>Tab A reads/writes events<br/>Tab A releases lock<br/>Tab B acquires lock<br/>Tab B reads/writes events"]
+    end
+
+    style T1 fill:#e1f5fe
+    style T2 fill:#e1f5fe
+    style T3 fill:#e1f5fe
+    style LS fill:#fff3e0
+    style MX fill:#f3e5f5
+    style EV fill:#e8f5e8
+    style RC1 fill:#ffebee
+    style RC2 fill:#e8f5e8
+```
+
 ### Key Components
 
 1. **CrossTabMutex**: Implements mutual exclusion using Lamport's Fast Mutex algorithm
@@ -97,6 +167,67 @@ private shouldEnableCrossTabSafety(): boolean {
   }
   return true
 }
+```
+
+### Mutex Coordination Sequence
+
+The following sequence diagram shows how the mutex coordinates access when multiple tabs try to add events simultaneously:
+
+```mermaid
+sequenceDiagram
+    participant T1 as Tab 1
+    participant T2 as Tab 2
+    participant LS as localStorage
+    participant Server as Bucketeer API
+
+    Note over T1, T2: User triggers events in both tabs simultaneously
+
+    T1->>T1: Generate event
+    T2->>T2: Generate event
+
+    par Tab 1 tries to add event
+        T1->>LS: Step 1: Write ClientID_1 to X
+        T1->>LS: Step 2: Check if Y is available
+        T1->>LS: Step 3: Write ClientID_1 to Y
+        T1->>LS: Step 4: Verify X & Y are owned by ClientID_1
+        Note over T1, LS: ✅ Lock acquired successfully
+
+        T1->>LS: Read current events
+        T1->>T1: Add new event to list
+        T1->>LS: Save updated events
+        T1->>LS: Release lock (clear X)
+
+    and Tab 2 tries to add event
+        T2->>LS: Step 1: Write ClientID_2 to X
+        T2->>LS: Step 2: Check if Y is available
+        Note over T2, LS: Y is owned by ClientID_1 - back off
+
+        T2->>T2: Wait 50ms
+        T2->>LS: Step 1: Write ClientID_2 to X
+        T2->>LS: Step 2: Check if Y is available
+        T2->>LS: Step 3: Write ClientID_2 to Y
+        T2->>LS: Step 4: Verify X & Y are owned by ClientID_2
+        Note over T2, LS: ✅ Lock acquired successfully
+
+        T2->>LS: Read current events (includes T1's event)
+        T2->>T2: Add new event to list
+        T2->>LS: Save updated events
+        T2->>LS: Release lock (clear X)
+    end
+
+    Note over T1, T2: Both events are safely stored without data loss
+
+    T1->>Server: Send events (periodic flush)
+    Server-->>T1: Success
+    T1->>LS: Delete sent events
+
+    alt Events remaining
+        T2->>Server: Send remaining events
+        Server-->>T2: Success
+        T2->>LS: Delete sent events
+    end
+
+    Note over T1, Server: All events delivered exactly once
 ```
 
 ## Configuration Options
