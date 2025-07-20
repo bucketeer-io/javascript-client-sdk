@@ -1,5 +1,5 @@
 {
-  "name": "bkt-js-client-sdk",
+  "name": "@bucketeer/js-client-sdk",
   "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
