@@ -43,10 +43,10 @@ const createComponent = (config: BKTConfig, user: User): Component => {
 }
 
 /**
- * React Native specific configuration factory that extends the base defineBKTConfig
- * to enforce React Native environment requirements.
+ * React Native specific configuration factory that wraps the base defineBKTConfig
+ * to validate the presence of idGenerator and enforce React Native environment requirements.
  * 
- * This override ensures that idGenerator is provided and validated at configuration time,
+ * This wrapper ensures that idGenerator is provided and validated at configuration time,
  * providing immediate feedback to developers rather than failing later during client initialization.
  * 
  * @param config - Raw configuration object
