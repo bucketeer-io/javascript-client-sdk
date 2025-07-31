@@ -69,7 +69,7 @@ export const initializeBKTClient = async (
   return initializeBKTClientInternal(component, timeoutMillis)
 }
 
-export function requiredIdGenerator(config: BKTConfig): IdGenerator {
+function requiredIdGenerator(config: BKTConfig): IdGenerator {
   if (!config.idGenerator) {
     throw new Error('idGenerator is required in this environment')
   }
