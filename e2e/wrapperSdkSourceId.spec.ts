@@ -66,11 +66,11 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
 
     assert(client != null)
 
-    client.track(GOAL_ID, GOAL_VALUE)
+    await client.track(GOAL_ID, GOAL_VALUE)
 
     const component = getDefaultComponent(client)
 
-    const events = component.dataModule.eventStorage().getAll()
+    const events = await component.dataModule.eventStorage().getAll()
     expect(events).toHaveLength(3)
     expect(
       events.some(
@@ -82,7 +82,7 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
     ).toBe(true)
     await client.flush()
 
-    expect(component.dataModule.eventStorage().getAll()).toHaveLength(0)
+    expect(await component.dataModule.eventStorage().getAll()).toHaveLength(0)
   })
 
   test('evaluation event', async () => {
@@ -102,8 +102,7 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
     })
 
     const component = getDefaultComponent(client)
-
-    const events = component.dataModule.eventStorage().getAll()
+    const events = await component.dataModule.eventStorage().getAll()
     // It includes the Latency and ResponseSize metrics
     expect(events).toHaveLength(8)
     expect(
@@ -117,7 +116,7 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
 
     await client.flush()
 
-    expect(component.dataModule.eventStorage().getAll()).toHaveLength(0)
+    expect(await component.dataModule.eventStorage().getAll()).toHaveLength(0)
   })
 
   test('metrics event', async () => {
@@ -148,7 +147,7 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
     assert(client != null)
     const component = getDefaultComponent(client)
 
-    const events = component.dataModule.eventStorage().getAll()
+    const events = await component.dataModule.eventStorage().getAll()
 
     expect(events).toHaveLength(1)
     expect(
@@ -165,7 +164,7 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
 
     await client.flush()
 
-    const events2 = component.dataModule.eventStorage().getAll()
+    const events2 = await component.dataModule.eventStorage().getAll()
     expect(events2).toHaveLength(0)
   })
 })

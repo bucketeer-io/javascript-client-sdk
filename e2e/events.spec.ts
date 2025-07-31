@@ -65,11 +65,11 @@ suite('e2e/events', () => {
 
     assert(client != null)
 
-    client.track(GOAL_ID, GOAL_VALUE)
+    await client.track(GOAL_ID, GOAL_VALUE)
 
     const component = getDefaultComponent(client)
 
-    const events = component.dataModule.eventStorage().getAll()
+    const events = await component.dataModule.eventStorage().getAll()
     expect(events).toHaveLength(3)
     expect(
       events.some(
@@ -81,7 +81,7 @@ suite('e2e/events', () => {
     ).toBe(true)
     await client.flush()
 
-    expect(component.dataModule.eventStorage().getAll()).toHaveLength(0)
+    expect(await component.dataModule.eventStorage().getAll()).toHaveLength(0)
   })
 
   test('evaluation event', async () => {
@@ -102,7 +102,7 @@ suite('e2e/events', () => {
 
     const component = getDefaultComponent(client)
 
-    const events = component.dataModule.eventStorage().getAll()
+    const events = await component.dataModule.eventStorage().getAll()
     // It includes the Latency and ResponseSize metrics
     expect(events).toHaveLength(8)
     expect(
@@ -116,7 +116,7 @@ suite('e2e/events', () => {
 
     await client.flush()
 
-    expect(component.dataModule.eventStorage().getAll()).toHaveLength(0)
+    expect(await component.dataModule.eventStorage().getAll()).toHaveLength(0)
   })
 
   test('default evaluation event', async () => {
@@ -126,7 +126,9 @@ suite('e2e/events', () => {
 
     // clear event storage to mimic no-cache state
     const component = getDefaultComponent(client)
-    component.dataModule.evaluationStorage().clear()
+    await component.dataModule.evaluationStorage().clear()
+    // load cache
+    await component.dataModule.evaluationStorage().initialize()
 
     expect(client.stringVariation(FEATURE_ID_STRING, 'value-default')).toBe(
       'value-default',
@@ -145,7 +147,7 @@ suite('e2e/events', () => {
       key: 'value-default',
     })
 
-    const events = component.dataModule.eventStorage().getAll()
+    const events = await component.dataModule.eventStorage().getAll()
     // It includes the Latency and ResponseSize metrics
     expect(events).toHaveLength(8)
     expect(
@@ -157,7 +159,7 @@ suite('e2e/events', () => {
 
     await client.flush()
 
-    expect(component.dataModule.eventStorage().getAll()).toHaveLength(0)
+    expect(await component.dataModule.eventStorage().getAll()).toHaveLength(0)
   })
 
   suite('MetricsEvent', () => {
@@ -207,7 +209,7 @@ suite('e2e/events', () => {
       assert(client != null)
       const component = getDefaultComponent(client)
 
-      const events = component.dataModule.eventStorage().getAll()
+      const events = await component.dataModule.eventStorage().getAll()
 
       expect(events).toHaveLength(0)
       expect(
@@ -224,7 +226,7 @@ suite('e2e/events', () => {
 
       await client.flush()
 
-      const events2 = component.dataModule.eventStorage().getAll()
+      const events2 = await component.dataModule.eventStorage().getAll()
 
       // no events should be stored
       expect(events2).toHaveLength(0)
@@ -246,7 +248,7 @@ suite('e2e/events', () => {
       assert(client2 != null)
       const component2 = getDefaultComponent(client)
 
-      const events3 = component2.dataModule.eventStorage().getAll()
+      const events3 = await component2.dataModule.eventStorage().getAll()
       // 2 events - latency and response size
       expect(events3).toHaveLength(2)
       // ForbiddenError should not exist
@@ -264,7 +266,7 @@ suite('e2e/events', () => {
 
       await client2.flush()
 
-      const events4 = component2.dataModule.eventStorage().getAll()
+      const events4 = await component2.dataModule.eventStorage().getAll()
 
       // error from /register_events does not get stored
       expect(events4).toHaveLength(0)
@@ -315,7 +317,7 @@ suite('e2e/events', () => {
       assert(client != null)
       const component = getDefaultComponent(client)
 
-      const events = component.dataModule.eventStorage().getAll()
+      const events = await component.dataModule.eventStorage().getAll()
 
       expect(events).toHaveLength(1)
       expect(
@@ -332,7 +334,7 @@ suite('e2e/events', () => {
 
       await client.flush()
 
-      const events2 = component.dataModule.eventStorage().getAll()
+      const events2 = await component.dataModule.eventStorage().getAll()
       expect(events2).toHaveLength(0)
     })
   })

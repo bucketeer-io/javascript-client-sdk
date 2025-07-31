@@ -39,9 +39,7 @@ import {
 } from '../src/BKTExceptions'
 import { Evaluation } from '../src/internal/model/Evaluation'
 import { EventType } from '../src/internal/model/Event'
-import {
-  BKTEvaluation,
-} from '../src/BKTEvaluation'
+import { BKTEvaluation } from '../src/BKTEvaluation'
 import { ErrorResponse } from '../src/internal/model/response/ErrorResponse'
 import { RegisterEventsRequest } from '../src/internal/model/request/RegisterEventsRequest'
 import { RegisterEventsResponse } from '../src/internal/model/response/RegisterEventsResponse'
@@ -49,6 +47,7 @@ import { DefaultComponent } from '../src/internal/di/Component'
 import { DataModule } from '../src/internal/di/DataModule'
 import { InteractorModule } from '../src/internal/di/InteractorModule'
 import { BKTEvaluationDetails } from '../src/BKTEvaluationDetails'
+import { requiredInternalConfig } from '../src/internal/InternalConfig'
 
 suite('BKTClient', () => {
   let server: SetupServer
@@ -74,7 +73,7 @@ suite('BKTClient', () => {
 
     component = new DefaultComponent(
       new TestPlatformModule(),
-      new DataModule(user1, config),
+      new DataModule(user1, requiredInternalConfig(config)),
       new InteractorModule(),
     )
   })
@@ -373,7 +372,9 @@ suite('BKTClient', () => {
       expect(client.booleanVariation('feature_id_value', true)).toBe(true)
       expect(client.stringVariation('feature_id_value', '99')).toBe('99')
       expect(client.objectVariation('feature_id_value', 1)).toStrictEqual(1)
-      expect(client.objectVariation('feature_id_value', true)).toStrictEqual(true)
+      expect(client.objectVariation('feature_id_value', true)).toStrictEqual(
+        true,
+      )
       expect(
         client.objectVariation('feature_id_value', 'default_text'),
       ).toStrictEqual('default_text')
@@ -595,16 +596,69 @@ suite('BKTClient', () => {
 
     assert(client !== null)
 
-    client.track('goal_id_value', 0.4)
+    await client.track('goal_id_value', 0.4)
 
     const storage = getDefaultComponent(client).dataModule.eventStorage()
 
-    const lastEvent = storage.getAll().at(-1)
+    const lastEvent = (await storage.getAll()).at(-1)
 
     assert(lastEvent?.type === EventType.GOAL)
 
     expect(lastEvent.event.goalId).toBe('goal_id_value')
     expect(lastEvent.event.value).toBe(0.4)
+  })
+
+  test('track without await - like previous versions', async () => {
+    server.use(
+      http.post<
+        Record<string, never>,
+        GetEvaluationsRequest,
+        GetEvaluationsResponse
+      >(
+        `${config.apiEndpoint}/get_evaluations`,
+        () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        },
+        { once: true },
+      ),
+      http.post<
+        Record<string, never>,
+        RegisterEventsRequest,
+        RegisterEventsResponse
+      >(`${config.apiEndpoint}/register_events`, () => {
+        return HttpResponse.json({})
+      }),
+    )
+
+    await initializeBKTClientInternal(component, 1000)
+
+    const client = getBKTClient()
+
+    assert(client !== null)
+    await client.flush()
+    // Call track without await (fire and forget) like previous SDK versions
+    client.track('goal_id_value', 0.4)
+
+    // Give some time for the async operation to complete
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    const storage = getDefaultComponent(client).dataModule.eventStorage()
+
+    const allEvents = await storage.getAll()
+
+    // Check that events exist
+    expect(allEvents.length).toBeGreaterThan(0)
+
+    // Find the GOAL event among all events
+    const goalEvent = allEvents.find(event => event.type === EventType.GOAL)
+
+    // Assert that the GOAL event exists and has correct properties
+    assert(goalEvent !== undefined)
+    expect(goalEvent.event.goalId).toBe('goal_id_value')
+    expect(goalEvent.event.value).toBe(0.4)
   })
 
   test('currentUser', async () => {
@@ -674,13 +728,22 @@ suite('BKTClient', () => {
     const storage = getDefaultComponent(client).dataModule.evaluationStorage()
 
     expect(userHolder.get().data).toStrictEqual({ age: '28' })
-    expect(storage.getCurrentEvaluationsId()).toBe('user_evaluation_id_value')
+    expect(await storage.getCurrentEvaluationsId()).toBe(
+      'user_evaluation_id_value',
+    )
 
+    // 1. Update user attributes
+    // Important: should unawaited
     client.updateUserAttributes({ key: 'value' })
 
     expect(userHolder.get().data).toStrictEqual({ key: 'value' })
-    expect(storage.getCurrentEvaluationsId()).toBe('user_evaluation_id_value')
-    expect(storage.getUserAttributesUpdated()).toBeTruthy()
+    expect(await storage.getCurrentEvaluationsId()).toBe(
+      'user_evaluation_id_value',
+    )
+    // 2. Even if we update user attributes without awaiting,
+    // the storage is still updated, so getUserAttributesUpdated should return true.
+    // because we are using mutex lock in setUserAttributesUpdated
+    expect(await storage.getUserAttributesUpdated()).toBeTruthy()
   })
 
   suite('fetchEvaluations', async () => {
@@ -862,11 +925,11 @@ suite('BKTClient', () => {
 
       const eventStorage = getDefaultComponent(client).dataModule.eventStorage()
 
-      expect(eventStorage.getAll().length).toBe(2)
+      expect((await eventStorage.getAll()).length).toBe(2)
 
       await client.flush()
 
-      expect(eventStorage.getAll().length).toBe(0)
+      expect((await eventStorage.getAll()).length).toBe(0)
     })
 
     test('failure', async () => {
@@ -910,13 +973,13 @@ suite('BKTClient', () => {
 
       const eventStorage = getDefaultComponent(client).dataModule.eventStorage()
 
-      expect(eventStorage.getAll().length).toBe(2)
+      expect((await eventStorage.getAll()).length).toBe(2)
 
       await expect(() => client.flush()).rejects.toThrow(
         InternalServerErrorException,
       )
 
-      expect(eventStorage.getAll().length).toBe(2)
+      expect((await eventStorage.getAll()).length).toBe(2)
     })
   })
 
@@ -1212,15 +1275,13 @@ suite('BKTClient', () => {
           GetEvaluationsRequest,
           GetEvaluationsResponse
         >(`${config.apiEndpoint}/get_evaluations`, () => {
-          return HttpResponse.json(
-            {
-              evaluations: {
-                ...user1Evaluations,
-                evaluations: [],
-              },
-              userEvaluationsId: 'user_evaluation_id_value',
-            }
-          )
+          return HttpResponse.json({
+            evaluations: {
+              ...user1Evaluations,
+              evaluations: [],
+            },
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
         }),
         http.post<
           Record<string, never>,
@@ -1535,10 +1596,7 @@ suite('BKTClient', () => {
           return HttpResponse.json({
             evaluations: {
               ...user1Evaluations,
-              evaluations: [
-                mockJsonObjectEvaluation,
-                mockJsonArrayEvaluation,
-              ],
+              evaluations: [mockJsonObjectEvaluation, mockJsonArrayEvaluation],
             },
             userEvaluationsId: 'user_evaluation_id_value',
           })

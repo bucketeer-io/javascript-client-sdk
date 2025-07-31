@@ -46,7 +46,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     server = setupServerAndListen()
   })
 
-  beforeEach(() => {
+  beforeEach( async () => {
     config = defineBKTConfig({
       apiKey: 'api_key_value',
       apiEndpoint: 'https://api.bucketeer.io',
@@ -67,9 +67,9 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     clock = new FakeClock()
   })
 
-  afterEach(() => {
+  afterEach( async () => {
     server.resetHandlers()
-    evaluationStorage.clear()
+    await evaluationStorage.clear()
   })
 
   afterAll(() => {
@@ -94,18 +94,21 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         }),
       )
 
+      await interactor.initialize()
       expect(
-        component.dataModule.evaluationStorage().getCurrentEvaluationsId(),
+        await component.dataModule.evaluationStorage().getCurrentEvaluationsId(),
       ).toBeNull()
 
       const mockListener = vi.fn()
+
+     
       interactor.addUpdateListener(mockListener)
 
       const result = await interactor.fetch(user1)
 
       assert(result.type === 'success')
 
-      const stored = evaluationStorage.storage.get()
+      const stored = await evaluationStorage.storage.get()
 
       expect(stored).toStrictEqual<EvaluationEntity>({
         userId: user1.id,
@@ -159,6 +162,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         }, { once: true }),
       )
 
+      await interactor.initialize()
       const mockListener = vi.fn()
       interactor.addUpdateListener(mockListener)
 
@@ -166,7 +170,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       const result1 = await interactor.fetch(user1)
 
       assert(result1.type === 'success')
-      expect(evaluationStorage.getCurrentEvaluationsId()).toBe(
+      expect(await evaluationStorage.getCurrentEvaluationsId()).toBe(
         'user_evaluation_id_value',
       )
 
@@ -175,7 +179,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
 
       assert(result2.type === 'success')
 
-      const stored = evaluationStorage.storage.get()
+      const stored = await evaluationStorage.storage.get()
       expect(stored).toStrictEqual<EvaluationEntity>({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value_updated',
@@ -231,6 +235,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         }),
       )
 
+      await interactor.initialize()
       const mockListener = vi.fn()
       interactor.addUpdateListener(mockListener)
 
@@ -240,7 +245,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       assert(result1.type === 'success')
       assert(result2.type === 'success')
 
-      const stored = evaluationStorage.storage.get()
+      const stored = await evaluationStorage.storage.get()
       expect(stored).toStrictEqual<EvaluationEntity>({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value',
@@ -258,7 +263,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
   })
 
   suite('getLatest', () => {
-    test('has cache', () => {
+    test('has cache', async () => {
       evaluationStorage.storage.set({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value',
@@ -270,13 +275,13 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: false,
       })
-
+      await evaluationStorage.initialize()
       const result = interactor.getLatest(evaluation1.featureId)
 
       expect(result).toStrictEqual(evaluation1)
     })
 
-    test('no cache', () => {
+    test('no cache', async () => {
       evaluationStorage.storage.set({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value',
@@ -288,7 +293,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         evaluatedAt: '1234567890',
         userAttributesUpdated: false,
       })
-
+      await interactor.initialize()
       const result = interactor.getLatest(evaluation3.featureId)
 
       expect(result).toBeNull()
@@ -358,6 +363,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         userAttributesUpdated: false,
       })
 
+      await interactor.initialize()
       const mockListener = vi.fn()
 
       interactor.addUpdateListener(mockListener)
@@ -384,7 +390,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       await interactor.fetch(user1)
 
       // all values are updated
-      expect(evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
+      expect(await evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value',
         evaluations: {
@@ -411,7 +417,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         evaluatedAt: clock.currentTimeMillis().toString(),
         userAttributesUpdated: false,
       })
-
+      
       const mockListener = vi.fn()
 
       interactor.addUpdateListener(mockListener)
@@ -434,11 +440,11 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           })
         }),
       )
-
+      await interactor.initialize()  
       await interactor.fetch(user1)
 
       // evaluation1 still exists
-      expect(evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
+      expect(await evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value',
         evaluations: {
@@ -454,7 +460,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
     })
 
     test('upsert - with archivedFeatureIds', async () => {
-      evaluationStorage.storage.set({
+      await evaluationStorage.storage.set({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value',
         evaluations: {
@@ -466,6 +472,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         userAttributesUpdated: false,
       })
 
+      await interactor.initialize()
       const mockListener = vi.fn()
 
       interactor.addUpdateListener(mockListener)
@@ -492,7 +499,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       await interactor.fetch(user1)
 
       // archived evaluation2 should be removed
-      expect(evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
+      expect(await evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
         userId: user1.id,
         currentEvaluationsId: 'user_evaluation_id_value',
         evaluations: {

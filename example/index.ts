@@ -14,6 +14,9 @@ export default async function start(root: HTMLElement) {
   const logsEl = root.querySelector('#logs')
   const buttonEl = root.querySelector('#track_goal')
   const flushEl = root.querySelector('#flush')
+  const setUserAttributesEl = root.querySelector('#set_user_attributes')
+  const viewUserAttributesEl = root.querySelector('#view_user_attributes')
+
   let listenerId: string | null | undefined = null
 
   function log(message: string) {
@@ -37,6 +40,24 @@ export default async function start(root: HTMLElement) {
       flushPromise
         .then(() => log('flushed'))
         .catch((error) => log(`flush failed: ${error}`))
+    }
+  })
+
+  setUserAttributesEl?.addEventListener('click', () => {
+    const client = getBKTClient()
+    if (client) {
+      // you can set custom attributes for the user
+      client.updateUserAttributes({ kYear: 'value_2025' })
+      log('user attributes set')
+    }
+  })
+
+  viewUserAttributesEl?.addEventListener('click', () => {
+    const client = getBKTClient()
+    if (client) {
+      // you can view current user attributes
+      const user = client.currentUser()
+      log(`current user attributes: ${JSON.stringify(user.attributes)}`)
     }
   })
 
@@ -91,8 +112,4 @@ export default async function start(root: HTMLElement) {
     const value = client?.stringVariation(STRING_FEATURE_ID, 'default_value')
     log(`value for feature_id: ${value}`)
   })
-
-  const value = client?.stringVariation(STRING_FEATURE_ID, 'default_value')
-
-  log(`value for feature_id: ${value}`)
 }

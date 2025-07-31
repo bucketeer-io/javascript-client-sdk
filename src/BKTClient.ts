@@ -55,9 +55,9 @@ export interface BKTClient {
    */
   jsonVariation: <T>(featureId: string, defaultValue: T) => T
 
-  track: (goalId: string, value: number) => void
+  track: (goalId: string, value: number) => Promise<void>
   currentUser: () => BKTUser
-  updateUserAttributes: (attributes: Record<string, string>) => void
+  updateUserAttributes: (attributes: Record<string, string>) => Promise<void>
   fetchEvaluations: (timeoutMillis?: number) => Promise<void>
   flush: () => Promise<void>
   /**
@@ -75,8 +75,9 @@ export class BKTClientImpl implements BKTClient {
 
   constructor(public component: Component) {}
 
-  initializeInternal(timeoutMillis: number): Promise<void> {
+  async initializeInternal(timeoutMillis: number): Promise<void> {
     this.scheduleTasks()
+    await this.component.evaluationInteractor().initialize()
     return this.fetchEvaluations(timeoutMillis)
   }
 
@@ -156,8 +157,8 @@ export class BKTClientImpl implements BKTClient {
     }
   }
 
-  track(goalId: string, value = 0.0): void {
-    this.component
+  track(goalId: string, value = 0.0): Promise<void> {
+    return this.component
       .eventInteractor()
       .trackGoalEvent(
         this.component.config().featureTag,
@@ -171,9 +172,9 @@ export class BKTClientImpl implements BKTClient {
     return toBKTUser(this.component.userHolder().get())
   }
 
-  updateUserAttributes(attributes: Record<string, string>): void {
+  async updateUserAttributes(attributes: Record<string, string>): Promise<void> {
     this.component.userHolder().updateAttributes((_prev) => ({ ...attributes }))
-    this.component.evaluationInteractor().setUserAttributesUpdated()
+    await this.component.evaluationInteractor().setUserAttributesUpdated()
   }
 
   async fetchEvaluations(timeoutMillis?: number): Promise<void> {
@@ -303,7 +304,7 @@ export class BKTClientImpl implements BKTClient {
       .fetch(component.userHolder().get(), timeoutMillis)
 
     if (result.type === 'failure') {
-      component
+      await component
         .eventInteractor()
         .trackFailure(
           ApiId.GET_EVALUATIONS,
@@ -312,7 +313,7 @@ export class BKTClientImpl implements BKTClient {
         )
       throw result.error
     } else {
-      component
+      await component
         .eventInteractor()
         .trackSuccess(
           ApiId.GET_EVALUATIONS,

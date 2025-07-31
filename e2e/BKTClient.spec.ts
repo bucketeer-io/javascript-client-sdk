@@ -118,7 +118,7 @@ suite('e2e/BKTClientTest', () => {
         client,
       ).dataModule.evaluationStorage() as EvaluationStorageImpl
 
-      const current = evaluationStorage.storage.get()
+      const current = await evaluationStorage.storage.get()
 
       assert(current != null)
 
@@ -129,14 +129,14 @@ suite('e2e/BKTClientTest', () => {
         .toString()
 
       // update evaluations manually, and check if evaluation1 is deleted after fetchEvaluations
-      evaluationStorage.storage.set({
+      await evaluationStorage.storage.set({
         ...current,
         evaluations: { [evaluation1.featureId]: evaluation1 },
         currentEvaluationsId: randomEvaluationsId,
         evaluatedAt: '1',
       })
 
-      const testTarget = evaluationStorage.storage.get()
+      const testTarget = await evaluationStorage.storage.get()
 
       assert(testTarget != null)
 
@@ -147,7 +147,7 @@ suite('e2e/BKTClientTest', () => {
 
       await client.fetchEvaluations()
 
-      const updated = evaluationStorage.storage.get()
+      const updated = await evaluationStorage.storage.get()
 
       assert(updated != null)
 
@@ -164,18 +164,18 @@ suite('e2e/BKTClientTest', () => {
         client,
       ).dataModule.evaluationStorage() as EvaluationStorageImpl
 
-      const current = evaluationStorage.storage.get()
+      const current = await evaluationStorage.storage.get()
 
       assert(current != null)
 
       // update evaluations manually, and check if evaluation1 is deleted after fetchEvaluations
-      evaluationStorage.storage.set({
+      await evaluationStorage.storage.set({
         ...current,
         evaluations: { [evaluation1.featureId]: evaluation1 },
         currentEvaluationsId: null,
       })
 
-      const testTarget = evaluationStorage.storage.get()
+      const testTarget = await evaluationStorage.storage.get()
 
       assert(testTarget != null)
 
@@ -186,7 +186,7 @@ suite('e2e/BKTClientTest', () => {
 
       await client.fetchEvaluations()
 
-      const updated = evaluationStorage.storage.get()
+      const updated = await evaluationStorage.storage.get()
 
       assert(updated != null)
 

@@ -61,5 +61,8 @@
     "vitest": "3.2.4",
     "webdriverio": "9.16.2"
   },
-  "packageManager": "pnpm@10.12.4"
+  "packageManager": "pnpm@10.12.4",
+  "dependencies": {
+    "async-mutex": "0.5.0"
+  }
 }

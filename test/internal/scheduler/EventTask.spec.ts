@@ -22,7 +22,8 @@ import { EventTask } from '../../../src/internal/scheduler/EventTask'
 import { TestPlatformModule, setupServerAndListen } from '../../utils'
 import { InteractorModule } from '../../../src/internal/di/InteractorModule'
 import { user1 } from '../../mocks/users'
-import { evaluation1, evaluation2 } from '../../mocks/evaluations'
+import { requiredInternalConfig } from '../../../src/internal/InternalConfig'
+import { ApiId } from '../../../src/internal/model/MetricsEventData'
 
 suite('internal/scheduler/EventTask', () => {
   let server: SetupServer
@@ -49,7 +50,7 @@ suite('internal/scheduler/EventTask', () => {
 
     component = new DefaultComponent(
       new TestPlatformModule(),
-      new DataModule(user1, config),
+      new DataModule(user1, requiredInternalConfig(config)),
       new InteractorModule(),
     )
   })
@@ -118,9 +119,10 @@ suite('internal/scheduler/EventTask', () => {
     task.start()
 
     const interactor = component.eventInteractor()
-    interactor.trackEvaluationEvent('feature_tag_value', user1, evaluation1)
-    interactor.trackEvaluationEvent('feature_tag_value', user1, evaluation2)
-    interactor.trackGoalEvent('feature_tag_value', user1, 'goal_id_value', 0.4)
+    // 1 event
+    await interactor.trackGoalEvent('feature_tag_value', user1, 'goal_id_value', 0.4)
+    // 2 events
+    await interactor.trackSuccess(ApiId.GET_EVALUATIONS, 'feature_tag_value', 1,1)
 
     expect(requestCount).toBe(0)
 
