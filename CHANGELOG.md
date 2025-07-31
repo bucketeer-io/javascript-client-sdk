@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.3.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.5...v2.3.0) (2025-07-31)
+
+
+### Features
+
+* support for the React Native environment ([#223](https://github.com/bucketeer-io/javascript-client-sdk/issues/223)) ([9825060](https://github.com/bucketeer-io/javascript-client-sdk/commit/98250609322901f6201569da0d07f304d2f93dec))
+
+
+### Miscellaneous
+
+* change BTKStorage interface to be async ([#226](https://github.com/bucketeer-io/javascript-client-sdk/issues/226)) ([d44082a](https://github.com/bucketeer-io/javascript-client-sdk/commit/d44082a1e22dbcf2d50842284a3b9ae08b23c099))
+
+
+### Build System
+
+* **deps:** lock file maintenance ([#225](https://github.com/bucketeer-io/javascript-client-sdk/issues/225)) ([6755cff](https://github.com/bucketeer-io/javascript-client-sdk/commit/6755cffa90e25f508f73759369c419888b185530))
+* **deps:** update all major dependencies ([#229](https://github.com/bucketeer-io/javascript-client-sdk/issues/229)) ([8dabc5e](https://github.com/bucketeer-io/javascript-client-sdk/commit/8dabc5e285b71a0be68f9be0f362380baa5ca1b1))
+* **deps:** update all non-major dependencies ([#227](https://github.com/bucketeer-io/javascript-client-sdk/issues/227)) ([dd279b1](https://github.com/bucketeer-io/javascript-client-sdk/commit/dd279b17c0b0be7295e1a61893c10edecbcfaa0b))
+
 ## [2.2.5](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.4...v2.2.5) (2025-06-17)
 
 
