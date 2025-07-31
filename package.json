@@ -51,7 +51,7 @@
     "eslint-config-prettier": "10.1.5",
     "eslint-plugin-import": "2.32.0",
     "eslint-plugin-prettier": "5.5.1",
-    "happy-dom": "17.6.3",
+    "happy-dom": "18.0.1",
     "jiti": "2.4.2",
     "msw": "2.10.2",
     "prettier": "3.6.2",
