@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { defineBKTConfig } from '../src/main.native'
 import { defineBKTConfig as baseDefineBKTConfig } from '../src/BKTConfig'
 import { IdGenerator } from '../src/internal/IdGenerator'
+import { IllegalArgumentException } from '../src/BKTExceptions'
 
 describe('defineBKTConfig - React (Native) required idGenerator', () => {
   const validRawConfig = {
@@ -37,7 +38,11 @@ describe('defineBKTConfig - React (Native) required idGenerator', () => {
 
     expect(() => {
       defineBKTConfig(config)
-    }).toThrowError('idGenerator is required in this environment')
+    }).toThrowError(
+      new IllegalArgumentException(
+        'idGenerator is required in the React Native environment',
+      ),
+    )
   })
 
   it('should throw error when idGenerator is undefined', () => {
@@ -48,7 +53,11 @@ describe('defineBKTConfig - React (Native) required idGenerator', () => {
 
     expect(() => {
       defineBKTConfig(config)
-    }).toThrowError('idGenerator is required in this environment')
+    }).toThrowError(
+      new IllegalArgumentException(
+        'idGenerator is required in the React Native environment',
+      ),
+    )
   })
 
   it('should throw error when idGenerator is null', () => {
@@ -59,7 +68,11 @@ describe('defineBKTConfig - React (Native) required idGenerator', () => {
 
     expect(() => {
       defineBKTConfig(config)
-    }).toThrowError('idGenerator is required in this environment')
+    }).toThrowError(
+      new IllegalArgumentException(
+        'idGenerator is required in the React Native environment',
+      ),
+    )
   })
 
   it('should not change the result from original baseDefineBKTConfig except for validation', () => {

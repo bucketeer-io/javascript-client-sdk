@@ -10,6 +10,7 @@ import { toUser } from './internal/UserHolder'
 import { IdGenerator } from './internal/IdGenerator'
 import { requiredInternalConfig } from './internal/InternalConfig'
 import { defineBKTConfig as _defineBKTConfig } from './BKTConfig'
+import { IllegalArgumentException } from './BKTExceptions'
 
 export type { BKTConfig, RawBKTConfig } from './BKTConfig'
 export type { BKTUser } from './BKTUser'
@@ -51,7 +52,7 @@ const createComponent = (config: BKTConfig, user: User): Component => {
  * 
  * @param config - Raw configuration object
  * @returns Validated BKTConfig with required React Native dependencies
- * @throws Error if idGenerator is missing (required in React Native environment)
+ * @throws IllegalArgumentException if idGenerator is missing (required in React Native environment)
  */
 export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => { 
   const bktConfig = _defineBKTConfig(config)
@@ -64,14 +65,14 @@ export const initializeBKTClient = async (
   user: BKTUser,
   timeoutMillis = 5_000,
 ): Promise<void> => {
-  // idGenerator is required in the react native environment
+  // idGenerator is required in the React Native environment
   const component = createComponent(config, toUser(user))
   return initializeBKTClientInternal(component, timeoutMillis)
 }
 
 function requiredIdGenerator(config: BKTConfig): IdGenerator {
   if (!config.idGenerator) {
-    throw new Error('idGenerator is required in this environment')
+    throw new IllegalArgumentException('idGenerator is required in the React Native environment')
   }
   return config.idGenerator
 }
