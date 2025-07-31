@@ -3,7 +3,7 @@ import {
   destroyBKTClient,
   getBKTClient,
   initializeBKTClient,
-} from '../src/main.browser'
+} from './module'
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { BKTUser, defineBKTUser } from '../src/BKTUser'
 import { FEATURE_ID_STRING, USER_ID } from './constants'
@@ -12,6 +12,7 @@ import { BKTClient, BKTClientImpl } from '../src/BKTClient'
 import { DefaultComponent } from '../src/internal/di/Component'
 import { EvaluationStorageImpl } from '../src/internal/evaluation/EvaluationStorage'
 import { evaluation1 } from '../test/mocks/evaluations'
+import { fetchLike } from './environment'
 
 suite('e2e/BKTClientTest', () => {
   let config: BKTConfig
@@ -19,7 +20,6 @@ suite('e2e/BKTClientTest', () => {
 
   afterEach(() => {
     destroyBKTClient()
-    localStorage.clear()
   })
 
   suite('get string variation using user attribute when initializing', () => {
@@ -29,7 +29,7 @@ suite('e2e/BKTClientTest', () => {
         apiKey: import.meta.env.VITE_BKT_API_KEY,
         featureTag: 'javascript',
         appVersion: '1.2.3',
-        fetch: window.fetch,
+        fetch: fetchLike,
       })
 
       user = defineBKTUser({
@@ -54,7 +54,7 @@ suite('e2e/BKTClientTest', () => {
         apiKey: import.meta.env.VITE_BKT_API_KEY,
         featureTag: 'javascript',
         appVersion: '1.2.3',
-        fetch: window.fetch,
+        fetch: fetchLike,
       })
 
       user = defineBKTUser({
@@ -99,7 +99,7 @@ suite('e2e/BKTClientTest', () => {
         apiKey: import.meta.env.VITE_BKT_API_KEY,
         featureTag: 'javascript',
         appVersion: '1.2.3',
-        fetch: window.fetch,
+        fetch: fetchLike,
       })
 
       user = defineBKTUser({
@@ -201,7 +201,7 @@ suite('e2e/BKTClientTest', () => {
         apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
         apiKey: import.meta.env.VITE_BKT_API_KEY,
         appVersion: '1.2.3',
-        fetch: window.fetch,
+        fetch: fetchLike,
       })
 
       user = defineBKTUser({

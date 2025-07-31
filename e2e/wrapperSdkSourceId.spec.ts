@@ -24,6 +24,7 @@ import { EventType } from '../src/internal/model/Event'
 import { TimeoutException } from '../src/BKTExceptions'
 import { ApiId, MetricsEventType } from '../src/internal/model/MetricsEventData'
 import { SourceId } from '../src/internal/model/SourceId'
+import { fetchLike } from './environment'
 
 function getDefaultComponent(client: BKTClient): DefaultComponent {
   return (client as BKTClientImpl).component as DefaultComponent
@@ -39,7 +40,7 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
       apiKey: import.meta.env.VITE_BKT_API_KEY,
       featureTag: 'javascript',
       appVersion: '1.2.3',
-      fetch: window.fetch,
+      fetch: fetchLike,
       // DO NOT remove this line
       // Because the tests are asynchronous and share the same local storage,
       // It might fail randomly, having more or fewer events in the storage when checking the test.
@@ -58,7 +59,6 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
 
   afterEach(() => {
     destroyBKTClient()
-    localStorage.clear()
   })
 
   test('goal event', async () => {
@@ -123,14 +123,13 @@ suite('e2e/wrapper-sdk-source-id-and-version', () => {
     // setting a very low value for the timeout
 
     destroyBKTClient()
-    localStorage.clear()
 
     config = defineBKTConfig({
       apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
       apiKey: import.meta.env.VITE_BKT_API_KEY,
       featureTag: 'javascript',
       appVersion: '1.2.3',
-      fetch: window.fetch,
+      fetch: fetchLike,
       wrapperSdkSourceId: SourceId.OPEN_FEATURE_JAVASCRIPT,
       wrapperSdkVersion: '2.2.3',
     })
