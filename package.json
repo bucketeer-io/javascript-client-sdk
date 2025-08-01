@@ -67,7 +67,7 @@
     "typescript-eslint": "8.35.1",
     "unbuild": "3.5.0",
     "vitest": "3.2.4",
-    "webdriverio": "9.16.2"
+    "webdriverio": "9.18.4"
   },
   "packageManager": "pnpm@10.12.4",
   "dependencies": {
