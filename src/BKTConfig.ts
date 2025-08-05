@@ -78,15 +78,21 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
   const userAgent = defaultUserAgent()
 
   const result: BKTConfig = {
-    featureTag: '',
-    eventsFlushInterval: MINIMUM_FLUSH_INTERVAL_MILLIS,
-    eventsMaxQueueSize: DEFAULT_MAX_QUEUE_SIZE,
-    pollingInterval: DEFAULT_POLLING_INTERVAL_MILLIS,
-    storageKeyPrefix: '',
-    userAgent,
-    fetch,
-    storageFactory: createBKTStorage,
-    ...config,
+    apiKey: config.apiKey,
+    apiEndpoint: config.apiEndpoint,
+    appVersion: config.appVersion,
+    featureTag: config.featureTag ?? '',
+    eventsFlushInterval: config.eventsFlushInterval ?? MINIMUM_FLUSH_INTERVAL_MILLIS,
+    eventsMaxQueueSize: config.eventsMaxQueueSize ?? DEFAULT_MAX_QUEUE_SIZE,
+    pollingInterval: config.pollingInterval ?? DEFAULT_POLLING_INTERVAL_MILLIS,
+    storageKeyPrefix: config.storageKeyPrefix ?? '',
+    userAgent: config.userAgent ?? userAgent,
+    fetch: config.fetch ?? fetch,
+    storageFactory: config.storageFactory ?? createBKTStorage,
+    // Only include wrapper properties if they're explicitly provided (not undefined)
+    ...(config.wrapperSdkVersion !== undefined && { wrapperSdkVersion: config.wrapperSdkVersion }),
+    ...(config.wrapperSdkSourceId !== undefined && { wrapperSdkSourceId: config.wrapperSdkSourceId }),
+    ...(config.idGenerator !== undefined && { idGenerator: config.idGenerator }),
   }
 
   if (!result.apiKey) throw new IllegalArgumentException('apiKey is required')
@@ -96,10 +102,16 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     throw new IllegalArgumentException('apiEndpoint is invalid')
   if (!result.appVersion)
     throw new IllegalArgumentException('appVersion is required')
+
+  // Special handling for fetch: if explicitly set to undefined, it should throw
+  if (config.hasOwnProperty('fetch') && config.fetch === undefined) {
+    throw new IllegalArgumentException('fetch is required')
+  }
   if (!result.fetch) throw new IllegalArgumentException('fetch is required')
 
-  if (result.featureTag === undefined) {
-    result.featureTag = ''
+  // Special handling for userAgent: empty string should use default
+  if (!result.userAgent) {
+    result.userAgent = userAgent
   }
 
   if (result.pollingInterval < MINIMUM_POLLING_INTERVAL_MILLIS) {
@@ -108,10 +120,6 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
 
   if (result.eventsFlushInterval < MINIMUM_FLUSH_INTERVAL_MILLIS) {
     result.eventsFlushInterval = DEFAULT_FLUSH_INTERVAL_MILLIS
-  }
-
-  if (!result.userAgent) {
-    result.userAgent = userAgent
   }
 
   // Resolve SDK version and source Id without exposing SourceId to outside
