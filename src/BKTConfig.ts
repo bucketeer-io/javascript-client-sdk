@@ -111,10 +111,10 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
   if (!result.appVersion)
     throw new IllegalArgumentException('appVersion is required')
 
-  if (typeof result.fetch !== 'function') {
+  if (!result.fetch || typeof result.fetch !== 'function') {
     throw new IllegalArgumentException(
-      'fetch is required: no fetch implementation was provided and no global fetch is available. ' +
-      'Please provide a fetch implementation in the config (e.g., node-fetch in Node.js environments).'
+      'fetch is required: no fetch implementation was provided or no global fetch is available. ' +
+        'Please provide a fetch implementation in the config (e.g., node-fetch in Node.js environments).',
     )
   }
 
