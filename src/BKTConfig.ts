@@ -104,7 +104,7 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     throw new IllegalArgumentException('appVersion is required')
 
   // Special handling for fetch: if explicitly set to undefined, it should throw
-  if (config.hasOwnProperty('fetch') && config.fetch === undefined) {
+  if (Object.prototype.hasOwnProperty.call(config, 'fetch') && config.fetch === undefined) {
     throw new IllegalArgumentException('fetch is required')
   }
   if (!result.fetch) throw new IllegalArgumentException('fetch is required')
