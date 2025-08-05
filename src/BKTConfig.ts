@@ -82,17 +82,25 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     apiEndpoint: config.apiEndpoint,
     appVersion: config.appVersion,
     featureTag: config.featureTag ?? '',
-    eventsFlushInterval: config.eventsFlushInterval ?? MINIMUM_FLUSH_INTERVAL_MILLIS,
+    eventsFlushInterval:
+      config.eventsFlushInterval ?? MINIMUM_FLUSH_INTERVAL_MILLIS,
     eventsMaxQueueSize: config.eventsMaxQueueSize ?? DEFAULT_MAX_QUEUE_SIZE,
     pollingInterval: config.pollingInterval ?? DEFAULT_POLLING_INTERVAL_MILLIS,
     storageKeyPrefix: config.storageKeyPrefix ?? '',
     userAgent: config.userAgent ?? userAgent,
     fetch: config.fetch ?? fetch,
     storageFactory: config.storageFactory ?? createBKTStorage,
-    // Only include wrapper properties if they're explicitly provided (not undefined)
-    ...(config.wrapperSdkVersion !== undefined && { wrapperSdkVersion: config.wrapperSdkVersion }),
-    ...(config.wrapperSdkSourceId !== undefined && { wrapperSdkSourceId: config.wrapperSdkSourceId }),
-    ...(config.idGenerator !== undefined && { idGenerator: config.idGenerator }),
+    // Advanced properties: only included when explicitly set (not undefined)
+    // to prevent overriding internal defaults or leaking undefined values
+    ...(config.wrapperSdkVersion !== undefined && {
+      wrapperSdkVersion: config.wrapperSdkVersion,
+    }),
+    ...(config.wrapperSdkSourceId !== undefined && {
+      wrapperSdkSourceId: config.wrapperSdkSourceId,
+    }),
+    ...(config.idGenerator !== undefined && {
+      idGenerator: config.idGenerator,
+    }),
   }
 
   if (!result.apiKey) throw new IllegalArgumentException('apiKey is required')
@@ -102,15 +110,6 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     throw new IllegalArgumentException('apiEndpoint is invalid')
   if (!result.appVersion)
     throw new IllegalArgumentException('appVersion is required')
-
-  // Special handling for fetch: if explicitly set to undefined, it should throw
-  if ('fetch' in config && config.fetch === undefined) {
-    throw new IllegalArgumentException('fetch is required')
-  }
-  // If the final config does not have fetch, throw an error
-  // This ensures that the fetch function is always defined
-  // and available for making network requests.
-  // This is important for the SDK to function correctly.
   if (!result.fetch) throw new IllegalArgumentException('fetch is required')
 
   // Special handling for userAgent: empty string should use default
