@@ -110,6 +110,9 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     throw new IllegalArgumentException('apiEndpoint is invalid')
   if (!result.appVersion)
     throw new IllegalArgumentException('appVersion is required')
+  
+  // Internal check: make sure fetch is defined even if not provided, defaults to global fetch.
+  // This is to ensure that the SDK has a fetch implementation available
   if (!result.fetch) throw new IllegalArgumentException('fetch is required')
 
   // Special handling for userAgent: empty string should use default

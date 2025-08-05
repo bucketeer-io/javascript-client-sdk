@@ -126,7 +126,7 @@ suite('defineBKTConfig', () => {
     }
   })
 
-  test('explicitly passing undefined to fetch field will not throws', () => {
+  test('explicitly passing undefined to fetch field will not throw', () => {
     // fetch is optional, so passing undefined should not throw
     // the global fetch will be used
     expect(() => {
