@@ -104,9 +104,13 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     throw new IllegalArgumentException('appVersion is required')
 
   // Special handling for fetch: if explicitly set to undefined, it should throw
-  if (Object.prototype.hasOwnProperty.call(config, 'fetch') && config.fetch === undefined) {
+  if ('fetch' in config && config.fetch === undefined) {
     throw new IllegalArgumentException('fetch is required')
   }
+  // If the final config does not have fetch, throw an error
+  // This ensures that the fetch function is always defined
+  // and available for making network requests.
+  // This is important for the SDK to function correctly.
   if (!result.fetch) throw new IllegalArgumentException('fetch is required')
 
   // Special handling for userAgent: empty string should use default
