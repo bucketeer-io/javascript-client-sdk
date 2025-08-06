@@ -23,8 +23,7 @@ export default {
               }
               if (
                 prop.type === 'SpreadElement' &&
-                hasDefaultProperties &&
-                prop.argument.type === 'Identifier' // Only flag spreading variables/identifiers
+                hasDefaultProperties
               ) {
                 context.report({
                   node: prop,

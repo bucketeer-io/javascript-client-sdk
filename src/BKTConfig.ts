@@ -90,19 +90,21 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     userAgent: config.userAgent ?? userAgent,
     fetch: config.fetch ?? fetch,
     storageFactory: config.storageFactory ?? createBKTStorage,
-    // Advanced properties: only included when explicitly set (not undefined)
-    // to prevent overriding internal defaults or leaking undefined values
-    ...(config.wrapperSdkVersion !== undefined && {
-      wrapperSdkVersion: config.wrapperSdkVersion,
-    }),
-    ...(config.wrapperSdkSourceId !== undefined && {
-      wrapperSdkSourceId: config.wrapperSdkSourceId,
-    }),
-    ...(config.idGenerator !== undefined && {
-      idGenerator: config.idGenerator,
-    }),
   }
 
+  // Advanced properties: only included when explicitly set (not undefined)
+  // to prevent overriding internal defaults or leaking undefined values
+  if (config.wrapperSdkVersion !== undefined) {
+    result.wrapperSdkVersion = config.wrapperSdkVersion
+  }
+  if (config.wrapperSdkSourceId !== undefined) {
+    result.wrapperSdkSourceId = config.wrapperSdkSourceId
+  }
+  if (config.idGenerator !== undefined) {
+    result.idGenerator = config.idGenerator
+  }
+
+  // Validate required properties
   if (!result.apiKey) throw new IllegalArgumentException('apiKey is required')
   if (!result.apiEndpoint)
     throw new IllegalArgumentException('apiEndpoint is required')
@@ -111,7 +113,7 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
   if (!result.appVersion)
     throw new IllegalArgumentException('appVersion is required')
 
-  if (!result.fetch || typeof result.fetch !== 'function') {
+  if (typeof result.fetch !== 'function') {
     throw new IllegalArgumentException(
       'fetch is required: no fetch implementation was provided or no global fetch is available. ' +
         'Please provide a fetch implementation in the config (e.g., node-fetch in Node.js environments).',
