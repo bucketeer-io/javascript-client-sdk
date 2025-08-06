@@ -88,7 +88,7 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     pollingInterval: config.pollingInterval ?? DEFAULT_POLLING_INTERVAL_MILLIS,
     storageKeyPrefix: config.storageKeyPrefix ?? '',
     userAgent: config.userAgent ?? userAgent,
-    fetch: config.fetch ?? fetch,
+    fetch: config.fetch ?? globalThis.fetch,
     storageFactory: config.storageFactory ?? createBKTStorage,
   }
 
