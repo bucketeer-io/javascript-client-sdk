@@ -27,22 +27,15 @@ export default {
               
               // Check for spread elements that might contain defaults
               if (prop.type === 'SpreadElement') {
-                const argName = prop.argument?.name || ''
-                
-                // Check if this spread element looks like it's spreading defaults
-                const isLikelyDefaultSpread = prop.argument && 
-                  prop.argument.type === 'Identifier' && 
-                  (/^(default|base|initial|fallback)/i.test(argName) ||
-                   /(default|base|initial)config$/i.test(argName))
-                
-                if (isLikelyDefaultSpread) {
-                  hasDefaultProperties = true
-                } else if (hasDefaultProperties) {
+                if (hasDefaultProperties) {
                   context.report({
                     node: prop,
                     message:
                       'Spreading objects after default properties can override defaults with undefined values. Consider using nullish coalescing (??) instead.',
                   })
+                } else {
+                  // Treat this spread element as a potential default for subsequent spreads
+                  hasDefaultProperties = true
                 }
               }
             }
