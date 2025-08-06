@@ -13,6 +13,7 @@ module.exports = [
       'eslint.config.cjs',
       'node_modules',
       'tsconfig.json',
+      'build.config.ts',
       '**/*.d.ts',
     '.github',
     'eslint-rules/',
@@ -24,7 +25,7 @@ module.exports = [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        project: './tsconfig.json',
+        projectService: true,
         tsconfigRootDir: __dirname,
         sourceType: 'module',
       },
