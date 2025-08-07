@@ -173,4 +173,4 @@ ruleTester.run('no-spread-after-defaults', rule.rules['no-spread-after-defaults'
   ],
 })
 
-console.log('✅ All tests passed!')
+console.log('✅ no-spread-after-defaults tests completed successfully')
