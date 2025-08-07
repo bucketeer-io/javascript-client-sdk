@@ -46,6 +46,7 @@
     "test:e2e:node": "cp -f ./e2e/module.node.ts ./e2e/module.ts ; vitest --config ./vitest-e2e-node.config.ts --dir e2e",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
+    "test:custom-eslint-rules": "node eslint-rules/no-spread-after-defaults.test.js",
     "example:serve": "pnpm exec unbuild && pnpm --filter example serve"
   },
   "devDependencies": {
