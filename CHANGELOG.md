@@ -2,101 +2,84 @@
 
 ## [2.3.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.3.0...v2.3.1) (2025-08-07)
 
-
 ### Bug Fixes
 
-* prevent undefined from overriding defaults in defineBKTConfig ([#236](https://github.com/bucketeer-io/javascript-client-sdk/issues/236)) ([356cf86](https://github.com/bucketeer-io/javascript-client-sdk/commit/356cf86aabf4ea7aeea8a145c5bd03cd15230325))
-
-
-### Miscellaneous
-
-* **deps:** lock file maintenance ([#235](https://github.com/bucketeer-io/javascript-client-sdk/issues/235)) ([cc2c5bf](https://github.com/bucketeer-io/javascript-client-sdk/commit/cc2c5bf09e92baa6169f2ab5b06a044864dd4b64))
-
+- prevent undefined from overriding defaults in defineBKTConfig ([#236](https://github.com/bucketeer-io/javascript-client-sdk/issues/236)) ([356cf86](https://github.com/bucketeer-io/javascript-client-sdk/commit/356cf86aabf4ea7aeea8a145c5bd03cd15230325))
 
 ### Build System
 
-* **deps:** update all non-major dependencies ([#231](https://github.com/bucketeer-io/javascript-client-sdk/issues/231)) ([46f2e98](https://github.com/bucketeer-io/javascript-client-sdk/commit/46f2e98a07f4aff6c2a81737e9c92d4b913d033e))
+- **deps:** lock file maintenance ([#235](https://github.com/bucketeer-io/javascript-client-sdk/issues/235)) ([cc2c5bf](https://github.com/bucketeer-io/javascript-client-sdk/commit/cc2c5bf09e92baa6169f2ab5b06a044864dd4b64))
+- **deps:** update all non-major dependencies ([#231](https://github.com/bucketeer-io/javascript-client-sdk/issues/231)) ([46f2e98](https://github.com/bucketeer-io/javascript-client-sdk/commit/46f2e98a07f4aff6c2a81737e9c92d4b913d033e))
 
 ## [2.3.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.5...v2.3.0) (2025-07-31)
 
-
 ### Features
 
-* support for the React Native environment ([#223](https://github.com/bucketeer-io/javascript-client-sdk/issues/223)) ([9825060](https://github.com/bucketeer-io/javascript-client-sdk/commit/98250609322901f6201569da0d07f304d2f93dec))
-
+- support for the React Native environment ([#223](https://github.com/bucketeer-io/javascript-client-sdk/issues/223)) ([9825060](https://github.com/bucketeer-io/javascript-client-sdk/commit/98250609322901f6201569da0d07f304d2f93dec))
 
 ### Miscellaneous
 
-* change BTKStorage interface to be async ([#226](https://github.com/bucketeer-io/javascript-client-sdk/issues/226)) ([d44082a](https://github.com/bucketeer-io/javascript-client-sdk/commit/d44082a1e22dbcf2d50842284a3b9ae08b23c099))
-
+- change BTKStorage interface to be async ([#226](https://github.com/bucketeer-io/javascript-client-sdk/issues/226)) ([d44082a](https://github.com/bucketeer-io/javascript-client-sdk/commit/d44082a1e22dbcf2d50842284a3b9ae08b23c099))
 
 ### Build System
 
-* **deps:** lock file maintenance ([#225](https://github.com/bucketeer-io/javascript-client-sdk/issues/225)) ([6755cff](https://github.com/bucketeer-io/javascript-client-sdk/commit/6755cffa90e25f508f73759369c419888b185530))
-* **deps:** update all major dependencies ([#229](https://github.com/bucketeer-io/javascript-client-sdk/issues/229)) ([8dabc5e](https://github.com/bucketeer-io/javascript-client-sdk/commit/8dabc5e285b71a0be68f9be0f362380baa5ca1b1))
-* **deps:** update all non-major dependencies ([#227](https://github.com/bucketeer-io/javascript-client-sdk/issues/227)) ([dd279b1](https://github.com/bucketeer-io/javascript-client-sdk/commit/dd279b17c0b0be7295e1a61893c10edecbcfaa0b))
+- **deps:** lock file maintenance ([#225](https://github.com/bucketeer-io/javascript-client-sdk/issues/225)) ([6755cff](https://github.com/bucketeer-io/javascript-client-sdk/commit/6755cffa90e25f508f73759369c419888b185530))
+- **deps:** update all major dependencies ([#229](https://github.com/bucketeer-io/javascript-client-sdk/issues/229)) ([8dabc5e](https://github.com/bucketeer-io/javascript-client-sdk/commit/8dabc5e285b71a0be68f9be0f362380baa5ca1b1))
+- **deps:** update all non-major dependencies ([#227](https://github.com/bucketeer-io/javascript-client-sdk/issues/227)) ([dd279b1](https://github.com/bucketeer-io/javascript-client-sdk/commit/dd279b17c0b0be7295e1a61893c10edecbcfaa0b))
 
 ## [2.2.5](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.4...v2.2.5) (2025-06-17)
 
-
 ### Miscellaneous
 
-* allow set the wrapper SDK version & SourceId ([#224](https://github.com/bucketeer-io/javascript-client-sdk/issues/224)) ([47db9b1](https://github.com/bucketeer-io/javascript-client-sdk/commit/47db9b19046e4552c8eb05620172fe5d8e288e44))
-
+- allow set the wrapper SDK version & SourceId ([#224](https://github.com/bucketeer-io/javascript-client-sdk/issues/224)) ([47db9b1](https://github.com/bucketeer-io/javascript-client-sdk/commit/47db9b19046e4552c8eb05620172fe5d8e288e44))
 
 ### Build System
 
-* **deps:** lock file maintenance ([#214](https://github.com/bucketeer-io/javascript-client-sdk/issues/214)) ([1624159](https://github.com/bucketeer-io/javascript-client-sdk/commit/1624159b1f8bbcd7bb2e9d7107b890fb5f5e3ba3))
-* **deps:** update all non-major dependencies ([#216](https://github.com/bucketeer-io/javascript-client-sdk/issues/216)) ([07ec455](https://github.com/bucketeer-io/javascript-client-sdk/commit/07ec455da4cdace9e02d4fcb0619bca616a97528))
-* **deps:** update all non-major dependencies ([#221](https://github.com/bucketeer-io/javascript-client-sdk/issues/221)) ([072c23c](https://github.com/bucketeer-io/javascript-client-sdk/commit/072c23cec1b4cb71a5ccb9238bceeea7ce8beeec))
-* **deps:** update dependency vite to v6.0.13 [SECURITY] ([#215](https://github.com/bucketeer-io/javascript-client-sdk/issues/215)) ([0b2403a](https://github.com/bucketeer-io/javascript-client-sdk/commit/0b2403a4bea15ab402f72ac2fef4747df2d409eb))
+- **deps:** lock file maintenance ([#214](https://github.com/bucketeer-io/javascript-client-sdk/issues/214)) ([1624159](https://github.com/bucketeer-io/javascript-client-sdk/commit/1624159b1f8bbcd7bb2e9d7107b890fb5f5e3ba3))
+- **deps:** update all non-major dependencies ([#216](https://github.com/bucketeer-io/javascript-client-sdk/issues/216)) ([07ec455](https://github.com/bucketeer-io/javascript-client-sdk/commit/07ec455da4cdace9e02d4fcb0619bca616a97528))
+- **deps:** update all non-major dependencies ([#221](https://github.com/bucketeer-io/javascript-client-sdk/issues/221)) ([072c23c](https://github.com/bucketeer-io/javascript-client-sdk/commit/072c23cec1b4cb71a5ccb9238bceeea7ce8beeec))
+- **deps:** update dependency vite to v6.0.13 [SECURITY] ([#215](https://github.com/bucketeer-io/javascript-client-sdk/issues/215)) ([0b2403a](https://github.com/bucketeer-io/javascript-client-sdk/commit/0b2403a4bea15ab402f72ac2fef4747df2d409eb))
 
 ## [2.2.4](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.3...v2.2.4) (2025-03-05)
 
-
 ### Build System
 
-* **deps:** lock file maintenance ([#201](https://github.com/bucketeer-io/javascript-client-sdk/issues/201)) ([7a51293](https://github.com/bucketeer-io/javascript-client-sdk/commit/7a51293f73f9d43d958730e3b45a05fdb0283e06))
-* **deps:** update dependencies ([#210](https://github.com/bucketeer-io/javascript-client-sdk/issues/210)) ([55c5ea4](https://github.com/bucketeer-io/javascript-client-sdk/commit/55c5ea4e7b98bd2a41391fa968b3a23e2f61cc25))
-* **example:** update dependencies ([#213](https://github.com/bucketeer-io/javascript-client-sdk/issues/213)) ([888eb80](https://github.com/bucketeer-io/javascript-client-sdk/commit/888eb804deb8d491bf62fe8d5dfe57667b4fe47c))
+- **deps:** lock file maintenance ([#201](https://github.com/bucketeer-io/javascript-client-sdk/issues/201)) ([7a51293](https://github.com/bucketeer-io/javascript-client-sdk/commit/7a51293f73f9d43d958730e3b45a05fdb0283e06))
+- **deps:** update dependencies ([#210](https://github.com/bucketeer-io/javascript-client-sdk/issues/210)) ([55c5ea4](https://github.com/bucketeer-io/javascript-client-sdk/commit/55c5ea4e7b98bd2a41391fa968b3a23e2f61cc25))
+- **example:** update dependencies ([#213](https://github.com/bucketeer-io/javascript-client-sdk/issues/213)) ([888eb80](https://github.com/bucketeer-io/javascript-client-sdk/commit/888eb804deb8d491bf62fe8d5dfe57667b4fe47c))
 
 ## [2.2.3](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.2...v2.2.3) (2025-01-07)
 
-
 ### Miscellaneous
 
-* **deps:** lock file maintenance ([#195](https://github.com/bucketeer-io/javascript-client-sdk/issues/195)) ([f31fa11](https://github.com/bucketeer-io/javascript-client-sdk/commit/f31fa119d79c54c1639567c6f28a817b8311a0dd))
-
+- **deps:** lock file maintenance ([#195](https://github.com/bucketeer-io/javascript-client-sdk/issues/195)) ([f31fa11](https://github.com/bucketeer-io/javascript-client-sdk/commit/f31fa119d79c54c1639567c6f28a817b8311a0dd))
 
 ### Build System
 
-* **deps:** update all major dependencies ([#199](https://github.com/bucketeer-io/javascript-client-sdk/issues/199)) ([6fe3017](https://github.com/bucketeer-io/javascript-client-sdk/commit/6fe30173baf5d8d4497862fe1f2eabce78d129ce))
-* **deps:** update all non-major dependencies ([#197](https://github.com/bucketeer-io/javascript-client-sdk/issues/197)) ([5248238](https://github.com/bucketeer-io/javascript-client-sdk/commit/5248238f2101d37acc69eaf946d73b1b5edacb5e))
+- **deps:** update all major dependencies ([#199](https://github.com/bucketeer-io/javascript-client-sdk/issues/199)) ([6fe3017](https://github.com/bucketeer-io/javascript-client-sdk/commit/6fe30173baf5d8d4497862fe1f2eabce78d129ce))
+- **deps:** update all non-major dependencies ([#197](https://github.com/bucketeer-io/javascript-client-sdk/issues/197)) ([5248238](https://github.com/bucketeer-io/javascript-client-sdk/commit/5248238f2101d37acc69eaf946d73b1b5edacb5e))
 
 ## [2.2.2](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.1...v2.2.2) (2024-12-03)
 
-
 ### Bug Fixes
 
-* skip generating error events for unauthorized or forbidden errors ([#188](https://github.com/bucketeer-io/javascript-client-sdk/issues/188)) ([0c48090](https://github.com/bucketeer-io/javascript-client-sdk/commit/0c4809031e8b73cc35d8f7a4176763ae3d9083bd))
-
+- skip generating error events for unauthorized or forbidden errors ([#188](https://github.com/bucketeer-io/javascript-client-sdk/issues/188)) ([0c48090](https://github.com/bucketeer-io/javascript-client-sdk/commit/0c4809031e8b73cc35d8f7a4176763ae3d9083bd))
 
 ### Build System
 
-* **deps:** lock file maintenance ([#189](https://github.com/bucketeer-io/javascript-client-sdk/issues/189)) ([42099c5](https://github.com/bucketeer-io/javascript-client-sdk/commit/42099c50f0c0dd8696eb1bbf662a84b4e0ea048d))
-* **deps:** update all non-major dependencies ([#192](https://github.com/bucketeer-io/javascript-client-sdk/issues/192)) ([db6e812](https://github.com/bucketeer-io/javascript-client-sdk/commit/db6e81273cf12665b8a648554113570db3a89fce))
-* **deps:** update dependency vite to v6 ([#193](https://github.com/bucketeer-io/javascript-client-sdk/issues/193)) ([75f64c8](https://github.com/bucketeer-io/javascript-client-sdk/commit/75f64c8340a475dff42efc408bb411c66e75a45a))
+- **deps:** lock file maintenance ([#189](https://github.com/bucketeer-io/javascript-client-sdk/issues/189)) ([42099c5](https://github.com/bucketeer-io/javascript-client-sdk/commit/42099c50f0c0dd8696eb1bbf662a84b4e0ea048d))
+- **deps:** update all non-major dependencies ([#192](https://github.com/bucketeer-io/javascript-client-sdk/issues/192)) ([db6e812](https://github.com/bucketeer-io/javascript-client-sdk/commit/db6e81273cf12665b8a648554113570db3a89fce))
+- **deps:** update dependency vite to v6 ([#193](https://github.com/bucketeer-io/javascript-client-sdk/issues/193)) ([75f64c8](https://github.com/bucketeer-io/javascript-client-sdk/commit/75f64c8340a475dff42efc408bb411c66e75a45a))
 
 ## [2.2.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.0...v2.2.1) (2024-11-18)
 
-
 ### Build System
 
-* **deps:** lock file maintenance ([#178](https://github.com/bucketeer-io/javascript-client-sdk/issues/178)) ([ef1c4a2](https://github.com/bucketeer-io/javascript-client-sdk/commit/ef1c4a289f85c7c61f66f8f0eb9bbfa562a68bbf))
-* **deps:** update all major dependencies ([#184](https://github.com/bucketeer-io/javascript-client-sdk/issues/184)) ([9276f56](https://github.com/bucketeer-io/javascript-client-sdk/commit/9276f56a94fcd1f718f26a1a07364344ea1009e9))
-* **deps:** update all non-major dependencies ([#182](https://github.com/bucketeer-io/javascript-client-sdk/issues/182)) ([d58b258](https://github.com/bucketeer-io/javascript-client-sdk/commit/d58b25825e51ce1fda2253be37ddb2f73bc435a8))
-* **deps:** update dependency happy-dom to v15.10.2 [SECURITY] ([#186](https://github.com/bucketeer-io/javascript-client-sdk/issues/186)) ([66dd0ab](https://github.com/bucketeer-io/javascript-client-sdk/commit/66dd0abf710f013684b5d1c3a191cbd1c57f42bb))
-* **deps:** update dependency vite to v5.4.6 [SECURITY] ([#179](https://github.com/bucketeer-io/javascript-client-sdk/issues/179)) ([c83399b](https://github.com/bucketeer-io/javascript-client-sdk/commit/c83399b4d7fcd98674044c9cc5575ef41bb1d9e3))
+- **deps:** lock file maintenance ([#178](https://github.com/bucketeer-io/javascript-client-sdk/issues/178)) ([ef1c4a2](https://github.com/bucketeer-io/javascript-client-sdk/commit/ef1c4a289f85c7c61f66f8f0eb9bbfa562a68bbf))
+- **deps:** update all major dependencies ([#184](https://github.com/bucketeer-io/javascript-client-sdk/issues/184)) ([9276f56](https://github.com/bucketeer-io/javascript-client-sdk/commit/9276f56a94fcd1f718f26a1a07364344ea1009e9))
+- **deps:** update all non-major dependencies ([#182](https://github.com/bucketeer-io/javascript-client-sdk/issues/182)) ([d58b258](https://github.com/bucketeer-io/javascript-client-sdk/commit/d58b25825e51ce1fda2253be37ddb2f73bc435a8))
+- **deps:** update dependency happy-dom to v15.10.2 [SECURITY] ([#186](https://github.com/bucketeer-io/javascript-client-sdk/issues/186)) ([66dd0ab](https://github.com/bucketeer-io/javascript-client-sdk/commit/66dd0abf710f013684b5d1c3a191cbd1c57f42bb))
+- **deps:** update dependency vite to v5.4.6 [SECURITY] ([#179](https://github.com/bucketeer-io/javascript-client-sdk/issues/179)) ([c83399b](https://github.com/bucketeer-io/javascript-client-sdk/commit/c83399b4d7fcd98674044c9cc5575ef41bb1d9e3))
 
 ## [2.2.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.1.5...v2.2.0) (2024-09-09)
 
