@@ -21,7 +21,7 @@ export class DefaultComponent implements Component {
     public platformModule: PlatformModule,
     public dataModule: DataModule,
     public interactorModule: InteractorModule,
-  ) { }
+  ) {}
 
   config(): BKTConfig {
     return this.dataModule.config()
@@ -32,31 +32,26 @@ export class DefaultComponent implements Component {
   }
 
   evaluationInteractor(): EvaluationInteractor {
-    if (!this._evaluationInteractor) {
-      this._evaluationInteractor = this.interactorModule.evaluationInteractor(
+    return (this._evaluationInteractor ??=
+      this.interactorModule.evaluationInteractor(
         this.dataModule.config().featureTag,
         this.dataModule.apiClient(),
         this.dataModule.evaluationStorage(),
         this.platformModule.idGenerator(),
-      )
-    }
-    return this._evaluationInteractor
+      ))
   }
 
   eventInteractor(): EventInteractor {
-    if (!this._eventInteractor) {
-      this._eventInteractor = this.interactorModule.eventInteractor(
-        this.dataModule.config().eventsMaxQueueSize,
-        this.dataModule.apiClient(),
-        this.dataModule.eventStorage(),
-        this.platformModule.idGenerator(),
-        this.dataModule.clock(),
-        this.dataModule.config().appVersion,
-        this.dataModule.config().userAgent,
-        this.dataModule.config().sourceId,
-        this.dataModule.config().sdkVersion,
-      )
-    }
-    return this._eventInteractor
+    return (this._eventInteractor ??= this.interactorModule.eventInteractor(
+      this.dataModule.config().eventsMaxQueueSize,
+      this.dataModule.apiClient(),
+      this.dataModule.eventStorage(),
+      this.platformModule.idGenerator(),
+      this.dataModule.clock(),
+      this.dataModule.config().appVersion,
+      this.dataModule.config().userAgent,
+      this.dataModule.config().sourceId,
+      this.dataModule.config().sdkVersion,
+    ))
   }
 }

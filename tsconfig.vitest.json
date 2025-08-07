@@ -16,7 +16,7 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "skipLibCheck": true,
-    "noEmit": true,
+    "noEmit": false,
     "emitDeclarationOnly": false
   },
   "include": ["src", "test", "e2e", "types/vitest.d.ts"]

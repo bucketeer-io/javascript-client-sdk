@@ -1,12 +1,12 @@
 import { suite, test, expect } from 'vitest'
-import { defineBKTConfig } from '../src/BKTConfig'
+import { defineBKTConfig, type RawBKTConfig } from '../src/BKTConfig'
 import { IllegalArgumentException } from '../src/BKTExceptions'
 import { createBKTStorage } from '../src/BKTStorage'
 import { SDK_VERSION } from '../src/internal/version'
 import { SourceId } from '../src/internal/model/SourceId'
 import type { InternalConfig } from '../src/internal/InternalConfig'
 
-const defaultConfig: Parameters<typeof defineBKTConfig>[0] = {
+const defaultConfig: RawBKTConfig = {
   apiKey: 'api-key',
   apiEndpoint: 'https://example.com',
   featureTag: 'feature-tag',
@@ -126,13 +126,15 @@ suite('defineBKTConfig', () => {
     }
   })
 
-  test('explicitly passing undefined to fetch field throws', () => {
+  test('explicitly passing undefined to fetch field will not throw', () => {
+    // fetch is optional, so passing undefined should not throw
+    // the global fetch will be used
     expect(() => {
       defineBKTConfig({
         ...defaultConfig,
         fetch: undefined,
       })
-    }).toThrow(IllegalArgumentException)
+    }).not.toThrow(IllegalArgumentException)
   })
 
   test('explicitly passing undefined to featureTag results in empty string', () => {
@@ -142,6 +144,53 @@ suite('defineBKTConfig', () => {
     })
 
     expect(result.featureTag).toBe('')
+  })
+
+  test('should use default values when config properties are undefined', () => {
+    // Test case 1: eventsMaxQueueSize should default to 50 when undefined
+    const configWithUndefinedMaxQueue: RawBKTConfig = {
+      ...defaultConfig,
+      eventsMaxQueueSize: undefined,
+    }
+    
+    const result1 = defineBKTConfig(configWithUndefinedMaxQueue)
+    expect(result1.eventsMaxQueueSize).toBe(50)
+
+    // Test case 2: storageKeyPrefix should default to '' when undefined
+    const configWithUndefinedStoragePrefix: RawBKTConfig = {
+      ...defaultConfig,
+      storageKeyPrefix: undefined,
+    }
+    
+    const result2 = defineBKTConfig(configWithUndefinedStoragePrefix)
+    expect(result2.storageKeyPrefix).toBe('')
+
+    // Test case 3: pollingInterval should default to 600_000 when undefined
+    const configWithUndefinedPolling: RawBKTConfig = {
+      ...defaultConfig,
+      pollingInterval: undefined,
+    }
+    
+    const result3 = defineBKTConfig(configWithUndefinedPolling)
+    expect(result3.pollingInterval).toBe(600_000)
+
+    // Test case 4: eventsFlushInterval should default to 30_000 when undefined
+    const configWithUndefinedFlush: RawBKTConfig = {
+      ...defaultConfig,
+      eventsFlushInterval: undefined,
+    }
+    
+    const result4 = defineBKTConfig(configWithUndefinedFlush)
+    expect(result4.eventsFlushInterval).toBe(30_000)
+
+    // Test case 5: storageFactory should default to createBKTStorage when undefined
+    const configWithUndefinedStorageFactory: RawBKTConfig = {
+      ...defaultConfig,
+      storageFactory: undefined,
+    }
+    
+    const result5 = defineBKTConfig(configWithUndefinedStorageFactory)
+    expect(result5.storageFactory).toBe(createBKTStorage)
   })
 
   test('invalid apiEndpoint throws', () => {

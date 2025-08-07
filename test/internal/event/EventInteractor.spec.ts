@@ -52,14 +52,14 @@ import {
 import { ErrorResponse } from '../../../src/internal/model/response/ErrorResponse'
 import { Clock } from '../../../src/internal/Clock'
 import { SDK_VERSION } from '../../../src/internal/version'
-import { InternalConfig, requiredInternalConfig } from '../../../src/internal/InternalConfig'
+import {
+  InternalConfig,
+  requiredInternalConfig,
+} from '../../../src/internal/InternalConfig'
 
 class TestDataModule extends DataModule {
   clock(): Clock {
-    if (!this._clock) {
-      this._clock = new FakeClock()
-    }
-    return this._clock
+    return (this._clock ??= new FakeClock())
   }
 }
 
@@ -114,7 +114,11 @@ suite('internal/event/EventInteractor', () => {
     const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
-    await interactor.trackEvaluationEvent('feature_tag_value', user1, evaluation1)
+    await interactor.trackEvaluationEvent(
+      'feature_tag_value',
+      user1,
+      evaluation1,
+    )
 
     const expected: Event[] = [
       {
@@ -194,7 +198,12 @@ suite('internal/event/EventInteractor', () => {
     const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
-    await interactor.trackGoalEvent('feature_tag_value', user1, 'goal_id_value', 0.5)
+    await interactor.trackGoalEvent(
+      'feature_tag_value',
+      user1,
+      'goal_id_value',
+      0.5,
+    )
 
     const expected: Event[] = [
       {
@@ -228,7 +237,12 @@ suite('internal/event/EventInteractor', () => {
     const mockListener = vi.fn()
     interactor.setEventUpdateListener(mockListener)
 
-    await interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
+    await interactor.trackSuccess(
+      ApiId.GET_EVALUATION,
+      'feature_tag_value',
+      1,
+      723,
+    )
 
     const expected: Event[] = [
       {
@@ -312,39 +326,46 @@ suite('internal/event/EventInteractor', () => {
       type: MetricsEventType.TimeoutError,
       extraLabels: { timeout: '1.5' },
     },
-  ])('trackFailure: $errr -> type: $type', async ({ error, type, extraLabels }) => {
-    const mockListener = vi.fn()
-    interactor.setEventUpdateListener(mockListener)
+  ])(
+    'trackFailure: $errr -> type: $type',
+    async ({ error, type, extraLabels }) => {
+      const mockListener = vi.fn()
+      interactor.setEventUpdateListener(mockListener)
 
-    await interactor.trackFailure(ApiId.GET_EVALUATION, 'feature_tag_value', error)
+      await interactor.trackFailure(
+        ApiId.GET_EVALUATION,
+        'feature_tag_value',
+        error,
+      )
 
-    const expected = [
-      {
-        id: idGenerator.calls[0],
-        type: EventType.METRICS,
-        event: {
-          '@type': RootEventType.MetricsEvent,
-          timestamp: clock.currentTimeSecondsCalls[0],
-          sourceId: SourceId.JAVASCRIPT,
-          metadata: {
-            app_version: '1.2.3',
-            device_model: 'user_agent_value',
-          },
-          sdkVersion: SDK_VERSION,
+      const expected = [
+        {
+          id: idGenerator.calls[0],
+          type: EventType.METRICS,
           event: {
-            apiId: ApiId.GET_EVALUATION,
-            labels: { tag: 'feature_tag_value', ...extraLabels },
-            '@type': type,
+            '@type': RootEventType.MetricsEvent,
+            timestamp: clock.currentTimeSecondsCalls[0],
+            sourceId: SourceId.JAVASCRIPT,
+            metadata: {
+              app_version: '1.2.3',
+              device_model: 'user_agent_value',
+            },
+            sdkVersion: SDK_VERSION,
+            event: {
+              apiId: ApiId.GET_EVALUATION,
+              labels: { ...extraLabels, tag: 'feature_tag_value' },
+              '@type': type,
+            },
           },
         },
-      },
-    ]
+      ]
 
-    expect(await eventStorage.getAll()).toEqual(expected)
+      expect(await eventStorage.getAll()).toEqual(expected)
 
-    expect(mockListener).toHaveBeenCalledOnce()
-    expect(mockListener).toHaveBeenCalledWith(expected)
-  })
+      expect(mockListener).toHaveBeenCalledOnce()
+      expect(mockListener).toHaveBeenCalledWith(expected)
+    },
+  )
 
   test('Do not save dupilicate MetricsEvents', async () => {
     // trackSuccess saves two Events in each call
@@ -392,8 +413,9 @@ suite('internal/event/EventInteractor', () => {
       new BadRequestException(),
     )
 
-    const events = (await eventStorage.getAll())
-      .map((e) => interactor.getMetricsEventUniqueKey(e.event as MetricsEvent))
+    const events = (await eventStorage.getAll()).map((e) =>
+      interactor.getMetricsEventUniqueKey(e.event as MetricsEvent),
+    )
 
     expect(events).toStrictEqual([
       '2::type.googleapis.com/bucketeer.event.client.LatencyMetricsEvent',
@@ -424,8 +446,9 @@ suite('internal/event/EventInteractor', () => {
       new InternalServerErrorException(),
     )
 
-    const events = (await eventStorage.getAll())
-      .map((e) => interactor.getMetricsEventUniqueKey(e.event as MetricsEvent))
+    const events = (await eventStorage.getAll()).map((e) =>
+      interactor.getMetricsEventUniqueKey(e.event as MetricsEvent),
+    )
 
     expect(events).toStrictEqual([
       '3::type.googleapis.com/bucketeer.event.client.InternalServerErrorMetricsEvent',
@@ -439,16 +462,21 @@ suite('internal/event/EventInteractor', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-          >(`${config.apiEndpoint}/register_events`, async ({request}) => {
+        >(`${config.apiEndpoint}/register_events`, async ({ request }) => {
           const body = await request.json()
           expect(body.events).toHaveLength(3)
           expect(body.sourceId).toEqual(SourceId.JAVASCRIPT)
           expect(body.sdkVersion).toEqual(SDK_VERSION)
-          return HttpResponse.json({errors: {}})
+          return HttpResponse.json({ errors: {} })
         }),
       )
 
-      await interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
+      await interactor.trackSuccess(
+        ApiId.GET_EVALUATION,
+        'feature_tag_value',
+        1,
+        723,
+      )
       await interactor.trackGoalEvent(
         'feature_tag_value',
         user1,
@@ -482,7 +510,7 @@ suite('internal/event/EventInteractor', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-          >(`${config.apiEndpoint}/register_events`, async ({request}) => {
+        >(`${config.apiEndpoint}/register_events`, async ({ request }) => {
           const body = await request.json()
           expect(body.events).toHaveLength(3)
           return HttpResponse.json({
@@ -500,7 +528,12 @@ suite('internal/event/EventInteractor', () => {
         }),
       )
 
-      await interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
+      await interactor.trackSuccess(
+        ApiId.GET_EVALUATION,
+        'feature_tag_value',
+        1,
+        723,
+      )
       await interactor.trackGoalEvent(
         'feature_tag_value',
         user1,
@@ -525,24 +558,28 @@ suite('internal/event/EventInteractor', () => {
 
     test('failure', async () => {
       server.use(
-        http.post<
-          Record<string, never>,
-          RegisterEventsRequest,
-          ErrorResponse
-        >(
+        http.post<Record<string, never>, RegisterEventsRequest, ErrorResponse>(
           `${config.apiEndpoint}/register_events`,
           async () => {
-            return HttpResponse.json({
-              error: {
-                code: 400,
-                message: '400 error',
+            return HttpResponse.json(
+              {
+                error: {
+                  code: 400,
+                  message: '400 error',
+                },
               },
-              }, { status: 400 })
+              { status: 400 },
+            )
           },
         ),
       )
 
-      await interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
+      await interactor.trackSuccess(
+        ApiId.GET_EVALUATION,
+        'feature_tag_value',
+        1,
+        723,
+      )
       await interactor.trackGoalEvent(
         'feature_tag_value',
         user1,
@@ -563,7 +600,12 @@ suite('internal/event/EventInteractor', () => {
     })
 
     test('current cache is less than `eventsMaxQueueSize`', async () => {
-      await interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
+      await interactor.trackSuccess(
+        ApiId.GET_EVALUATION,
+        'feature_tag_value',
+        1,
+        723,
+      )
 
       expect(await eventStorage.getAll()).toHaveLength(2)
 
@@ -582,14 +624,19 @@ suite('internal/event/EventInteractor', () => {
           Record<string, never>,
           RegisterEventsRequest,
           RegisterEventsResponse
-        >(`${config.apiEndpoint}/register_events`, async ({request}) => {
+        >(`${config.apiEndpoint}/register_events`, async ({ request }) => {
           const body = await request.json()
           expect(body.events).toHaveLength(2)
           return HttpResponse.json({ errors: {} })
         }),
       )
 
-      await interactor.trackSuccess(ApiId.GET_EVALUATION, 'feature_tag_value', 1, 723)
+      await interactor.trackSuccess(
+        ApiId.GET_EVALUATION,
+        'feature_tag_value',
+        1,
+        723,
+      )
 
       expect(await eventStorage.getAll()).toHaveLength(2)
 

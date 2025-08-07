@@ -78,17 +78,33 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
   const userAgent = defaultUserAgent()
 
   const result: BKTConfig = {
-    featureTag: '',
-    eventsFlushInterval: MINIMUM_FLUSH_INTERVAL_MILLIS,
-    eventsMaxQueueSize: DEFAULT_MAX_QUEUE_SIZE,
-    pollingInterval: DEFAULT_POLLING_INTERVAL_MILLIS,
-    storageKeyPrefix: '',
-    userAgent,
-    fetch,
-    storageFactory: createBKTStorage,
-    ...config,
+    apiKey: config.apiKey,
+    apiEndpoint: config.apiEndpoint,
+    appVersion: config.appVersion,
+    featureTag: config.featureTag ?? '',
+    eventsFlushInterval:
+      config.eventsFlushInterval ?? MINIMUM_FLUSH_INTERVAL_MILLIS,
+    eventsMaxQueueSize: config.eventsMaxQueueSize ?? DEFAULT_MAX_QUEUE_SIZE,
+    pollingInterval: config.pollingInterval ?? DEFAULT_POLLING_INTERVAL_MILLIS,
+    storageKeyPrefix: config.storageKeyPrefix ?? '',
+    userAgent: config.userAgent ?? userAgent,
+    fetch: config.fetch ?? globalThis.fetch,
+    storageFactory: config.storageFactory ?? createBKTStorage,
   }
 
+  // Advanced properties: only included when explicitly set (not undefined)
+  // to prevent overriding internal defaults or leaking undefined values
+  if (config.wrapperSdkVersion !== undefined) {
+    result.wrapperSdkVersion = config.wrapperSdkVersion
+  }
+  if (config.wrapperSdkSourceId !== undefined) {
+    result.wrapperSdkSourceId = config.wrapperSdkSourceId
+  }
+  if (config.idGenerator !== undefined) {
+    result.idGenerator = config.idGenerator
+  }
+
+  // Validate required properties
   if (!result.apiKey) throw new IllegalArgumentException('apiKey is required')
   if (!result.apiEndpoint)
     throw new IllegalArgumentException('apiEndpoint is required')
@@ -96,10 +112,17 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     throw new IllegalArgumentException('apiEndpoint is invalid')
   if (!result.appVersion)
     throw new IllegalArgumentException('appVersion is required')
-  if (!result.fetch) throw new IllegalArgumentException('fetch is required')
 
-  if (result.featureTag === undefined) {
-    result.featureTag = ''
+  if (typeof result.fetch !== 'function') {
+    throw new IllegalArgumentException(
+      'fetch is required: no fetch implementation was provided or no global fetch is available. ' +
+        'Please provide a fetch implementation in the config (e.g., node-fetch in Node.js environments).',
+    )
+  }
+
+  // Special handling for userAgent: empty string should use default
+  if (!result.userAgent) {
+    result.userAgent = userAgent
   }
 
   if (result.pollingInterval < MINIMUM_POLLING_INTERVAL_MILLIS) {
@@ -108,10 +131,6 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
 
   if (result.eventsFlushInterval < MINIMUM_FLUSH_INTERVAL_MILLIS) {
     result.eventsFlushInterval = DEFAULT_FLUSH_INTERVAL_MILLIS
-  }
-
-  if (!result.userAgent) {
-    result.userAgent = userAgent
   }
 
   // Resolve SDK version and source Id without exposing SourceId to outside

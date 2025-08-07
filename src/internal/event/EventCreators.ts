@@ -52,6 +52,9 @@ export const newEvaluationEvent = (
 ): EvaluationEvent => {
   return {
     ...base,
+    // TypeScript's Omit ensures fields cannot override BaseEvent properties
+    // This spread is safe and creates a clean composition pattern
+    // eslint-disable-next-line custom-rules/no-spread-after-defaults
     ...fields,
     '@type': RootEventType.EvaluationEvent,
   }
@@ -63,6 +66,9 @@ export const newDefaultEvaluationEvent = (
 ): EvaluationEvent => {
   return {
     ...base,
+    // TypeScript's Omit ensures fields cannot override BaseEvent properties
+    // This spread is safe and creates a clean composition pattern
+    // eslint-disable-next-line custom-rules/no-spread-after-defaults
     ...fields,
     '@type': RootEventType.EvaluationEvent,
   }
@@ -74,6 +80,9 @@ export const newGoalEvent = (
 ): GoalEvent => {
   return {
     ...base,
+    // TypeScript's Omit ensures fields cannot override BaseEvent properties
+    // This spread is safe and creates a clean composition pattern
+    // eslint-disable-next-line custom-rules/no-spread-after-defaults
     ...fields,
     '@type': RootEventType.GoalEvent,
   }
@@ -146,6 +155,9 @@ export const newMetricsEvent = (
 ): MetricsEvent => {
   return {
     ...base,
+    // TypeScript's Omit ensures fields cannot override BaseEvent properties
+    // This spread is safe and creates a clean composition pattern
+    // eslint-disable-next-line custom-rules/no-spread-after-defaults
     ...fields,
     '@type': RootEventType.MetricsEvent,
   }

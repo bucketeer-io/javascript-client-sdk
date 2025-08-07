@@ -31,10 +31,7 @@ export class DataModule {
   }
 
   clock(): Clock {
-    if (!this._clock) {
-      this._clock = new DefaultClock()
-    }
-    return this._clock
+    return (this._clock ??= new DefaultClock())
   }
 
   apiClient(): ApiClient {
@@ -52,24 +49,20 @@ export class DataModule {
   }
 
   evaluationStorage(): EvaluationStorage {
-    if (!this._evaluationStorage) {
-      const config = this.config()
-      this._evaluationStorage = new EvaluationStorageImpl(
-        this.userHolder().userId,
-        config.storageFactory(`${config.storageKeyPrefix}_bkt_evaluations`),
-      )
-    }
-    return this._evaluationStorage
+    return (this._evaluationStorage ??= new EvaluationStorageImpl(
+      this.userHolder().userId,
+      this.config().storageFactory(
+        `${this.config().storageKeyPrefix}_bkt_evaluations`,
+      ),
+    ))
   }
 
   eventStorage(): EventStorage {
-    if (!this._eventStorage) {
-      const config = this.config()
-      this._eventStorage = new EventStorageImpl(
-        this.userHolder().userId,
-        config.storageFactory(`${config.storageKeyPrefix}_bkt_events`),
-      )
-    }
-    return this._eventStorage
+    return (this._eventStorage ??= new EventStorageImpl(
+      this.userHolder().userId,
+      this.config().storageFactory(
+        `${this.config().storageKeyPrefix}_bkt_events`,
+      ),
+    ))
   }
 }

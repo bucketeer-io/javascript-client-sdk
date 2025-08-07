@@ -179,7 +179,7 @@ suite('internal/remote/ApiClient', () => {
         expect(response.type).toBe('failure')
         expect(response.featureTag).toBe('feature_tag_value')
 
-        const error = response.error || null
+        const error = response.error ?? null
 
         assert(error instanceof TimeoutException)
 
