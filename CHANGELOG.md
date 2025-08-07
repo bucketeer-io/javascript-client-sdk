@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.3.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.3.0...v2.3.1) (2025-08-07)
+
+
+### Bug Fixes
+
+* prevent undefined from overriding defaults in defineBKTConfig ([#236](https://github.com/bucketeer-io/javascript-client-sdk/issues/236)) ([356cf86](https://github.com/bucketeer-io/javascript-client-sdk/commit/356cf86aabf4ea7aeea8a145c5bd03cd15230325))
+
+
+### Miscellaneous
+
+* **deps:** lock file maintenance ([#235](https://github.com/bucketeer-io/javascript-client-sdk/issues/235)) ([cc2c5bf](https://github.com/bucketeer-io/javascript-client-sdk/commit/cc2c5bf09e92baa6169f2ab5b06a044864dd4b64))
+
+
+### Build System
+
+* **deps:** update all non-major dependencies ([#231](https://github.com/bucketeer-io/javascript-client-sdk/issues/231)) ([46f2e98](https://github.com/bucketeer-io/javascript-client-sdk/commit/46f2e98a07f4aff6c2a81737e9c92d4b913d033e))
+
 ## [2.3.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.2.5...v2.3.0) (2025-07-31)
 
 
