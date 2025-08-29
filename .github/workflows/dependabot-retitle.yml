@@ -1,0 +1,27 @@
+name: Retitle Dependabot PRs for test deps
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  retitle:
+    if: github.actor == 'dependabot[bot]' && contains(github.head_ref, 'test-dependencies')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const base = pr.title.replace(/^[^:]+:\s*/, ''); // drop existing prefix
+            const newTitle = `test(deps): ${base}`;
+            if (pr.title !== newTitle) {
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                title: newTitle
+              });
+            }
