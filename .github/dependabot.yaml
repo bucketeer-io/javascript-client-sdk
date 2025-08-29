@@ -1,0 +1,103 @@
+version: 2
+updates:
+  # --- GitHub Actions (CI) ---
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      time: "10:00"
+      timezone: "Asia/Tokyo"
+    commit-message:
+      prefix: "ci" # -> ci(deps): ...
+      include: "scope" # adds "(deps)" or "(deps-dev)"
+    open-pull-requests-limit: 5
+    groups:
+      # Group all PATCH and MINOR updates into one PR
+      ci-patch-minor:
+        patterns: ["*"]
+        update-types: ["patch", "minor"]
+      # NOTE: major updates are left ungrouped -> one PR per major bump
+
+  # --- npm/pnpm (test dependencies only) ---
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      time: "10:00"
+      timezone: "Asia/Tokyo"
+    commit-message:
+      prefix: "test" # -> test(deps): ...
+      include: "scope" # adds "(deps)" or "(deps-dev)"
+    open-pull-requests-limit: 3
+    allow:
+      # Only update test dependencies in this ecosystem
+      - dependency-name: "vitest*"
+      - dependency-name: "@vitest/*"
+      - dependency-name: "webdriverio"
+      - dependency-name: "happy-dom"
+      - dependency-name: "msw"
+      - dependency-name: "@types/jsdom"
+    groups:
+      # Test dependencies group (matches Renovate's test deps)
+      test-dependencies:
+        patterns:
+          - "vitest*"
+          - "@vitest/*"
+          - "webdriverio"
+          - "happy-dom"
+          - "msw"
+          - "@types/jsdom"
+        update-types: ["patch", "minor", "major"]
+
+  # --- npm/pnpm (build dependencies only) ---
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      time: "10:00"
+      timezone: "Asia/Tokyo"
+    commit-message:
+      prefix: "build" # -> build(deps): ...
+      include: "scope" # adds "(deps)" or "(deps-dev)"
+    open-pull-requests-limit: 5
+    ignore:
+      # Exclude test dependencies (handled by separate ecosystem above)
+      - dependency-name: "vitest*"
+      - dependency-name: "@vitest/*"
+      - dependency-name: "webdriverio"
+      - dependency-name: "happy-dom"
+      - dependency-name: "msw"
+      - dependency-name: "@types/jsdom"
+
+      # TypeScript - only allow patch updates (type safety for SDK consumers)
+      - dependency-name: "typescript"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-major"]
+
+      # ESLint - only allow patch updates (avoid new rules breaking builds)
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+
+      # Build tools - major updates can break compatibility
+      - dependency-name: "unbuild"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+
+      # Node types - major updates can cause compatibility issues
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+      # Prettier - major updates can change formatting
+      - dependency-name: "prettier"
+        update-types: ["version-update:semver-major"]
+    groups:
+      # Build dependencies - patch updates
+      build-patch:
+        patterns: ["*"]
+        update-types: ["patch"]
+      # Build dependencies - minor updates
+      build-minor:
+        patterns: ["*"]
+        update-types: ["minor"]
+      # NOTE: major updates are left ungrouped -> one PR per major bump
