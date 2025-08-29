@@ -9,14 +9,17 @@ updates:
       timezone: "Asia/Tokyo"
     commit-message:
       prefix: "ci" # -> ci(deps): ...
-      include: "scope" # adds "(deps)" or "(deps-dev)"
     open-pull-requests-limit: 5
+    ignore:
+      # Ignore all major updates for GitHub Actions
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       # Group all PATCH and MINOR updates into one PR
       ci-patch-minor:
         patterns: ["*"]
         update-types: ["patch", "minor"]
-      # NOTE: major updates are left ungrouped -> one PR per major bump
+      # NOTE: major updates are now ignored completely
 
   # --- npm/pnpm (all dependencies) ---
   - package-ecosystem: "npm"
@@ -27,9 +30,12 @@ updates:
       timezone: "Asia/Tokyo"
     commit-message:
       prefix: "build" # -> build(deps): ... (will be fixed by workflow for test deps)
-      include: "scope" # adds "(deps)" or "(deps-dev)"
     open-pull-requests-limit: 5
     ignore:
+      # Ignore ALL major updates for runtime dependencies
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
       # TypeScript - only allow patch updates (type safety for SDK consumers)
       - dependency-name: "typescript"
         update-types:
@@ -37,21 +43,13 @@ updates:
 
       # ESLint - only allow patch updates (avoid new rules breaking builds)
       - dependency-name: "eslint"
-        update-types: ["version-update:semver-major"]
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-major"]
 
-      # Build tools - major updates can break compatibility
-      - dependency-name: "unbuild"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "vite"
-        update-types: ["version-update:semver-major"]
-
-      # Node types - major updates can cause compatibility issues
-      - dependency-name: "@types/node"
-        update-types: ["version-update:semver-major"]
-
-      # Prettier - major updates can change formatting
+      # Prettier - only allow patch updates (formatting consistency)
       - dependency-name: "prettier"
-        update-types: ["version-update:semver-major"]
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-major"]
     groups:
       # Test dependencies group (matches Renovate's test deps)
       test-dependencies:
@@ -89,4 +87,4 @@ updates:
             "@types/jsdom",
           ]
         update-types: ["minor"]
-      # NOTE: major updates are left ungrouped -> one PR per major bump
+      # NOTE: major updates are now ignored completely
