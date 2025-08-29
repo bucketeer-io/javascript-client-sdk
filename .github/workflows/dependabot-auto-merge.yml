@@ -17,7 +17,7 @@ jobs:
           running-workflow-name: 'dependabot'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 120
-          allowed-conclusions: success
+          allowed-conclusions: success,skipped
       - name: Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@08eff52bf64351f401fb50d4972fa95b9f2c2d1b # v2.4.0
