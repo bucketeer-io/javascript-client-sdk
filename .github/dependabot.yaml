@@ -50,6 +50,11 @@ updates:
       - dependency-name: "prettier"
         update-types:
           ["version-update:semver-minor", "version-update:semver-major"]
+
+      # @types/node - only allow patch updates (Node.js compatibility)
+      - dependency-name: "@types/node"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-major"]
     groups:
       # Test dependencies group (matches Renovate's test deps)
       test-dependencies:
