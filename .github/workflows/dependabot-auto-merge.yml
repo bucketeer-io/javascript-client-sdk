@@ -25,8 +25,9 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
       - name: Enable auto-merge for patch and minor updates
         if: ${{ steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor' }}
+        # Clear the verbose Dependabot description to keep auto-merged PRs clean
         run: |
-          gh pr edit "$PR_URL" --add-label "automerge"
+          gh pr edit "$PR_URL" --add-label "automerge" --body ""
           gh pr review --approve "$PR_URL"
           gh pr merge --auto --squash "$PR_URL"
         env:
