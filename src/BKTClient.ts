@@ -299,7 +299,7 @@ export class BKTClientImpl implements BKTClient {
     component: Component,
     options: { shouldTrackFailure?: boolean; timeoutMillis?: number } = {},
   ): Promise<void> {
-    const { shouldTrackFailure = false, timeoutMillis } = options ?? {}
+    const { shouldTrackFailure = false, timeoutMillis } = options
     const result = await component
       .evaluationInteractor()
       .fetch(component.userHolder().get(), timeoutMillis)
