@@ -1,9 +1,13 @@
 export interface RetryPolicy {
   /** Maximum number of retry attempts */
   maxRetries: number
-  /** Delay between retries in milliseconds */
+  /** Base delay before the first retry attempt in milliseconds */
   delay: number
+  /** Strategy for calculating retry delays. Defaults to linear. */
+  backoffStrategy?: BackoffStrategy
 }
+
+export type BackoffStrategy = 'constant' | 'linear'
 
 /**
  * Function to determine if an error should trigger a retry
@@ -22,7 +26,7 @@ export async function promiseRetriable<T>(
   retryPolicy: RetryPolicy,
   shouldRetry: ShouldRetryFn
 ): Promise<T> {
-  const { maxRetries, delay } = retryPolicy
+  const { maxRetries } = retryPolicy
   let attempts = 0
 
   while (attempts <= maxRetries) {
@@ -39,7 +43,10 @@ export async function promiseRetriable<T>(
       }
 
       // Wait before next attempt
-      await sleep(delay)
+      const waitTime = getBackoffDelay(attempts, retryPolicy)
+      if (waitTime > 0) {
+        await sleep(waitTime)
+      }
     }
   }
 
@@ -52,4 +59,21 @@ export async function promiseRetriable<T>(
  */
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function getBackoffDelay(attempt: number, retryPolicy: RetryPolicy): number {
+  const baseDelay = Math.max(0, retryPolicy.delay)
+  if (baseDelay === 0) {
+    return 0
+  }
+
+  const strategy = retryPolicy.backoffStrategy ?? 'linear'
+
+  switch (strategy) {
+    case 'constant':
+      return baseDelay
+    case 'linear':
+    default:
+      return baseDelay * Math.max(1, attempt)
+  }
 }

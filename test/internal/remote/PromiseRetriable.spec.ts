@@ -123,11 +123,79 @@ suite('promiseRetriable', () => {
     expect(fn).toHaveBeenCalledTimes(2)
     expect(shouldRetry).toHaveBeenCalledTimes(2)
 
-    await vi.advanceTimersByTimeAsync(delay)
+    await vi.advanceTimersByTimeAsync(delay * 2)
     expect(fn).toHaveBeenCalledTimes(3)
     expect(shouldRetry).toHaveBeenCalledTimes(3)
 
     await expectation
     expect(fn).toHaveBeenCalledTimes(3)
+  })
+
+  test('applies linear backoff by scaling the delay with each attempt', async () => {
+    const error = new Error('linear backoff')
+    const delay = 75
+    const fn = vi.fn<() => Promise<never>>().mockRejectedValue(error)
+    const shouldRetry = vi
+      .fn<ShouldRetryFn>()
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValue(false)
+
+    const resultPromise = promiseRetriable(
+      fn,
+      { ...policy, maxRetries: 4, delay },
+      shouldRetry,
+    )
+    const expectation = expect(resultPromise).rejects.toBe(error)
+
+    await Promise.resolve()
+    expect(fn).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(delay)
+    expect(fn).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(delay * 2 - 1)
+    expect(fn).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(1)
+    expect(fn).toHaveBeenCalledTimes(3)
+
+    await vi.runAllTimersAsync()
+    await expectation
+    expect(shouldRetry).toHaveBeenCalledTimes(3)
+  })
+
+  test('supports constant backoff strategy when configured', async () => {
+    const error = new Error('constant backoff')
+    const delay = 60
+    const fn = vi.fn<() => Promise<never>>().mockRejectedValue(error)
+    const shouldRetry = vi
+      .fn<ShouldRetryFn>()
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValue(false)
+
+    const resultPromise = promiseRetriable(
+      fn,
+      { ...policy, maxRetries: 4, delay, backoffStrategy: 'constant' },
+      shouldRetry,
+    )
+    const expectation = expect(resultPromise).rejects.toBe(error)
+
+    await Promise.resolve()
+    expect(fn).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(delay)
+    expect(fn).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(delay - 1)
+    expect(fn).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(1)
+    expect(fn).toHaveBeenCalledTimes(3)
+
+    await vi.runAllTimersAsync()
+    await expectation
+    expect(shouldRetry).toHaveBeenCalledTimes(3)
   })
 })
