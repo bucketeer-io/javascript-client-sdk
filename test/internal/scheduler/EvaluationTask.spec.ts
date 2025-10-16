@@ -275,8 +275,8 @@ suite('internal/scheduler/EventTask', () => {
       // Spy fetchEvaluationsInternal to capture shouldTrackFailure flag
       vi.spyOn(BKTClientImpl, 'fetchEvaluationsInternal').mockImplementation(
         async (
-          _component: unknown,
-          opts: Record<string, unknown> | undefined,
+          _component: Parameters<typeof BKTClientImpl.fetchEvaluationsInternal>[0],
+          opts: Parameters<typeof BKTClientImpl.fetchEvaluationsInternal>[1],
         ) => {
           calls.push(opts ?? {})
           if (calls.length < 5) {
