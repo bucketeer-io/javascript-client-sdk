@@ -73,7 +73,7 @@ export interface BKTClient {
 export class BKTClientImpl implements BKTClient {
   taskScheduler: TaskScheduler | null = null
 
-  constructor(public component: Component) {}
+  constructor(public component: Component) { }
 
   async initializeInternal(timeoutMillis: number): Promise<void> {
     this.scheduleTasks()
@@ -178,7 +178,7 @@ export class BKTClientImpl implements BKTClient {
   }
 
   async fetchEvaluations(timeoutMillis?: number): Promise<void> {
-    return BKTClientImpl.fetchEvaluationsInternal(this.component, { timeoutMillis: timeoutMillis})
+    return BKTClientImpl.fetchEvaluationsInternal(this.component, { timeoutMillis: timeoutMillis })
   }
 
   async flush(): Promise<void> {
@@ -297,7 +297,7 @@ export class BKTClientImpl implements BKTClient {
 
   static async fetchEvaluationsInternal(
     component: Component,
-    options: { shouldTrackFailure?: boolean; timeoutMillis?: number },
+    options: { shouldTrackFailure?: boolean; timeoutMillis?: number } = {},
   ): Promise<void> {
     const optionsArgs = {
       shouldTrackFailure: options.shouldTrackFailure ?? false,
