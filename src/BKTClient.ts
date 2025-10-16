@@ -178,7 +178,7 @@ export class BKTClientImpl implements BKTClient {
   }
 
   async fetchEvaluations(timeoutMillis?: number): Promise<void> {
-    return BKTClientImpl.fetchEvaluationsInternal(this.component, { timeoutMillis: timeoutMillis })
+    return BKTClientImpl.fetchEvaluationsInternal(this.component, { timeoutMillis })
   }
 
   async flush(): Promise<void> {
@@ -299,16 +299,13 @@ export class BKTClientImpl implements BKTClient {
     component: Component,
     options: { shouldTrackFailure?: boolean; timeoutMillis?: number } = {},
   ): Promise<void> {
-    const optionsArgs = {
-      shouldTrackFailure: options.shouldTrackFailure ?? false,
-      timeoutMillis: options.timeoutMillis  
-    }
+    const { shouldTrackFailure = false, timeoutMillis } = options ?? {}
     const result = await component
       .evaluationInteractor()
-      .fetch(component.userHolder().get(), optionsArgs.timeoutMillis)
+      .fetch(component.userHolder().get(), timeoutMillis)
 
     if (result.type === 'failure') {
-      if (optionsArgs.shouldTrackFailure) {
+      if (shouldTrackFailure) {
         await component
           .eventInteractor()
           .trackFailure(

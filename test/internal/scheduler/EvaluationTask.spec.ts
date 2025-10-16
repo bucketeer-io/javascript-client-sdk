@@ -65,6 +65,7 @@ suite('internal/scheduler/EventTask', () => {
       } catch {
         // ignore
       }
+      task = undefined
     }
 
     server.resetHandlers()
