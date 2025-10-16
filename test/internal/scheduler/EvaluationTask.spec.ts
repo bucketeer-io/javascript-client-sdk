@@ -25,7 +25,7 @@ import { GetEvaluationsResponse } from '../../../src/internal/model/response/Get
 import { requiredInternalConfig } from '../../../src/internal/InternalConfig'
 import { ApiId } from '../../../src/internal/model/MetricsEventData'
 
-suite('internal/scheduler/EventTask (merged)', () => {
+suite('internal/scheduler/EventTask', () => {
   let server: SetupServer
   let config: BKTConfig
   let component: DefaultComponent
