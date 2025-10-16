@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, expect, suite, test, vi } from 'vitest'
 
 import {
-  futureRetriable,
+  promiseRetriable,
   RetryPolicy,
   ShouldRetryFn,
-} from '../../../src/internal/remote/FutureRetriable'
+} from '../../../src/internal/remote/PromiseRetriable'
 
-suite('futureRetriable', () => {
+suite('promiseRetriable', () => {
   const policy: RetryPolicy = {
     maxRetries: 3,
     delay: 100,
@@ -29,7 +29,7 @@ suite('futureRetriable', () => {
 
     const shouldRetry: ShouldRetryFn = vi.fn(() => true)
 
-    const resultPromise = futureRetriable(fn, policy, shouldRetry)
+    const resultPromise = promiseRetriable(fn, policy, shouldRetry)
     const expectation = expect(resultPromise).resolves.toBe('success')
 
     await vi.runAllTimersAsync()
@@ -46,7 +46,7 @@ suite('futureRetriable', () => {
       .mockResolvedValueOnce('success')
     const shouldRetry: ShouldRetryFn = vi.fn(() => true)
     const delay = 250
-    const resultPromise = futureRetriable(
+    const resultPromise = promiseRetriable(
       fn,
       { ...policy, maxRetries: 2, delay },
       shouldRetry,
@@ -71,7 +71,7 @@ suite('futureRetriable', () => {
     const fn = vi.fn<() => Promise<never>>().mockRejectedValue(error)
     const shouldRetry: ShouldRetryFn = vi.fn(() => true)
 
-    const resultPromise = futureRetriable(
+    const resultPromise = promiseRetriable(
       fn,
       { ...policy, maxRetries: 2, delay: 10 },
       shouldRetry,
@@ -91,7 +91,7 @@ suite('futureRetriable', () => {
     const fn = vi.fn<() => Promise<never>>().mockRejectedValue(error)
     const shouldRetry: ShouldRetryFn = vi.fn(() => false)
 
-    const resultPromise = futureRetriable(fn, policy, shouldRetry)
+    const resultPromise = promiseRetriable(fn, policy, shouldRetry)
 
     await expect(resultPromise).rejects.toBe(error)
     expect(fn).toHaveBeenCalledTimes(1)
@@ -108,7 +108,7 @@ suite('futureRetriable', () => {
       .mockReturnValueOnce(true)
       .mockReturnValue(false)
 
-    const resultPromise = futureRetriable(
+    const resultPromise = promiseRetriable(
       fn,
       { ...policy, maxRetries: 4, delay },
       shouldRetry,

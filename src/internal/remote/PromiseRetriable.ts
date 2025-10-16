@@ -17,7 +17,7 @@ export type ShouldRetryFn = (error: Error) => boolean
  * @param shouldRetry Function to determine if error should trigger retry
  * @returns Promise resolving to the result or throwing the last error
  */
-export async function futureRetriable<T>(
+export async function promiseRetriable<T>(
   fn: () => Promise<T>,
   retryPolicy: RetryPolicy,
   shouldRetry: ShouldRetryFn
