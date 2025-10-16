@@ -315,7 +315,7 @@ export class BKTClientImpl implements BKTClient {
             ApiId.GET_EVALUATIONS,
             component.config().featureTag,
             result.error,
-          )
+          ).catch(() => { /* ignore error from the storage layer */ })
       }
       throw result.error
     } else {
@@ -326,7 +326,7 @@ export class BKTClientImpl implements BKTClient {
           component.config().featureTag,
           result.seconds,
           result.sizeByte,
-        )
+        ).catch(() => { /* ignore error from the storage layer */ })
     }
   }
 }
