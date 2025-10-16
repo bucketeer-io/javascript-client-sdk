@@ -297,16 +297,18 @@ export class BKTClientImpl implements BKTClient {
 
   static async fetchEvaluationsInternal(
     component: Component,
-    options: { shouldTrackFailure?: boolean; timeoutMillis?: number } = {
-      shouldTrackFailure: true,
-    },
+    options: { shouldTrackFailure?: boolean; timeoutMillis?: number },
   ): Promise<void> {
+    const optionsArgs = {
+      shouldTrackFailure: options.shouldTrackFailure ?? false,
+      timeoutMillis: options.timeoutMillis  
+    }
     const result = await component
       .evaluationInteractor()
-      .fetch(component.userHolder().get(), options.timeoutMillis)
+      .fetch(component.userHolder().get(), optionsArgs.timeoutMillis)
 
     if (result.type === 'failure') {
-      if (options.shouldTrackFailure) {
+      if (optionsArgs.shouldTrackFailure) {
         await component
           .eventInteractor()
           .trackFailure(

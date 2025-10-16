@@ -30,6 +30,8 @@ export class EvaluationTask implements ScheduledTask {
     return this.retryCount + 1 >= this.maxRetryCount
   }
 
+  // This method is exposed for unit test verification only
+  // Not intended for public use
   getRetryCount(): number {
     return this.retryCount
   }
