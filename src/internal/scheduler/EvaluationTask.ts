@@ -25,9 +25,20 @@ export class EvaluationTask implements ScheduledTask {
     }, interval)
   }
 
+  private isLastTry(): boolean {
+    // the upcoming attempt is the last allowed retry
+    return this.retryCount + 1 >= this.maxRetryCount
+  }
+
+  getRetryCount(): number {
+    return this.retryCount
+  }
+
   async fetchEvaluations() {
     try {
-      await BKTClientImpl.fetchEvaluationsInternal(this.component)
+      await BKTClientImpl.fetchEvaluationsInternal(this.component, {
+        shouldTrackFailure: this.isLastTry(),
+      })
 
       // success
       if (this.retryCount > 0) {
