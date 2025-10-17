@@ -264,5 +264,55 @@ suite('internal/scheduler/EventTask', () => {
       // back to normal
       expect(d4 - d3).toBe(1_000 * 120)
     })
+
+    test('should not retry when pollingInterval is short enough', async () => {
+      let requestCount = 0
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () => {
+          requestCount++
+          return HttpResponse.error()
+        }),
+      )
+
+      const pollingInterval = 1_000 * 60 // 60 seconds the minimum polling interval, shorter than retry interval
+      const retryInterval = 1_000 * 90 // 90 seconds
+      const shortConfig = defineBKTConfig({
+        apiKey: 'api_key_value',
+        apiEndpoint: 'https://api.bucketeer.io',
+        featureTag: 'feature_tag_value',
+        appVersion: '1.2.3',
+        eventsMaxQueueSize: 3,
+        pollingInterval: pollingInterval,
+        fetch,
+      })
+
+      const shortComponent = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(user1, requiredInternalConfig(shortConfig)),
+        new InteractorModule(),
+      )
+      await shortComponent.evaluationInteractor().initialize()
+
+      task = new EvaluationTask(shortComponent, retryInterval)
+      task.start()
+
+      const d0 = Date.now()
+
+      await vi.runOnlyPendingTimersAsync()
+
+      const d1 = Date.now()
+
+      // Initial fetch
+      expect(d1 - d0).toBe(pollingInterval)
+      expect(requestCount).toBe(1)
+
+      await vi.runOnlyPendingTimersAsync()
+
+      const d2 = Date.now()
+
+      // Next normal polling, no retries in between
+      expect(d2 - d1).toBe(pollingInterval)
+      expect(requestCount).toBe(2)
+    })
   })
 })

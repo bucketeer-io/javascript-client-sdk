@@ -32,8 +32,12 @@ export class EvaluationTask implements ScheduledTask {
         delay: this.retryPollingInterval,
         backoffStrategy: 'constant',
       }
+
+      // if pollingInterval is short enough, we will do nothing and skip retrying
+      const isShortPollingInterval = this.component.config().pollingInterval <= this.retryPollingInterval
+      const isLongPollingInterval = !isShortPollingInterval
       const shouldRetry: ShouldRetryFn = (_: Error): boolean => {
-        return this.isRunning()
+        return this.isRunning() && isLongPollingInterval
       }
       if (this.isRunning()) {
         await promiseRetriable(
