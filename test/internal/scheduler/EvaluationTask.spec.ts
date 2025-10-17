@@ -11,7 +11,7 @@ import {
   beforeAll,
 } from 'vitest'
 
-import { destroyBKTClient, BKTClientImpl } from '../../../src/BKTClient'
+import { destroyBKTClient } from '../../../src/BKTClient'
 import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
 import { DefaultComponent } from '../../../src/internal/di/Component'
 import { DataModule } from '../../../src/internal/di/DataModule'
@@ -23,7 +23,6 @@ import { EvaluationTask } from '../../../src/internal/scheduler/EvaluationTask'
 import { GetEvaluationsRequest } from '../../../src/internal/model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../../../src/internal/model/response/GetEvaluationsResponse'
 import { requiredInternalConfig } from '../../../src/internal/InternalConfig'
-import { ApiId } from '../../../src/internal/model/MetricsEventData'
 
 suite('internal/scheduler/EventTask', () => {
   let server: SetupServer
@@ -264,103 +263,6 @@ suite('internal/scheduler/EventTask', () => {
 
       // back to normal
       expect(d4 - d3).toBe(1_000 * 120)
-    })
-  })
-
-  suite('fetch failure tracking', () => {
-    // Additional retry unit test from standalone retry spec
-    test('should mark the upcoming last allowed retry with shouldTrackFailure = true', async () => {
-      const calls: Array<{ shouldTrackFailure?: boolean }> = []
-
-      // Spy fetchEvaluationsInternal to capture shouldTrackFailure flag
-      vi.spyOn(BKTClientImpl, 'fetchEvaluationsInternal').mockImplementation(
-        async (
-          _component: Parameters<typeof BKTClientImpl.fetchEvaluationsInternal>[0],
-          opts: Parameters<typeof BKTClientImpl.fetchEvaluationsInternal>[1],
-        ) => {
-          calls.push(opts ?? {})
-          if (calls.length < 5) {
-            throw new Error('simulated failure')
-          }
-          return Promise.resolve()
-        },
-      )
-
-      // Use retryPollingInterval=1min and maxRetryCount=5 to match production default
-      task = new EvaluationTask(component, 1_000 * 60, 5)
-
-      // Manually invoke fetchEvaluations sequentially to drive retries
-      for (let i = 0; i < 5; i++) {
-        // await so internal state (retryCount) updates between attempts
-        await task.fetchEvaluations()
-      }
-
-      expect(calls.length).toBe(5)
-
-      // first 4 attempts should not be flagged
-      for (let i = 0; i < 4; i++) {
-        expect(calls[i].shouldTrackFailure).toBe(false)
-      }
-
-      // 5th (last allowed retry) must be flagged
-      expect(calls[4].shouldTrackFailure).toBe(true)
-
-      // verify internal retryCount state has been reset after success
-      expect(task.getRetryCount()).toBe(0)
-    })
-    test('calls trackFailure when shouldTrackFailure is true', async () => {
-      const error = new Error('simulated')
-      const failureResult = { type: 'failure', error } as const
-
-      const fetchSpy = vi
-        .spyOn(component.evaluationInteractor(), 'fetch')
-        // @ts-expect-error narrow return for test
-        .mockResolvedValueOnce(failureResult)
-
-      const trackFailureSpy = vi
-        .spyOn(component.eventInteractor(), 'trackFailure')
-        .mockResolvedValue(undefined)
-
-      await expect(
-        BKTClientImpl.fetchEvaluationsInternal(component, {
-          shouldTrackFailure: true,
-          timeoutMillis: 1000,
-        }),
-      ).rejects.toThrow('simulated')
-
-      expect(fetchSpy).toHaveBeenCalled()
-      expect(fetchSpy).toHaveBeenCalledWith(
-        component.userHolder().get(),
-        1000,
-      )
-      expect(trackFailureSpy).toHaveBeenCalledTimes(1)
-      expect(trackFailureSpy).toHaveBeenCalledWith(
-        ApiId.GET_EVALUATIONS,
-        component.config().featureTag,
-        error,
-      )
-    })
-
-    test('does not call trackFailure when shouldTrackFailure is false', async () => {
-      const error = new Error('simulated')
-      const failureResult = { type: 'failure', error } as const
-
-      vi.spyOn(component.evaluationInteractor(), 'fetch').mockResolvedValueOnce(
-        // @ts-expect-error narrow return for test
-        failureResult,
-      )
-
-      const trackFailureSpy = vi
-        .spyOn(component.eventInteractor(), 'trackFailure')
-        .mockResolvedValue(undefined)
-
-      await expect(
-        BKTClientImpl.fetchEvaluationsInternal(component, {
-          shouldTrackFailure: false,
-        }),
-      ).rejects.toThrow('simulated')
-
-      expect(trackFailureSpy).not.toHaveBeenCalled()
     })
   })
 })
