@@ -35,13 +35,14 @@ export class EvaluationTask implements ScheduledTask {
       const shouldRetry: ShouldRetryFn = (_: Error): boolean => {
         return this.isRunning()
       }
-
-      await promiseRetriable(
-        () =>
-          BKTClientImpl.fetchEvaluationsInternal(this.component),
-        retryPolicy,
-        shouldRetry,
-      )
+      if (this.isRunning()) {
+        await promiseRetriable(
+          () =>
+            BKTClientImpl.fetchEvaluationsInternal(this.component),
+          retryPolicy,
+          shouldRetry,
+        )
+      }
     } catch {
       // error
 

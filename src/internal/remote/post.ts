@@ -1,6 +1,6 @@
 import { ClientClosedRequestException, NetworkException, TimeoutException } from '../../BKTExceptions'
 import { FetchLike, FetchRequestLike, FetchResponseLike } from './fetch'
-import { promiseRetriable } from './PromiseRetriable'
+import { promiseRetriable, RetryPolicy } from './PromiseRetriable'
 import { addTimeoutValueIfNeeded, toBKTException } from './toBKTException'
 
 export const postInternal = async (
@@ -10,10 +10,10 @@ export const postInternal = async (
   fetch: FetchLike,
   timeoutMillis: number,
 ): Promise<FetchResponseLike> => {
-  // retry policy: 3 retries with 1 second delay
-  const retryPolicy = {
+  const retryPolicy: RetryPolicy = {
     maxRetries: 3,
     delay: 1000,
+    backoffStrategy: 'linear',
   }
   // Retry only on a deployment-related 499
   const shouldRetry = (error: Error): boolean => {
