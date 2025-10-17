@@ -40,8 +40,9 @@ describe('postInternal', () => {
 
     const resultPromise = postInternal(endpoint, headers, body, mockFetch, timeoutMillis)
 
-    // Run all timers to fast-forward delays
-    await vi.runAllTimersAsync()
+    // Advance only the retry delay (1s) after flushing microtasks
+    await Promise.resolve()
+    await vi.advanceTimersByTimeAsync(1000)
 
     const result = await resultPromise
 
