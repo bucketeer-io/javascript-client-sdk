@@ -1,6 +1,5 @@
 import { BKTClientImpl } from '../../BKTClient'
 import { Component } from '../di/Component'
-import { promiseRetriable, RetryPolicy, ShouldRetryFn } from '../remote/PromiseRetriable'
 import { ScheduledTask } from './ScheduledTask'
 
 const RETRY_POLLING_INTERVAL = 1_000 * 60 // 1 minute
@@ -14,45 +13,40 @@ export class EvaluationTask implements ScheduledTask {
   ) {}
 
   private timerId?: ReturnType<typeof setTimeout>
+  private retryCount = 0
   private running = false
 
-  private reschedule(interval: number) {
+  reschedule(interval: number) {
     clearTimeout(this.timerId)
     // fetchEvaluations call is asynchronous and setInterval does not wait for it.
     // So have to use setTimeout instead.
-    this.timerId = setTimeout(() => {    
+    this.timerId = setTimeout(() => {
       this.fetchEvaluations()
     }, interval)
   }
 
   async fetchEvaluations() {
     try {
-      const retryPolicy: RetryPolicy = {
-        maxRetries: this.maxRetryCount,
-        delay: this.retryPollingInterval,
-        backoffStrategy: 'constant',
-      }
+      await BKTClientImpl.fetchEvaluationsInternal(this.component)
 
-      // if pollingInterval is short enough, we will do nothing and skip retrying
-      const isShortPollingInterval = this.component.config().pollingInterval <= this.retryPollingInterval
-      const isLongPollingInterval = !isShortPollingInterval
-      const shouldRetry: ShouldRetryFn = (_: Error): boolean => {
-        return this.isRunning() && isLongPollingInterval
-      }
-      if (this.isRunning()) {
-        await promiseRetriable(
-          () =>
-            BKTClientImpl.fetchEvaluationsInternal(this.component),
-          retryPolicy,
-          shouldRetry,
-        )
-      }
+      // success
+      this.retryCount = 0
+      this.reschedule(this.component.config().pollingInterval)
     } catch {
       // error
+      const pollingInterval = this.component.config().pollingInterval
+      const isShortInterval = pollingInterval <= this.retryPollingInterval
+      const isLongInterval = !isShortInterval
 
-    } finally {
-      if (this.isRunning()) {
-        this.reschedule(this.component.config().pollingInterval)
+      const canRetry = this.retryCount < this.maxRetryCount && isLongInterval
+
+      if (canRetry) {
+        this.retryCount++
+        this.reschedule(this.retryPollingInterval)
+      } else {
+        // we already retried enough, let's get back to daily job
+        this.retryCount = 0
+        this.reschedule(pollingInterval)
       }
     }
   }

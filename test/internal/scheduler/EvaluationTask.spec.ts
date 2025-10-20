@@ -314,5 +314,77 @@ suite('internal/scheduler/EventTask', () => {
       expect(d2 - d1).toBe(pollingInterval)
       expect(requestCount).toBe(2)
     })
+
+    test('should continue scheduling after error when pollingInterval <= retryInterval', async () => {
+      let requestCount = 0
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () => {
+          requestCount++
+          return HttpResponse.error()
+        }),
+      )
+
+      const pollingInterval = 1_000 * 60 // 1 minute
+      const retryInterval = 1_000 * 60 // 1 minute (equal to polling interval)
+      const bugConfig = defineBKTConfig({
+        apiKey: 'api_key_value',
+        apiEndpoint: 'https://api.bucketeer.io',
+        featureTag: 'feature_tag_value',
+        appVersion: '1.2.3',
+        eventsMaxQueueSize: 3,
+        pollingInterval: pollingInterval,
+        fetch,
+      })
+
+      const bugComponent = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(user1, requiredInternalConfig(bugConfig)),
+        new InteractorModule(),
+      )
+      await bugComponent.evaluationInteractor().initialize()
+
+      task = new EvaluationTask(bugComponent, retryInterval)
+      task.start()
+
+      await vi.runOnlyPendingTimersAsync()
+      expect(requestCount).toBe(1)
+
+      // Should continue scheduling even after error
+      const pendingTimers = vi.getTimerCount()
+      expect(pendingTimers).toBe(1) // Should have next timer scheduled
+
+      await vi.runOnlyPendingTimersAsync()
+      expect(requestCount).toBe(2) // Should continue fetching
+    })
+
+    test('should continue scheduling after success when retryCount is 0', async () => {
+      let requestCount = 0
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, () => {
+          requestCount++
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+
+      task = new EvaluationTask(component)
+      task.start()
+
+      await vi.runOnlyPendingTimersAsync()
+      expect(requestCount).toBe(1)
+
+      // Should continue scheduling after successful fetch
+      const pendingTimers = vi.getTimerCount()
+      expect(pendingTimers).toBe(1) // Should have next timer scheduled
+
+      await vi.runOnlyPendingTimersAsync()
+      expect(requestCount).toBe(2) // Should continue fetching
+    })
   })
 })
