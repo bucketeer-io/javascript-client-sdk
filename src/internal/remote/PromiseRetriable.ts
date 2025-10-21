@@ -25,7 +25,7 @@ export async function promiseRetriable<T>(
   fn: () => Promise<T>,
   retryPolicy: RetryPolicy,
   shouldRetry: ShouldRetryFn
-  //Future improvement: Allow cancellation in the future by adding an AbortSignal parameter
+  // Future improvement: Allow cancellation in the future by adding an AbortSignal parameter
 ): Promise<T> {
   const { maxRetries } = retryPolicy
   let attempts = 0

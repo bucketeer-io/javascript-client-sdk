@@ -310,7 +310,10 @@ export class BKTClientImpl implements BKTClient {
           ApiId.GET_EVALUATIONS,
           component.config().featureTag,
           result.error,
-        ).catch(() => { /* ignore error from the storage layer */ })
+      ).catch((err) => {
+        /* ignore error from the storage layer */
+        console.debug('BKTClient: Storage layer error in fetchEvaluations::trackFailure', err)
+      })
       throw result.error
     } else {
       await component
@@ -320,7 +323,10 @@ export class BKTClientImpl implements BKTClient {
           component.config().featureTag,
           result.seconds,
           result.sizeByte,
-        ).catch(() => { /* ignore error from the storage layer */ })
+      ).catch((err) => {
+        /* ignore error from the storage layer */
+        console.debug('BKTClient: Storage layer error in fetchEvaluations::trackSuccess', err)
+      })
     }
   }
 }
