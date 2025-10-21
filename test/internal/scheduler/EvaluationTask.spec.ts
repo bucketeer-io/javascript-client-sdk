@@ -59,11 +59,7 @@ suite('internal/scheduler/EventTask', () => {
   afterEach(() => {
     destroyBKTClient()
     if (task) {
-      try {
-        task.stop()
-      } catch {
-        // ignore
-      }
+      task.stop()
       task = undefined
     }
 
