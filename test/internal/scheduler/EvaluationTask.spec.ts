@@ -99,6 +99,10 @@ suite('internal/scheduler/EventTask', () => {
     await vi.runOnlyPendingTimersAsync()
 
     expect(requestCount).toBe(2)
+
+    await vi.runOnlyPendingTimersAsync()
+
+    expect(requestCount).toBe(3)
   })
 
   test('stop should cancel timer', async () => {
@@ -313,6 +317,14 @@ suite('internal/scheduler/EventTask', () => {
       // Next normal polling, no retries in between
       expect(d2 - d1).toBe(pollingInterval)
       expect(requestCount).toBe(2)
+
+      // Next normal polling, no retries in between
+      await vi.runOnlyPendingTimersAsync()
+
+      const d3 = Date.now()
+
+      expect(d3 - d2).toBe(pollingInterval)
+      expect(requestCount).toBe(3)
     })
 
     test('should continue scheduling after error when pollingInterval <= retryInterval', async () => {
@@ -355,6 +367,9 @@ suite('internal/scheduler/EventTask', () => {
 
       await vi.runOnlyPendingTimersAsync()
       expect(requestCount).toBe(2) // Should continue fetching
+
+      await vi.runOnlyPendingTimersAsync()
+      expect(requestCount).toBe(3) // Should continue fetching
     })
 
     test('should continue scheduling after success when retryCount is 0', async () => {
@@ -385,6 +400,9 @@ suite('internal/scheduler/EventTask', () => {
 
       await vi.runOnlyPendingTimersAsync()
       expect(requestCount).toBe(2) // Should continue fetching
+
+      await vi.runOnlyPendingTimersAsync()
+      expect(requestCount).toBe(3) // Should continue fetching
     })
   })
 })
