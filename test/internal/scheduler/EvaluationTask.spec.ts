@@ -99,6 +99,10 @@ suite('internal/scheduler/EventTask', () => {
     await vi.runOnlyPendingTimersAsync()
 
     expect(requestCount).toBe(1)
+
+    await vi.runOnlyPendingTimersAsync()
+
+    expect(requestCount).toBe(2)
   })
 
   test('stop should cancel timer', async () => {
