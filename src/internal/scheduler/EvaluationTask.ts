@@ -36,7 +36,7 @@ export class EvaluationTask implements ScheduledTask {
       // error
       const pollingInterval = this.component.config().pollingInterval
       const isLongInterval = pollingInterval > this.retryPollingInterval
-      // If the polling interval is short, skip retry mechanism and reschedule at normal interval
+      // If the polling interval is shorter than the retry interval, skip the retry mechanism and reschedule using the default interval
       const canRetry = this.retryCount < this.maxRetryCount && isLongInterval
 
       if (canRetry) {
