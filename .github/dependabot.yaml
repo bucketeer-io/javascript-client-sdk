@@ -32,10 +32,6 @@ updates:
       prefix: "build" # -> build(deps): ... (will be fixed by workflow for test deps)
     open-pull-requests-limit: 5
     ignore:
-      # Ignore ALL major updates for runtime dependencies
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
       # TypeScript - only allow patch updates (type safety for SDK consumers)
       - dependency-name: "typescript"
         update-types:
@@ -55,6 +51,16 @@ updates:
       - dependency-name: "@types/node"
         update-types:
           ["version-update:semver-minor", "version-update:semver-major"]
+
+      # async-mutex - only allow patch updates (runtime dependency affects SDK consumers)
+      - dependency-name: "async-mutex"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-major"]
+
+      # unbuild - only allow patch updates (build tool affects SDK output)
+      - dependency-name: "unbuild"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-major"]
     groups:
       # Test dependencies group (matches Renovate's test deps)
       test-dependencies:
@@ -66,30 +72,44 @@ updates:
           - "msw"
           - "@types/jsdom"
         update-types: ["patch", "minor", "major"]
-      # Build dependencies - patch updates
+      # Build dependencies - patch updates (auto-mergeable)
       build-patch:
         patterns: ["*"]
         exclude-patterns:
-          [
-            "vitest*",
-            "@vitest/*",
-            "webdriverio",
-            "happy-dom",
-            "msw",
-            "@types/jsdom",
-          ]
+          - "vitest*"
+          - "@vitest/*"
+          - "webdriverio"
+          - "happy-dom"
+          - "msw"
+          - "@types/jsdom"
         update-types: ["patch"]
-      # Build dependencies - minor updates
+      # Build dependencies - minor updates (requires review)
       build-minor:
         patterns: ["*"]
         exclude-patterns:
-          [
-            "vitest*",
-            "@vitest/*",
-            "webdriverio",
-            "happy-dom",
-            "msw",
-            "@types/jsdom",
-          ]
+          - "vitest*"
+          - "@vitest/*"
+          - "webdriverio"
+          - "happy-dom"
+          - "msw"
+          - "@types/jsdom"
         update-types: ["minor"]
-      # NOTE: major updates are now ignored completely
+      # Build dependencies - major updates (requires careful review)
+      # Excludes test deps (which get major updates) and critical deps (which are blocked via ignore)
+      # NOTE: critical dependencies (typescript, eslint, prettier, @types/node, async-mutex, unbuild) have major updates ignored
+      build-major:
+        patterns: ["*"]
+        exclude-patterns:
+          - "vitest*"
+          - "@vitest/*"
+          - "webdriverio"
+          - "happy-dom"
+          - "msw"
+          - "@types/jsdom"
+          - "typescript"
+          - "eslint"
+          - "prettier"
+          - "@types/node"
+          - "async-mutex"
+          - "unbuild"
+        update-types: ["major"]
