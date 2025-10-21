@@ -30,15 +30,19 @@ export class EvaluationTask implements ScheduledTask {
       await BKTClientImpl.fetchEvaluationsInternal(this.component)
 
       // success
-      this.retryCount = 0
-      this.reschedule(this.component.config().pollingInterval)
+      if (this.retryCount > 0) {
+        // retried already, so reschedule with proper interval
+        this.retryCount = 0
+        this.reschedule(this.component.config().pollingInterval)
+      }
     } catch {
       // error
       const pollingInterval = this.component.config().pollingInterval
-      // If the polling interval is short, we don't do retrying
-      const isLongInterval = pollingInterval > this.retryPollingInterval
-
-      const canRetry = this.retryCount < this.maxRetryCount && isLongInterval
+      if (pollingInterval <= this.retryPollingInterval) {
+        // pollingInterval is short enough, do nothing
+        return
+      }
+      const canRetry = this.retryCount < this.maxRetryCount
 
       if (canRetry) {
         this.retryCount++
