@@ -1,5 +1,33 @@
 # Changelog
 
+## [2.4.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.3.1...v2.4.0) (2025-10-22)
+
+
+### Features
+
+* add auto page lifecycle for flushing events to prevent data loss ([#271](https://github.com/bucketeer-io/javascript-client-sdk/issues/271)) ([9c4b6e5](https://github.com/bucketeer-io/javascript-client-sdk/commit/9c4b6e550d488c755eeeb639b2b5cc9b3f52fd92))
+
+
+### Bug Fixes
+
+* cache is not being updated after the second poll in some cases ([#268](https://github.com/bucketeer-io/javascript-client-sdk/issues/268)) ([a190e12](https://github.com/bucketeer-io/javascript-client-sdk/commit/a190e126166bc088d121f0c1f1a79ea841481e0d))
+
+
+### Miscellaneous
+
+* auto retry on deployment-related 499 errors ([#265](https://github.com/bucketeer-io/javascript-client-sdk/issues/265)) ([e924bff](https://github.com/bucketeer-io/javascript-client-sdk/commit/e924bffd5e35f7461fbff0f27f6e0ed185f999b6))
+
+
+### Build System
+
+* bump @types/node from 22.17.0 to 22.17.2 in the build-patch group ([#253](https://github.com/bucketeer-io/javascript-client-sdk/issues/253)) ([085fc14](https://github.com/bucketeer-io/javascript-client-sdk/commit/085fc148a4b8861b69ccd5b0d0d4cb3ae2c1c90d))
+* bump msw from 2.10.5 to 2.11.1 in the test-dependencies group ([#254](https://github.com/bucketeer-io/javascript-client-sdk/issues/254)) ([5013dff](https://github.com/bucketeer-io/javascript-client-sdk/commit/5013dff8dfa8781d49622be67c0d5d0498d9834c))
+* bump the build-minor group with 4 updates ([#255](https://github.com/bucketeer-io/javascript-client-sdk/issues/255)) ([a53b5b5](https://github.com/bucketeer-io/javascript-client-sdk/commit/a53b5b5d0238fc6de756a2e4ced93da35bd473fd))
+* bump the test-dependencies group with 2 updates ([#260](https://github.com/bucketeer-io/javascript-client-sdk/issues/260)) ([a5bae13](https://github.com/bucketeer-io/javascript-client-sdk/commit/a5bae13642dd55b34c845cbfc71d922b5724d707))
+* bump the test-dependencies group with 3 updates ([#267](https://github.com/bucketeer-io/javascript-client-sdk/issues/267)) ([240da3a](https://github.com/bucketeer-io/javascript-client-sdk/commit/240da3a5d3e15cddd7bca50a0e6d8e5fc6d63410))
+* **deps-dev:** bump the build-patch group with 2 updates ([#246](https://github.com/bucketeer-io/javascript-client-sdk/issues/246)) ([679dd83](https://github.com/bucketeer-io/javascript-client-sdk/commit/679dd83388937a7cd6c1023252c5ead6bfa6e834))
+* **deps-dev:** bump the test-dependencies group with 2 updates ([#245](https://github.com/bucketeer-io/javascript-client-sdk/issues/245)) ([f0c2bf7](https://github.com/bucketeer-io/javascript-client-sdk/commit/f0c2bf7e96533e06ac5e68dc09ab28e8f54067ab))
+
 ## [2.3.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.3.0...v2.3.1) (2025-08-07)
 
 ### Bug Fixes
