@@ -1,0 +1,201 @@
+import { afterEach, beforeEach, expect, suite, test, vi } from 'vitest'
+
+import {
+  promiseRetriable,
+  RetryPolicy,
+  ShouldRetryFn,
+} from '../../../src/internal/remote/PromiseRetriable'
+
+suite('promiseRetriable', () => {
+  const policy: RetryPolicy = {
+    maxRetries: 3,
+    delay: 100,
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  test('resolves when fn eventually succeeds', async () => {
+    const fn = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new Error('temporary'))
+      .mockResolvedValueOnce('success')
+
+    const shouldRetry: ShouldRetryFn = vi.fn(() => true)
+
+    const resultPromise = promiseRetriable(fn, policy, shouldRetry)
+    const expectation = expect(resultPromise).resolves.toBe('success')
+
+    await vi.runAllTimersAsync()
+
+    await expectation
+    expect(fn).toHaveBeenCalledTimes(2)
+    expect(shouldRetry).toHaveBeenCalledTimes(1)
+  })
+
+  test('waits for configured delay before retrying', async () => {
+    const fn = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new Error('temporary'))
+      .mockResolvedValueOnce('success')
+    const shouldRetry: ShouldRetryFn = vi.fn(() => true)
+    const delay = 250
+    const resultPromise = promiseRetriable(
+      fn,
+      { ...policy, maxRetries: 2, delay },
+      shouldRetry,
+    )
+    const expectation = expect(resultPromise).resolves.toBe('success')
+
+    await Promise.resolve()
+    expect(fn).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(delay - 1)
+    expect(fn).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(1)
+    expect(fn).toHaveBeenCalledTimes(2)
+    expect(shouldRetry).toHaveBeenCalledTimes(1)
+
+    await expectation
+  })
+
+  test('throws the last error after exceeding max retries', async () => {
+    const error = new Error('permanent failure')
+    const fn = vi.fn<() => Promise<never>>().mockRejectedValue(error)
+    const shouldRetry: ShouldRetryFn = vi.fn(() => true)
+
+    const resultPromise = promiseRetriable(
+      fn,
+      { ...policy, maxRetries: 2, delay: 10 },
+      shouldRetry,
+    )
+
+    const expectation = expect(resultPromise).rejects.toBe(error)
+
+    await vi.runAllTimersAsync()
+
+    await expectation
+    expect(fn).toHaveBeenCalledTimes(3)
+    expect(shouldRetry).toHaveBeenCalledTimes(2)
+  })
+
+  test('does not retry when shouldRetry returns false', async () => {
+    const error = new Error('do not retry')
+    const fn = vi.fn<() => Promise<never>>().mockRejectedValue(error)
+    const shouldRetry: ShouldRetryFn = vi.fn(() => false)
+
+    const resultPromise = promiseRetriable(fn, policy, shouldRetry)
+
+    await expect(resultPromise).rejects.toBe(error)
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(shouldRetry).toHaveBeenCalledTimes(1)
+  })
+
+  test('stops retrying once shouldRetry returns false mid-sequence', async () => {
+    const error = new Error('stop retrying')
+    const delay = 150
+    const fn = vi.fn<() => Promise<never>>().mockRejectedValue(error)
+    const shouldRetry = vi
+      .fn<ShouldRetryFn>()
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValue(false)
+
+    const resultPromise = promiseRetriable(
+      fn,
+      { ...policy, maxRetries: 4, delay },
+      shouldRetry,
+    )
+    const expectation = expect(resultPromise).rejects.toBe(error)
+
+    await Promise.resolve()
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(shouldRetry).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(delay)
+    expect(fn).toHaveBeenCalledTimes(2)
+    expect(shouldRetry).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(delay * 2)
+    expect(fn).toHaveBeenCalledTimes(3)
+    expect(shouldRetry).toHaveBeenCalledTimes(3)
+
+    await expectation
+    expect(fn).toHaveBeenCalledTimes(3)
+  })
+
+  test('applies linear backoff by scaling the delay with each attempt', async () => {
+    const error = new Error('linear backoff')
+    const delay = 75
+    const fn = vi.fn<() => Promise<never>>().mockRejectedValue(error)
+    const shouldRetry = vi
+      .fn<ShouldRetryFn>()
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValue(false)
+
+    const resultPromise = promiseRetriable(
+      fn,
+      { ...policy, maxRetries: 4, delay },
+      shouldRetry,
+    )
+    const expectation = expect(resultPromise).rejects.toBe(error)
+
+    await Promise.resolve()
+    expect(fn).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(delay)
+    expect(fn).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(delay * 2 - 1)
+    expect(fn).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(1)
+    expect(fn).toHaveBeenCalledTimes(3)
+
+    await vi.runAllTimersAsync()
+    await expectation
+    expect(shouldRetry).toHaveBeenCalledTimes(3)
+  })
+
+  test('supports constant backoff strategy when configured', async () => {
+    const error = new Error('constant backoff')
+    const delay = 60
+    const fn = vi.fn<() => Promise<never>>().mockRejectedValue(error)
+    const shouldRetry = vi
+      .fn<ShouldRetryFn>()
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true)
+      .mockReturnValue(false)
+
+    const resultPromise = promiseRetriable(
+      fn,
+      { ...policy, maxRetries: 4, delay, backoffStrategy: 'constant' },
+      shouldRetry,
+    )
+    const expectation = expect(resultPromise).rejects.toBe(error)
+
+    await Promise.resolve()
+    expect(fn).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(delay)
+    expect(fn).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(delay - 1)
+    expect(fn).toHaveBeenCalledTimes(2)
+
+    await vi.advanceTimersByTimeAsync(1)
+    expect(fn).toHaveBeenCalledTimes(3)
+
+    await vi.runAllTimersAsync()
+    await expectation
+    expect(shouldRetry).toHaveBeenCalledTimes(3)
+  })
+})

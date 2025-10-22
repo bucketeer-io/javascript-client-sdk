@@ -73,7 +73,7 @@ export interface BKTClient {
 export class BKTClientImpl implements BKTClient {
   taskScheduler: TaskScheduler | null = null
 
-  constructor(public component: Component) {}
+  constructor(public component: Component) { }
 
   async initializeInternal(timeoutMillis: number): Promise<void> {
     this.scheduleTasks()
@@ -310,7 +310,10 @@ export class BKTClientImpl implements BKTClient {
           ApiId.GET_EVALUATIONS,
           component.config().featureTag,
           result.error,
-        )
+      ).catch((err) => {
+        /* ignore error from the storage layer */
+        console.error('BKTClient: Storage layer error in fetchEvaluations::trackFailure', err)
+      })
       throw result.error
     } else {
       await component
@@ -320,7 +323,10 @@ export class BKTClientImpl implements BKTClient {
           component.config().featureTag,
           result.seconds,
           result.sizeByte,
-        )
+      ).catch((err) => {
+        /* ignore error from the storage layer */
+        console.error('BKTClient: Storage layer error in fetchEvaluations::trackSuccess', err)
+      })
     }
   }
 }
