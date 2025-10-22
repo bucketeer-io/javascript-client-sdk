@@ -65,6 +65,10 @@ export function setupPageLifecycleListeners(
   const visibilityChangeHandler = () => {
     if (document.visibilityState === 'hidden') {
       flush()
+    } else if (document.visibilityState === 'visible') {
+      // Reset the flag when page becomes visible again
+      // This allows new events to be flushed on the next hide/unload
+      hasFlushed = false
     }
   }
 

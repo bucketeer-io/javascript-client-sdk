@@ -1,7 +1,12 @@
 import { BKTEvaluation } from './BKTEvaluation'
 import { BKTUser } from './BKTUser'
 import { Component } from './internal/di/Component'
-import { clearInstance, getInstance, setInstance } from './internal/instance'
+import {
+  clearInstance,
+  getInstance,
+  setInstance,
+  clearPageLifecycleCleanup,
+} from './internal/instance'
 import { ApiId } from './internal/model/MetricsEventData'
 import { TaskScheduler } from './internal/scheduler/TaskScheduler'
 import { toBKTUser } from './internal/UserHolder'
@@ -368,6 +373,8 @@ export const destroyBKTClient = (): void => {
   if (client) {
     ;(client as BKTClientImpl).resetTasks()
   }
+  // Clean up page lifecycle event listeners
+  clearPageLifecycleCleanup()
   clearInstance()
 }
 

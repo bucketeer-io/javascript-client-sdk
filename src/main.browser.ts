@@ -9,6 +9,7 @@ import { requiredInternalConfig } from './internal/InternalConfig'
 import { User } from './internal/model/User'
 import { toUser } from './internal/UserHolder'
 import { setupPageLifecycleListeners } from './utils/pageLifecycle'
+import { setPageLifecycleCleanup } from './internal/instance'
 
 export type { BKTConfig, RawBKTConfig } from './BKTConfig'
 export { defineBKTConfig } from './BKTConfig'
@@ -52,7 +53,7 @@ export const initializeBKTClient = async (
 
   // Auto-setup page lifecycle listeners if enabled
   if (config.enableAutoPageLifecycleFlush && typeof window !== 'undefined') {
-    setupPageLifecycleListeners({
+    const cleanup = setupPageLifecycleListeners({
       onFlush: async () => {
         try {
           await getBKTClient()?.flush()
@@ -65,5 +66,7 @@ export const initializeBKTClient = async (
         }
       },
     })
+    // Store cleanup function to be called when client is destroyed
+    setPageLifecycleCleanup(cleanup)
   }
 }
