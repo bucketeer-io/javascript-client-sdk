@@ -22,16 +22,16 @@ suite('defineBKTConfig', () => {
 
     expect(result).toStrictEqual({
       ...defaultConfig,
-      eventsFlushInterval: 30_000,
+      eventsFlushInterval: 10_000,
       eventsMaxQueueSize: 50,
       pollingInterval: 600_000,
       storageKeyPrefix: '',
       fetch,
       storageFactory: createBKTStorage,
+      enableAutoPageLifecycleFlush: true,
       sdkVersion: SDK_VERSION,
       sourceId: SourceId.JAVASCRIPT,
     })
-
   })
 
   test('all parameters are valid - with wrapperSDK SourceId & Version', () => {
@@ -43,18 +43,18 @@ suite('defineBKTConfig', () => {
 
     expect(result).toStrictEqual({
       ...defaultConfig,
-      eventsFlushInterval: 30_000,
+      eventsFlushInterval: 10_000,
       eventsMaxQueueSize: 50,
       pollingInterval: 600_000,
       storageKeyPrefix: '',
       fetch,
       storageFactory: createBKTStorage,
+      enableAutoPageLifecycleFlush: true,
       wrapperSdkSourceId: SourceId.REACT,
       wrapperSdkVersion: '1.2.5',
       sdkVersion: '1.2.5',
       sourceId: SourceId.REACT,
     })
-
   })
 
   test('empty apiKey throws', () => {
@@ -96,10 +96,10 @@ suite('defineBKTConfig', () => {
   test('sooner eventFlushInterval should be replaced with default value', () => {
     const result = defineBKTConfig({
       ...defaultConfig,
-      eventsFlushInterval: 10,
+      eventsFlushInterval: 5_000,
     })
 
-    expect(result.eventsFlushInterval).toBe(30_000)
+    expect(result.eventsFlushInterval).toBe(10_000)
   })
 
   test('sooner pollingInterval should be replaced with default value', () => {
@@ -152,7 +152,7 @@ suite('defineBKTConfig', () => {
       ...defaultConfig,
       eventsMaxQueueSize: undefined,
     }
-    
+
     const result1 = defineBKTConfig(configWithUndefinedMaxQueue)
     expect(result1.eventsMaxQueueSize).toBe(50)
 
@@ -161,7 +161,7 @@ suite('defineBKTConfig', () => {
       ...defaultConfig,
       storageKeyPrefix: undefined,
     }
-    
+
     const result2 = defineBKTConfig(configWithUndefinedStoragePrefix)
     expect(result2.storageKeyPrefix).toBe('')
 
@@ -170,27 +170,45 @@ suite('defineBKTConfig', () => {
       ...defaultConfig,
       pollingInterval: undefined,
     }
-    
+
     const result3 = defineBKTConfig(configWithUndefinedPolling)
     expect(result3.pollingInterval).toBe(600_000)
 
-    // Test case 4: eventsFlushInterval should default to 30_000 when undefined
+    // Test case 4: eventsFlushInterval should default to 10_000 when undefined
     const configWithUndefinedFlush: RawBKTConfig = {
       ...defaultConfig,
       eventsFlushInterval: undefined,
     }
-    
+
     const result4 = defineBKTConfig(configWithUndefinedFlush)
-    expect(result4.eventsFlushInterval).toBe(30_000)
+    expect(result4.eventsFlushInterval).toBe(10_000)
 
     // Test case 5: storageFactory should default to createBKTStorage when undefined
     const configWithUndefinedStorageFactory: RawBKTConfig = {
       ...defaultConfig,
       storageFactory: undefined,
     }
-    
+
     const result5 = defineBKTConfig(configWithUndefinedStorageFactory)
     expect(result5.storageFactory).toBe(createBKTStorage)
+
+    // Test case 6: enableAutoPageLifecycleFlush should default to true when undefined
+    const configWithUndefinedAutoFlush: RawBKTConfig = {
+      ...defaultConfig,
+      enableAutoPageLifecycleFlush: undefined,
+    }
+
+    const result6 = defineBKTConfig(configWithUndefinedAutoFlush)
+    expect(result6.enableAutoPageLifecycleFlush).toBe(true)
+  })
+
+  test('enableAutoPageLifecycleFlush can be explicitly disabled', () => {
+    const result = defineBKTConfig({
+      ...defaultConfig,
+      enableAutoPageLifecycleFlush: false,
+    })
+
+    expect(result.enableAutoPageLifecycleFlush).toBe(false)
   })
 
   test('invalid apiEndpoint throws', () => {
@@ -236,7 +254,7 @@ suite('defineBKTConfig', () => {
     test('unsupported wrapper SDK sourceIds throw error', () => {
       const unsupportedSourceIds = [SourceId.ANDROID, SourceId.UNKNOWN]
 
-      unsupportedSourceIds.forEach(sourceId => {
+      unsupportedSourceIds.forEach((sourceId) => {
         expect(() => {
           defineBKTConfig({
             ...defaultConfig,
@@ -248,10 +266,7 @@ suite('defineBKTConfig', () => {
     })
 
     test('wrapper SDK with missing or empty version throws error', () => {
-      const invalidVersionCases = [
-        { version: undefined },
-        { version: '' },
-      ]
+      const invalidVersionCases = [{ version: undefined }, { version: '' }]
 
       invalidVersionCases.forEach(({ version }) => {
         expect(() => {
@@ -274,6 +289,5 @@ suite('defineBKTConfig', () => {
       expect(internalResult.sourceId).toBe(SourceId.JAVASCRIPT)
       expect(internalResult.sdkVersion).toBe(SDK_VERSION)
     })
-
   })
 })

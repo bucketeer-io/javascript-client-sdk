@@ -15,8 +15,8 @@ module.exports = [
       'tsconfig.json',
       'build.config.ts',
       '**/*.d.ts',
-    '.github',
-    'eslint-rules/',
+      '.github',
+      'eslint-rules/',
     ],
   },
   ...tseslint.configs.recommended,
@@ -33,7 +33,7 @@ module.exports = [
   },
   {
     plugins: {
-      'custom-rules': require('./eslint-rules/no-spread-after-defaults.js').default,
+      'custom-rules': require('./eslint-rules/no-spread-after-defaults.cjs'),
     },
     rules: {
       'no-multiple-empty-lines': 'error',

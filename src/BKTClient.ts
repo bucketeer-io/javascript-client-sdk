@@ -1,15 +1,17 @@
-import {
-  BKTEvaluation,
-} from './BKTEvaluation'
+import { BKTEvaluation } from './BKTEvaluation'
 import { BKTUser } from './BKTUser'
 import { Component } from './internal/di/Component'
-import { clearInstance, getInstance, setInstance } from './internal/instance'
+import {
+  clearInstance,
+  getInstance,
+  setInstance,
+  clearPageLifecycleCleanup,
+} from './internal/instance'
 import { ApiId } from './internal/model/MetricsEventData'
 import { TaskScheduler } from './internal/scheduler/TaskScheduler'
 import { toBKTUser } from './internal/UserHolder'
 import { BKTValue } from './BKTValue'
 import { BKTEvaluationDetails } from './BKTEvaluationDetails'
-
 
 export interface BKTClient {
   booleanVariation: (featureId: string, defaultValue: boolean) => boolean
@@ -32,9 +34,9 @@ export interface BKTClient {
     featureId: string,
     defaultValue: number,
   ) => BKTEvaluationDetails<number>
-  
+
   objectVariation: (featureId: string, defaultValue: BKTValue) => BKTValue
-  
+
   /**
    * Retrieves the evaluation details for a given feature based on its ID.
    *
@@ -73,7 +75,7 @@ export interface BKTClient {
 export class BKTClientImpl implements BKTClient {
   taskScheduler: TaskScheduler | null = null
 
-  constructor(public component: Component) { }
+  constructor(public component: Component) {}
 
   async initializeInternal(timeoutMillis: number): Promise<void> {
     this.scheduleTasks()
@@ -110,7 +112,7 @@ export class BKTClientImpl implements BKTClient {
       stringToNumberConverter,
     )
   }
-  
+
   stringVariation(featureId: string, defaultValue: string): string {
     return this.stringVariationDetails(featureId, defaultValue).variationValue
   }
@@ -172,7 +174,9 @@ export class BKTClientImpl implements BKTClient {
     return toBKTUser(this.component.userHolder().get())
   }
 
-  async updateUserAttributes(attributes: Record<string, string>): Promise<void> {
+  async updateUserAttributes(
+    attributes: Record<string, string>,
+  ): Promise<void> {
     this.component.userHolder().updateAttributes((_prev) => ({ ...attributes }))
     await this.component.evaluationInteractor().setUserAttributesUpdated()
   }
@@ -182,10 +186,17 @@ export class BKTClientImpl implements BKTClient {
   }
 
   async flush(): Promise<void> {
-    const result = await this.component.eventInteractor().sendEvents(true)
-
-    if (result.type === 'failure') {
-      throw result.error
+    // Keep flushing until all events are sent
+    while (true) {
+      const result = await this.component.eventInteractor().sendEvents(true)
+      if (result.type === 'failure') {
+        throw result.error
+      }
+      // If no events were sent (storage is empty), we're done
+      if (!result.sent) {
+        break
+      }
+      // Continue to next batch if there are more events
     }
   }
 
@@ -310,10 +321,14 @@ export class BKTClientImpl implements BKTClient {
           ApiId.GET_EVALUATIONS,
           component.config().featureTag,
           result.error,
-      ).catch((err) => {
-        /* ignore error from the storage layer */
-        console.error('BKTClient: Storage layer error in fetchEvaluations::trackFailure', err)
-      })
+        )
+        .catch((err) => {
+          /* ignore error from the storage layer */
+          console.error(
+            'BKTClient: Storage layer error in fetchEvaluations::trackFailure',
+            err,
+          )
+        })
       throw result.error
     } else {
       await component
@@ -323,10 +338,14 @@ export class BKTClientImpl implements BKTClient {
           component.config().featureTag,
           result.seconds,
           result.sizeByte,
-      ).catch((err) => {
-        /* ignore error from the storage layer */
-        console.error('BKTClient: Storage layer error in fetchEvaluations::trackSuccess', err)
-      })
+        )
+        .catch((err) => {
+          /* ignore error from the storage layer */
+          console.error(
+            'BKTClient: Storage layer error in fetchEvaluations::trackSuccess',
+            err,
+          )
+        })
     }
   }
 }
@@ -354,6 +373,8 @@ export const destroyBKTClient = (): void => {
   if (client) {
     ;(client as BKTClientImpl).resetTasks()
   }
+  // Clean up page lifecycle event listeners
+  clearPageLifecycleCleanup()
   clearInstance()
 }
 
