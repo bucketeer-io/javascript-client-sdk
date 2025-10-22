@@ -653,7 +653,7 @@ suite('BKTClient', () => {
     expect(allEvents.length).toBeGreaterThan(0)
 
     // Find the GOAL event among all events
-    const goalEvent = allEvents.find(event => event.type === EventType.GOAL)
+    const goalEvent = allEvents.find((event) => event.type === EventType.GOAL)
 
     // Assert that the GOAL event exists and has correct properties
     assert(goalEvent !== undefined)
@@ -980,6 +980,87 @@ suite('BKTClient', () => {
       )
 
       expect((await eventStorage.getAll()).length).toBe(2)
+    })
+
+    test('flushes all events across multiple batches', async () => {
+      // Set up a config with a small eventsMaxQueueSize for testing
+      const smallBatchConfig = defineBKTConfig({
+        ...config,
+        eventsMaxQueueSize: 3, // Small batch size to force multiple batches
+      })
+
+      const smallBatchComponent = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(
+          { id: user1.id, data: user1.data },
+          requiredInternalConfig(smallBatchConfig),
+        ),
+        new InteractorModule(),
+      )
+
+      let registerEventsCallCount = 0
+
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(
+          `${config.apiEndpoint}/get_evaluations`,
+          () => {
+            return HttpResponse.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            })
+          },
+          { once: true },
+        ),
+        http.post<
+          Record<string, never>,
+          RegisterEventsRequest,
+          RegisterEventsResponse
+        >(`${config.apiEndpoint}/register_events`, async ({ request }) => {
+          registerEventsCallCount++
+          const body =
+            (await request.json()) as unknown as RegisterEventsRequest
+          // Verify batch size doesn't exceed limit
+          expect(body.events.length).toBeLessThanOrEqual(3)
+          return HttpResponse.json({})
+        }),
+      )
+
+      await initializeBKTClientInternal(smallBatchComponent, 1000)
+
+      const client = getBKTClient()
+      assert(client !== null)
+
+      const eventStorage = getDefaultComponent(client).dataModule.eventStorage()
+
+      // Initial events from initialization (2 metrics events)
+      const initialEventCount = (await eventStorage.getAll()).length
+      expect(initialEventCount).toBeGreaterThan(0)
+
+      // Add more events to exceed one batch (3 events per batch)
+      // Let's add 5 goal events, so total = initialEventCount + 5
+      for (let i = 0; i < 5; i++) {
+        await client.track('goal_id', 1.0)
+      }
+
+      const totalEvents = (await eventStorage.getAll()).length
+      expect(totalEvents).toBeGreaterThan(3) // Ensure we have more than one batch
+
+      // Reset counter before flush
+      registerEventsCallCount = 0
+
+      // Flush should send all events in multiple batches
+      await client.flush()
+
+      // Verify all events were sent
+      expect((await eventStorage.getAll()).length).toBe(0)
+
+      // Verify multiple API calls were made (ceiling of totalEvents / 3)
+      const expectedCalls = Math.ceil(totalEvents / 3)
+      expect(registerEventsCallCount).toBe(expectedCalls)
     })
   })
 

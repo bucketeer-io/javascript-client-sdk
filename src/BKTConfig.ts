@@ -9,8 +9,8 @@ import { IdGenerator } from './internal/IdGenerator'
 import { FetchLike } from './internal/remote/fetch'
 import { SDK_VERSION } from './internal/version'
 
-const MINIMUM_FLUSH_INTERVAL_MILLIS = 30_000 // 30 seconds
-const DEFAULT_FLUSH_INTERVAL_MILLIS = 30_000 // 30 seconds
+const MINIMUM_FLUSH_INTERVAL_MILLIS = 10_000 // 10 seconds
+const DEFAULT_FLUSH_INTERVAL_MILLIS = 10_000 // 10 seconds
 const DEFAULT_MAX_QUEUE_SIZE = 50
 const MINIMUM_POLLING_INTERVAL_MILLIS = 60_000 // 60 seconds
 const DEFAULT_POLLING_INTERVAL_MILLIS = 600_000 // 10 minutes
@@ -36,6 +36,12 @@ export interface RawBKTConfig {
   userAgent?: string
   fetch?: FetchLike
   storageFactory?: <T>(key: string) => BKTStorage<T>
+
+  // Enable automatic event flushing on page lifecycle events (pagehide, visibilitychange).
+  // This helps prevent data loss when users navigate away or switch tabs.
+  // Default: true
+  // Set to false if you want to manually control event flushing.
+  enableAutoPageLifecycleFlush?: boolean
   // Use wrapperSdkVersion to set the SDK version explicitly.
   // IMPORTANT: This option is intended for internal use only.
   // It should NOT be set by developers directly integrating this SDK.
@@ -60,6 +66,7 @@ export interface BKTConfig extends RawBKTConfig {
   userAgent: string
   fetch: FetchLike
   storageFactory: <T>(key: string) => BKTStorage<T>
+  enableAutoPageLifecycleFlush: boolean
 }
 
 const defaultUserAgent = () => {
@@ -90,6 +97,7 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     userAgent: config.userAgent ?? userAgent,
     fetch: config.fetch ?? globalThis.fetch,
     storageFactory: config.storageFactory ?? createBKTStorage,
+    enableAutoPageLifecycleFlush: config.enableAutoPageLifecycleFlush ?? true,
   }
 
   // Advanced properties: only included when explicitly set (not undefined)

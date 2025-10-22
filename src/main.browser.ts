@@ -1,4 +1,4 @@
-import { initializeBKTClientInternal } from './BKTClient'
+import { initializeBKTClientInternal, getBKTClient } from './BKTClient'
 import { BKTConfig } from './BKTConfig'
 import { BKTUser } from './BKTUser'
 import { Component, DefaultComponent } from './internal/di/Component'
@@ -8,6 +8,7 @@ import { BrowserPlatformModule } from './internal/di/PlatformModule.browser'
 import { requiredInternalConfig } from './internal/InternalConfig'
 import { User } from './internal/model/User'
 import { toUser } from './internal/UserHolder'
+import { setupPageLifecycleListeners } from './utils/pageLifecycle'
 
 export type { BKTConfig, RawBKTConfig } from './BKTConfig'
 export { defineBKTConfig } from './BKTConfig'
@@ -27,6 +28,11 @@ export type {
   BKTJsonPrimitive,
 } from './BKTValue'
 export type { BKTEvaluationDetails } from './BKTEvaluationDetails'
+export {
+  setupPageLifecycleListeners,
+  supportsSendBeacon,
+} from './utils/pageLifecycle'
+export type { FlushCallback } from './utils/pageLifecycle'
 
 const createBrowserComponent = (config: BKTConfig, user: User): Component => {
   return new DefaultComponent(
@@ -42,5 +48,22 @@ export const initializeBKTClient = async (
   timeoutMillis = 5_000,
 ): Promise<void> => {
   const component = createBrowserComponent(config, toUser(user))
-  return initializeBKTClientInternal(component, timeoutMillis)
+  await initializeBKTClientInternal(component, timeoutMillis)
+
+  // Auto-setup page lifecycle listeners if enabled
+  if (config.enableAutoPageLifecycleFlush && typeof window !== 'undefined') {
+    setupPageLifecycleListeners({
+      onFlush: async () => {
+        try {
+          await getBKTClient()?.flush()
+        } catch (error) {
+          // Silent failure - flush is best effort on page unload
+          console.warn(
+            '[Bucketeer] Failed to flush events on page lifecycle:',
+            error,
+          )
+        }
+      },
+    })
+  }
 }
