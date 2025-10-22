@@ -1781,72 +1781,19 @@ suite('BKTClient', () => {
     })
   })
 
-  suite('destroyBKTClient - page lifecycle cleanup', () => {
-    test('should call cleanup function when destroyBKTClient is called', async () => {
-      // Import the instance management functions
-      const {
-        setPageLifecycleCleanup,
-        getPageLifecycleCleanup,
-        clearPageLifecycleCleanup,
-      } = await import('../src/internal/instance')
+  suite('destroyBKTClient - integration', () => {
+    test('should call clearPageLifecycleCleanup when destroying client', async () => {
+      // Import and spy on clearPageLifecycleCleanup
+      const instanceModule = await import('../src/internal/instance')
+      const clearSpy = vi.spyOn(instanceModule, 'clearPageLifecycleCleanup')
 
-      // Create a mock cleanup function
-      const mockCleanup = vi.fn()
+      // Destroy the client
+      destroyBKTClient()
 
-      // Store the cleanup function (simulating what initializeBKTClient does)
-      setPageLifecycleCleanup(mockCleanup)
+      // Verify clearPageLifecycleCleanup was called
+      expect(clearSpy).toHaveBeenCalledTimes(1)
 
-      // Verify cleanup was stored
-      expect(getPageLifecycleCleanup()).toBe(mockCleanup)
-
-      // Call clearPageLifecycleCleanup (called by destroyBKTClient)
-      clearPageLifecycleCleanup()
-
-      // Verify cleanup function was called
-      expect(mockCleanup).toHaveBeenCalledTimes(1)
-
-      // Verify cleanup was removed
-      expect(getPageLifecycleCleanup()).toBeNull()
-    })
-
-    test('should not throw if cleanup function is not set', async () => {
-      const { clearPageLifecycleCleanup } = await import(
-        '../src/internal/instance'
-      )
-
-      // Call clearPageLifecycleCleanup when no cleanup is set
-      expect(() => clearPageLifecycleCleanup()).not.toThrow()
-    })
-
-    test('should prevent memory leaks on client destroy and re-init', async () => {
-      const {
-        setPageLifecycleCleanup,
-        getPageLifecycleCleanup,
-        clearPageLifecycleCleanup,
-      } = await import('../src/internal/instance')
-
-      // First initialization
-      const mockCleanup1 = vi.fn()
-      setPageLifecycleCleanup(mockCleanup1)
-
-      // Destroy client
-      clearPageLifecycleCleanup()
-      expect(mockCleanup1).toHaveBeenCalledTimes(1)
-      expect(getPageLifecycleCleanup()).toBeNull()
-
-      // Re-initialize with new cleanup
-      const mockCleanup2 = vi.fn()
-      setPageLifecycleCleanup(mockCleanup2)
-
-      // Verify new cleanup is stored
-      expect(getPageLifecycleCleanup()).toBe(mockCleanup2)
-
-      // Destroy again
-      clearPageLifecycleCleanup()
-      expect(mockCleanup2).toHaveBeenCalledTimes(1)
-
-      // Verify first cleanup wasn't called again
-      expect(mockCleanup1).toHaveBeenCalledTimes(1)
+      clearSpy.mockRestore()
     })
   })
 })

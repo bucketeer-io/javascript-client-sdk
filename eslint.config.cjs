@@ -33,7 +33,7 @@ module.exports = [
   },
   {
     plugins: {
-      'custom-rules': require('./eslint-rules/no-spread-after-defaults.js').default,
+      'custom-rules': require('./eslint-rules/no-spread-after-defaults.cjs'),
     },
     rules: {
       'no-multiple-empty-lines': 'error',

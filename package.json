@@ -32,11 +32,6 @@
         "require": "./dist/main.browser.cjs",
         "types": "./dist/main.d.ts"
       }
-    },
-    "./utils/pageLifecycle": {
-      "import": "./dist/utils/pageLifecycle.mjs",
-      "require": "./dist/utils/pageLifecycle.cjs",
-      "types": "./dist/utils/pageLifecycle.d.ts"
     }
   },
   "scripts": {

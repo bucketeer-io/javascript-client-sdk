@@ -43,6 +43,19 @@ const createBrowserComponent = (config: BKTConfig, user: User): Component => {
   )
 }
 
+/**
+ * Page lifecycle event flush handler.
+ * Called when page is hidden/unloaded to flush pending events.
+ */
+export const onPageLifecycleFlush = async (): Promise<void> => {
+  try {
+    await getBKTClient()?.flush()
+  } catch (error) {
+    // Silent failure - flush is best effort on page unload
+    console.warn('[Bucketeer] Failed to flush events on page lifecycle:', error)
+  }
+}
+
 export const initializeBKTClient = async (
   config: BKTConfig,
   user: BKTUser,
@@ -54,17 +67,7 @@ export const initializeBKTClient = async (
   // Auto-setup page lifecycle listeners if enabled
   if (config.enableAutoPageLifecycleFlush && typeof window !== 'undefined') {
     const cleanup = setupPageLifecycleListeners({
-      onFlush: async () => {
-        try {
-          await getBKTClient()?.flush()
-        } catch (error) {
-          // Silent failure - flush is best effort on page unload
-          console.warn(
-            '[Bucketeer] Failed to flush events on page lifecycle:',
-            error,
-          )
-        }
-      },
+      onFlush: onPageLifecycleFlush,
     })
     // Store cleanup function to be called when client is destroyed
     setPageLifecycleCleanup(cleanup)
