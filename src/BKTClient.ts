@@ -312,7 +312,7 @@ export class BKTClientImpl implements BKTClient {
           result.error,
       ).catch((err) => {
         /* ignore error from the storage layer */
-        console.debug('BKTClient: Storage layer error in fetchEvaluations::trackFailure', err)
+        console.error('BKTClient: Storage layer error in fetchEvaluations::trackFailure', err)
       })
       throw result.error
     } else {
@@ -325,7 +325,7 @@ export class BKTClientImpl implements BKTClient {
           result.sizeByte,
       ).catch((err) => {
         /* ignore error from the storage layer */
-        console.debug('BKTClient: Storage layer error in fetchEvaluations::trackSuccess', err)
+        console.error('BKTClient: Storage layer error in fetchEvaluations::trackSuccess', err)
       })
     }
   }
