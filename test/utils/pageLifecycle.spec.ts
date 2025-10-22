@@ -15,13 +15,13 @@ describe('pageLifecycle', () => {
       mockWindow = {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-      } as any
+      } as unknown as typeof window
 
       mockDocument = {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         visibilityState: 'visible',
-      } as any
+      } as unknown as typeof document
 
       // Replace global window and document
       global.window = mockWindow
@@ -72,12 +72,12 @@ describe('pageLifecycle', () => {
       // Get the pagehide handler
       const pagehideHandler = addEventListenerSpy.mock.calls.find(
         (call) => call[0] === 'pagehide',
-      )?.[1] as Function
+      )?.[1] as EventListener
 
       expect(pagehideHandler).toBeDefined()
 
       // Trigger pagehide
-      pagehideHandler()
+      pagehideHandler(new Event('pagehide'))
 
       expect(onFlush).toHaveBeenCalledTimes(1)
     })
@@ -91,7 +91,7 @@ describe('pageLifecycle', () => {
       const visibilityChangeHandler =
         documentAddEventListenerSpy.mock.calls.find(
           (call) => call[0] === 'visibilitychange',
-        )?.[1] as Function
+        )?.[1] as EventListener
 
       expect(visibilityChangeHandler).toBeDefined()
 
@@ -99,7 +99,7 @@ describe('pageLifecycle', () => {
       mockDocument.visibilityState = 'hidden'
 
       // Trigger visibilitychange
-      visibilityChangeHandler()
+      visibilityChangeHandler(new Event('visibilitychange'))
 
       expect(onFlush).toHaveBeenCalledTimes(1)
     })
@@ -113,7 +113,7 @@ describe('pageLifecycle', () => {
       const visibilityChangeHandler =
         documentAddEventListenerSpy.mock.calls.find(
           (call) => call[0] === 'visibilitychange',
-        )?.[1] as Function
+        )?.[1] as EventListener
 
       expect(visibilityChangeHandler).toBeDefined()
 
@@ -121,7 +121,7 @@ describe('pageLifecycle', () => {
       expect(mockDocument.visibilityState).toBe('visible')
 
       // Trigger visibilitychange
-      visibilityChangeHandler()
+      visibilityChangeHandler(new Event('visibilitychange'))
 
       expect(onFlush).not.toHaveBeenCalled()
     })
@@ -134,22 +134,22 @@ describe('pageLifecycle', () => {
       // Get handlers
       const pagehideHandler = addEventListenerSpy.mock.calls.find(
         (call) => call[0] === 'pagehide',
-      )?.[1] as Function
+      )?.[1] as EventListener
 
       const beforeunloadHandler = addEventListenerSpy.mock.calls.find(
         (call) => call[0] === 'beforeunload',
-      )?.[1] as Function
+      )?.[1] as EventListener
 
       const visibilityChangeHandler =
         documentAddEventListenerSpy.mock.calls.find(
           (call) => call[0] === 'visibilitychange',
-        )?.[1] as Function
+        )?.[1] as EventListener
 
       // Trigger multiple events in sequence
       mockDocument.visibilityState = 'hidden'
-      visibilityChangeHandler()
-      pagehideHandler()
-      beforeunloadHandler()
+      visibilityChangeHandler(new Event('visibilitychange'))
+      pagehideHandler(new Event('pagehide'))
+      beforeunloadHandler(new Event('beforeunload'))
 
       // onFlush should only be called once due to hasFlushed flag
       expect(onFlush).toHaveBeenCalledTimes(1)
@@ -164,24 +164,24 @@ describe('pageLifecycle', () => {
       const visibilityChangeHandler =
         documentAddEventListenerSpy.mock.calls.find(
           (call) => call[0] === 'visibilitychange',
-        )?.[1] as Function
+        )?.[1] as EventListener
 
       const pagehideHandler = addEventListenerSpy.mock.calls.find(
         (call) => call[0] === 'pagehide',
-      )?.[1] as Function
+      )?.[1] as EventListener
 
       // Step 1: Hide page - should flush
       mockDocument.visibilityState = 'hidden'
-      visibilityChangeHandler()
+      visibilityChangeHandler(new Event('visibilitychange'))
       expect(onFlush).toHaveBeenCalledTimes(1)
 
       // Step 2: Show page again - should reset flag
       mockDocument.visibilityState = 'visible'
-      visibilityChangeHandler()
+      visibilityChangeHandler(new Event('visibilitychange'))
       expect(onFlush).toHaveBeenCalledTimes(1) // Still 1, no flush on visible
 
       // Step 3: Navigate away - should flush again because flag was reset
-      pagehideHandler()
+      pagehideHandler(new Event('pagehide'))
       expect(onFlush).toHaveBeenCalledTimes(2) // ✅ Called again!
     })
 
@@ -193,12 +193,12 @@ describe('pageLifecycle', () => {
       // Get the beforeunload handler
       const beforeunloadHandler = addEventListenerSpy.mock.calls.find(
         (call) => call[0] === 'beforeunload',
-      )?.[1] as Function
+      )?.[1] as EventListener
 
       expect(beforeunloadHandler).toBeDefined()
 
       // Trigger beforeunload
-      beforeunloadHandler()
+      beforeunloadHandler(new Event('beforeunload'))
 
       expect(onFlush).toHaveBeenCalledTimes(1)
     })
@@ -243,10 +243,10 @@ describe('pageLifecycle', () => {
       // Get the pagehide handler
       const pagehideHandler = addEventListenerSpy.mock.calls.find(
         (call) => call[0] === 'pagehide',
-      )?.[1] as Function
+      )?.[1] as EventListener
 
       // Trigger pagehide - should not throw
-      expect(() => pagehideHandler()).not.toThrow()
+      expect(() => pagehideHandler(new Event('pagehide'))).not.toThrow()
 
       // Should log error
       expect(consoleErrorSpy).toHaveBeenCalledWith(
