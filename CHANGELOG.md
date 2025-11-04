@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.4.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.4.0...v2.4.1) (2025-11-04)
+
+
+### Build System
+
+* bump @typescript-eslint/eslint-plugin from 8.41.0 to 8.46.3 ([#284](https://github.com/bucketeer-io/javascript-client-sdk/issues/284)) ([556783b](https://github.com/bucketeer-io/javascript-client-sdk/commit/556783b0d8b3146b7a5f92185bd0479493b776c3))
+* bump @typescript-eslint/parser from 8.41.0 to 8.46.3 ([#279](https://github.com/bucketeer-io/javascript-client-sdk/issues/279)) ([dcfa5b4](https://github.com/bucketeer-io/javascript-client-sdk/commit/dcfa5b4f160afc4e4a9c59289994b83936717049))
+* bump happy-dom in the test-dependencies group across 1 directory ([#283](https://github.com/bucketeer-io/javascript-client-sdk/issues/283)) ([8b4ec4e](https://github.com/bucketeer-io/javascript-client-sdk/commit/8b4ec4eeddcef24e16072b8119cef75cf4bf8983))
+* bump the build-patch group with 2 updates ([#275](https://github.com/bucketeer-io/javascript-client-sdk/issues/275)) ([088ba8c](https://github.com/bucketeer-io/javascript-client-sdk/commit/088ba8cf86e5ca3033f03c42fd6632a2a7ed608a))
+
 ## [2.4.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.3.1...v2.4.0) (2025-10-22)
 
 
