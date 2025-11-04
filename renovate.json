@@ -1,0 +1,146 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base"],
+  "labels": ["dependencies"],
+  "timezone": "Asia/Tokyo",
+  "schedule": ["at 10:00 on day 1 of the month"],
+  "platformAutomerge": true,
+  "semanticCommits": "enabled",
+  "commitMessagePrefix": "build(deps):",
+  "commitMessageAction": "bump",
+  "commitMessageSuffix": "",
+  "major": {
+    "automerge": false,
+    "commitMessageExtra": "",
+    "commitMessageSuffix": ""
+  },
+  "packageRules": [
+    {
+      "description": "GitHub Actions - ignore major updates",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "GitHub Actions - group patch, minor, and digest updates",
+      "groupName": "ci-dependencies",
+      "groupSlug": "ci-deps",
+      "commitMessagePrefix": "ci(deps):",
+      "commitMessageTopic": "ci-dependencies group",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch", "minor", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "TypeScript - only allow patch updates",
+      "matchPackageNames": ["typescript"],
+      "matchUpdateTypes": ["minor", "major"],
+      "enabled": false
+    },
+    {
+      "description": "ESLint - only allow patch updates",
+      "matchPackageNames": ["eslint"],
+      "matchUpdateTypes": ["minor", "major"],
+      "enabled": false
+    },
+    {
+      "description": "Prettier - only allow patch updates",
+      "matchPackageNames": ["prettier"],
+      "matchUpdateTypes": ["minor", "major"],
+      "enabled": false
+    },
+    {
+      "description": "@types/node - only allow patch updates",
+      "matchPackageNames": ["@types/node"],
+      "matchUpdateTypes": ["minor", "major"],
+      "enabled": false
+    },
+    {
+      "description": "async-mutex - only allow patch updates (runtime dependency)",
+      "matchPackageNames": ["async-mutex"],
+      "matchUpdateTypes": ["minor", "major"],
+      "enabled": false
+    },
+    {
+      "description": "unbuild - only allow patch updates",
+      "matchPackageNames": ["unbuild"],
+      "matchUpdateTypes": ["minor", "major"],
+      "enabled": false
+    },
+    {
+      "description": "Test dependencies - ignore major updates",
+      "matchPackagePatterns": ["^vitest", "^@vitest/"],
+      "matchPackageNames": ["webdriverio", "happy-dom", "msw", "@types/jsdom"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "Test dependencies - group patch and minor updates",
+      "groupName": "test-dependencies",
+      "groupSlug": "test-deps",
+      "commitMessagePrefix": "test(deps):",
+      "commitMessageTopic": "test-dependencies group",
+      "matchPackagePatterns": ["^vitest", "^@vitest/"],
+      "matchPackageNames": ["webdriverio", "happy-dom", "msw", "@types/jsdom"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
+    },
+    {
+      "description": "Build dependencies - group patch updates (auto-mergeable)",
+      "groupName": "build-patch",
+      "groupSlug": "build-patch",
+      "commitMessageTopic": "build-patch group",
+      "matchDatasources": ["npm", "node-version"],
+      "matchDepTypes": ["devDependencies", "packageManager"],
+      "excludePackagePatterns": ["^vitest", "^@vitest/"],
+      "excludePackageNames": [
+        "webdriverio",
+        "happy-dom",
+        "msw",
+        "@types/jsdom"
+      ],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Build dependencies - group minor updates (requires review)",
+      "groupName": "build-minor",
+      "groupSlug": "build-minor",
+      "commitMessageTopic": "build-minor group",
+      "matchDatasources": ["npm", "node-version"],
+      "matchDepTypes": ["devDependencies", "packageManager"],
+      "excludePackagePatterns": ["^vitest", "^@vitest/"],
+      "excludePackageNames": [
+        "webdriverio",
+        "happy-dom",
+        "msw",
+        "@types/jsdom"
+      ],
+      "matchUpdateTypes": ["minor"],
+      "automerge": true
+    },
+    {
+      "description": "Build dependencies - group major updates (REQUIRES REVIEW)",
+      "groupName": "build-major",
+      "groupSlug": "build-major",
+      "commitMessageTopic": "build-major group",
+      "matchDatasources": ["npm", "node-version"],
+      "matchDepTypes": ["devDependencies", "packageManager"],
+      "excludePackagePatterns": ["^vitest", "^@vitest/"],
+      "excludePackageNames": [
+        "webdriverio",
+        "happy-dom",
+        "msw",
+        "@types/jsdom",
+        "typescript",
+        "eslint",
+        "prettier",
+        "@types/node",
+        "async-mutex",
+        "unbuild"
+      ],
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    }
+  ]
+}
