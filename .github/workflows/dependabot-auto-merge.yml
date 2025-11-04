@@ -16,7 +16,7 @@ jobs:
         uses: lewagon/wait-on-check-action@3603e826ee561ea102b58accb5ea55a1a7482343 # v1.4.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          running-workflow-name: 'dependabot'
+          running-workflow-name: "dependabot"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 120
           allowed-conclusions: success,skipped

@@ -61,6 +61,20 @@ updates:
       - dependency-name: "unbuild"
         update-types:
           ["version-update:semver-minor", "version-update:semver-major"]
+
+      # Test dependencies - only allow patch and minor updates
+      - dependency-name: "vitest*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "webdriverio"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "happy-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "msw"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/jsdom"
+        update-types: ["version-update:semver-major"]
     groups:
       # Test dependencies group (matches Renovate's test deps)
       test-dependencies:
@@ -71,7 +85,7 @@ updates:
           - "happy-dom"
           - "msw"
           - "@types/jsdom"
-        update-types: ["patch", "minor", "major"]
+        update-types: ["patch", "minor"]
       # Build dependencies - patch updates (auto-mergeable)
       build-patch:
         patterns: ["*"]
@@ -95,8 +109,8 @@ updates:
           - "@types/jsdom"
         update-types: ["minor"]
       # Build dependencies - major updates (requires careful review)
-      # Excludes test deps (which get major updates) and critical deps (which are blocked via ignore)
-      # NOTE: critical dependencies (typescript, eslint, prettier, @types/node, async-mutex, unbuild) have major updates ignored
+      # Excludes test deps and critical deps (which are blocked via ignore)
+      # NOTE: critical dependencies have major updates ignored
       build-major:
         patterns: ["*"]
         exclude-patterns:
