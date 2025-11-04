@@ -3,7 +3,7 @@
   "extends": ["config:base"],
   "labels": ["dependencies"],
   "timezone": "Asia/Tokyo",
-  "schedule": ["at 10:00 on day 1 of the month"],
+  "schedule": ["* 10 1 * *"],
   "platformAutomerge": true,
   "semanticCommits": "enabled",
   "commitMessagePrefix": "build(deps):",
