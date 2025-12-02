@@ -236,6 +236,8 @@ suite('defineBKTConfig', () => {
         { sourceId: SourceId.REACT, version: '1.0.0' },
         { sourceId: SourceId.REACT_NATIVE, version: '2.1.0' },
         { sourceId: SourceId.OPEN_FEATURE_JAVASCRIPT, version: '3.2.1' },
+        { sourceId: SourceId.OPEN_FEATURE_REACT, version: '4.0.0' },
+        { sourceId: SourceId.OPEN_FEATURE_REACT_NATIVE, version: '5.5.5' },
       ]
 
       testCases.forEach(({ sourceId, version }) => {
