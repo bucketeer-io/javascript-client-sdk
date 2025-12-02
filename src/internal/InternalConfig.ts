@@ -14,6 +14,8 @@ const supportedWrapperSdkSourceIds: SourceId[] = [
   SourceId.REACT,
   SourceId.REACT_NATIVE,
   SourceId.OPEN_FEATURE_JAVASCRIPT,
+  SourceId.OPEN_FEATURE_REACT,
+  SourceId.OPEN_FEATURE_REACT_NATIVE,
 ]
 
 const requiredInternalConfig = (config: BKTConfig): InternalConfig => {

@@ -340,3 +340,59 @@ suite('e2e/events', () => {
     })
   })
 })
+
+suite('e2e/events with wrapper SDK Source Id', () => {
+  let config: BKTConfig
+  let user: BKTUser
+
+  beforeEach(async () => {
+    config = defineBKTConfig({
+      apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
+      apiKey: import.meta.env.VITE_BKT_API_KEY,
+      featureTag: 'javascript',
+      appVersion: '1.2.3',
+      fetch: fetchLike,
+      // DO NOT remove this line
+      // Because the tests are asynchronous and share the same local storage,
+      // It might fail randomly, having more or fewer events in the storage when checking the test.
+      // So, we separate the storage from the evaluation tests to avoid flaky tests.
+      storageKeyPrefix: 'events',
+      wrapperSdkSourceId: SourceId.OPEN_FEATURE_REACT_NATIVE,
+      wrapperSdkVersion: '4.2.3',
+    })
+
+    user = defineBKTUser({
+      id: USER_ID,
+    })
+
+    await initializeBKTClient(config, user)
+  })
+
+  afterEach(() => {
+    destroyBKTClient()
+  })
+
+  test('goal event', async () => {
+    const client = getBKTClient()
+
+    assert(client != null)
+
+    await client.track(GOAL_ID, GOAL_VALUE)
+
+    const component = getDefaultComponent(client)
+
+    const events = await component.dataModule.eventStorage().getAll()
+    expect(events).toHaveLength(3)
+    expect(
+      events.some(
+        (e) =>
+          e.type === EventType.GOAL &&
+          e.event.sdkVersion === '4.2.3' &&
+          e.event.sourceId === SourceId.OPEN_FEATURE_REACT_NATIVE,
+      ),
+    ).toBe(true)
+    await client.flush()
+
+    expect(await component.dataModule.eventStorage().getAll()).toHaveLength(0)
+  })
+})

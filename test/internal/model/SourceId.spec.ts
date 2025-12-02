@@ -18,6 +18,8 @@ describe('sourceIdFromNumber', () => {
     expect(sourceIdFromNumber(102)).toBe(SourceId.OPEN_FEATURE_JAVASCRIPT)
     expect(sourceIdFromNumber(103)).toBe(SourceId.OPEN_FEATURE_GO)
     expect(sourceIdFromNumber(104)).toBe(SourceId.OPEN_FEATURE_NODE)
+    expect(sourceIdFromNumber(105)).toBe(SourceId.OPEN_FEATURE_REACT)
+    expect(sourceIdFromNumber(106)).toBe(SourceId.OPEN_FEATURE_REACT_NATIVE)
   })
 
   it('returns SourceId.UNKNOWN for unrecognized source IDs', () => {
