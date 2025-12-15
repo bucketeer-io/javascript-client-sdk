@@ -223,7 +223,7 @@ export class EventInteractor {
     }
   }
 
-  async sendEvents(force = false): Promise<SendEventsResult> { 
+  async sendEvents(force = false): Promise<SendEventsResult> {
     return runWithMutex(this.mutex, async () => {
       return this.sendEventsInternal(force)
     })

@@ -1044,13 +1044,12 @@ suite('BKTClient', () => {
 
       // Add more events to exceed one batch (3 events per batch)
       // Let's add 5 goal events, so total = initialEventCount + 5
-      // 1st batch: when i = 0
       for (let i = 0; i < 5; i++) {
         // Simulate cached events
         // By prefilling the storage with goal events
         // if we use client.track(), it will automatically trigger register_events when reaching 
-        // the batch size in the listener, that operation is unawait and cause flaky test
-        eventStorage.add({
+        // the batch size in the listener; that operation is not awaited and causes flaky tests
+        await eventStorage.add({
           id: '5ea231b4-c3c7-4b9f-97a2-ee50337f51f' + i,
           type: EventType.GOAL,
           event: {

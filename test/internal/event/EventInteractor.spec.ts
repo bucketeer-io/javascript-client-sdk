@@ -651,7 +651,7 @@ suite('internal/event/EventInteractor', () => {
     })
   })
 
-  suite('only one register_event at a time to prevent send duplicate events', async () => {
+  suite('only one register_event at a time to prevent sending duplicate events', async () => {
     test('concurrent send all events calls (forced = true)', async () => {
       let requestCount = 0
       server.use(
