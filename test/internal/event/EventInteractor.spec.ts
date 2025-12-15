@@ -650,4 +650,127 @@ suite('internal/event/EventInteractor', () => {
       expect(await eventStorage.getAll()).toHaveLength(0)
     })
   })
+
+  suite('only one register_event at a time to prevent send duplicate events', async () => {
+    test('concurrent send all events calls (forced = true)', async () => {
+      let requestCount = 0
+      server.use(
+        http.post(`${config.apiEndpoint}/register_events`, async () => {
+          requestCount++
+          await new Promise((resolve) => setTimeout(resolve, 100))
+          return HttpResponse.json({ errors: {} })
+        }),
+      )
+
+      await interactor.trackSuccess(
+        ApiId.GET_EVALUATION,
+        'feature_tag_value',
+        1,
+        723,
+      )
+
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      const p1 = interactor.sendEvents(true)
+      const p2 = interactor.sendEvents(true)
+      const p3 = interactor.sendEvents(true)
+
+      const [r1, r2, r3] = await Promise.all([p1, p2, p3])
+
+      assert(r1.type === 'success')
+      assert(r2.type === 'success')
+      assert(r3.type === 'success')
+
+      expect(r1.sent).toBe(true)
+      expect(r2.sent).toBe(false)
+      expect(r3.sent).toBe(false)
+
+      expect(requestCount).toBe(1)
+      expect(await eventStorage.getAll()).toHaveLength(0)
+    })
+
+    test('concurrent send events calls (forced = false)', async () => {
+      let requestCount = 0
+      server.use(
+        http.post(`${config.apiEndpoint}/register_events`, async () => {
+          requestCount++
+          await new Promise((resolve) => setTimeout(resolve, 100))
+          return HttpResponse.json({ errors: {} })
+        }),
+      )
+
+      await interactor.trackSuccess(
+        ApiId.GET_EVALUATION,
+        'feature_tag_value',
+        1,
+        723,
+      )
+      await interactor.trackGoalEvent(
+        'feature_tag_value',
+        user1,
+        'goal_id_value',
+        0.5,
+      )
+
+      expect(await eventStorage.getAll()).toHaveLength(3)
+
+      const p1 = interactor.sendEvents(false)
+      const p2 = interactor.sendEvents(false)
+      const p3 = interactor.sendEvents(false)
+
+      const [r1, r2, r3] = await Promise.all([p1, p2, p3])
+
+      assert(r1.type === 'success')
+      assert(r2.type === 'success')
+      assert(r3.type === 'success')
+
+      expect(r1.sent).toBe(true)
+      expect(r2.sent).toBe(false)
+      expect(r3.sent).toBe(false)
+
+      expect(await eventStorage.getAll()).toHaveLength(0)
+      expect(requestCount).toBe(1)
+    })
+
+    test('consecutive sendEvents calls', async () => {
+      let requestCount = 0
+      server.use(
+        http.post(`${config.apiEndpoint}/register_events`, async () => {
+          requestCount++
+          return HttpResponse.json({ errors: {} })
+        }),
+      )
+
+      await interactor.trackSuccess(
+        ApiId.GET_EVALUATION,
+        'feature_tag_value',
+        1,
+        723,
+      )
+
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      const r1 = await interactor.sendEvents(true)
+
+      assert(r1.type === 'success')
+      expect(r1.sent).toBe(true)
+      expect(requestCount).toBe(1)
+
+      await interactor.trackSuccess(
+        ApiId.GET_EVALUATION,
+        'feature_tag_value',
+        1,
+        723,
+      )
+
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      const r2 = await interactor.sendEvents(true)
+
+      assert(r2.type === 'success')
+      expect(r2.sent).toBe(true)
+      expect(requestCount).toBe(2)
+      expect(await eventStorage.getAll()).toHaveLength(0)
+    })
+  })
 })
