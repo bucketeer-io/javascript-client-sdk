@@ -229,7 +229,7 @@ export class EventInteractor {
     })
   }
 
-  async sendEventsInternal(force = false): Promise<SendEventsResult> {
+  private async sendEventsInternal(force = false): Promise<SendEventsResult> {
     const current = await this.eventStorage.getAll()
 
     if (current.length === 0) {
