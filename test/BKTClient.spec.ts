@@ -39,7 +39,7 @@ import {
   TimeoutException,
 } from '../src/BKTExceptions'
 import { Evaluation } from '../src/internal/model/Evaluation'
-import { EventType } from '../src/internal/model/Event'
+import { EventType, RootEventType } from '../src/internal/model/Event'
 import { BKTEvaluation } from '../src/BKTEvaluation'
 import { ErrorResponse } from '../src/internal/model/response/ErrorResponse'
 import { RegisterEventsRequest } from '../src/internal/model/request/RegisterEventsRequest'
@@ -49,6 +49,7 @@ import { DataModule } from '../src/internal/di/DataModule'
 import { InteractorModule } from '../src/internal/di/InteractorModule'
 import { BKTEvaluationDetails } from '../src/BKTEvaluationDetails'
 import { requiredInternalConfig } from '../src/internal/InternalConfig'
+import { SourceId } from '../src/internal/model/SourceId'
 
 suite('BKTClient', () => {
   let server: SetupServer
@@ -1043,15 +1044,36 @@ suite('BKTClient', () => {
 
       // Add more events to exceed one batch (3 events per batch)
       // Let's add 5 goal events, so total = initialEventCount + 5
+      // 1st batch: when i = 0
       for (let i = 0; i < 5; i++) {
-        await client.track('goal_id', 1.0)
+        // Simulate cached events
+        // By prefilling the storage with goal events
+        // if we use client.track(), it will automatically trigger register_events when reaching 
+        // the batch size in the listener, that operation is unawait and cause flaky test
+        eventStorage.add({
+          id: '5ea231b4-c3c7-4b9f-97a2-ee50337f51f' + i,
+          type: EventType.GOAL,
+          event: {
+            timestamp: 1661780821,
+            goalId: 'goal2',
+            userId: user1.id,
+            user: user1,
+            value: 0.0,
+            tag: 'javascript',
+            sourceId: SourceId.JAVASCRIPT,
+            sdkVersion: '1.0.0',
+            metadata: {
+              app_version: '1.2.3',
+              os_version: 'os_version_value',
+              device_model: 'device_model_value',
+            },
+            '@type': RootEventType.GoalEvent,
+          },
+        })
       }
 
       const totalEvents = (await eventStorage.getAll()).length
       expect(totalEvents).toBeGreaterThan(3) // Ensure we have more than one batch
-
-      // Reset counter before flush
-      registerEventsCallCount = 0
 
       // Flush should send all events in multiple batches
       await client.flush()
