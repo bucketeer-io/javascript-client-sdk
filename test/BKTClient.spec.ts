@@ -1050,7 +1050,7 @@ suite('BKTClient', () => {
         // if we use client.track(), it will automatically trigger register_events when reaching 
         // the batch size in the listener; that operation is not awaited and causes flaky tests
         await eventStorage.add({
-          id: '5ea231b4-c3c7-4b9f-97a2-ee50337f51f' + i,
+          id: `5ea231b4-c3c7-4b9f-97a2-ee50337f51f${i}`,
           type: EventType.GOAL,
           event: {
             timestamp: 1661780821,
