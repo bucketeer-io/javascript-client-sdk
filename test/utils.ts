@@ -32,18 +32,31 @@ export class FakeIdGenerator implements IdGenerator {
 
 export class FakeClock implements Clock {
   private impl = new DefaultClock()
+  private manualTimeSeconds?: number
 
   currentTimeMillisCalls: number[] = []
 
   currentTimeSecondsCalls: number[] = []
 
+  setCurrentTimeSeconds(seconds: number): void {
+    this.manualTimeSeconds = seconds
+  }
+
   currentTimeMillis(): number {
+    if (this.manualTimeSeconds !== undefined) {
+      return this.manualTimeSeconds * 1000
+    }
     const result = this.impl.currentTimeMillis()
     this.currentTimeMillisCalls.push(result)
     return result
   }
 
   currentTimeSeconds(): number {
+    if (this.manualTimeSeconds !== undefined) {
+      const result = this.manualTimeSeconds
+      this.currentTimeSecondsCalls.push(result)
+      return result
+    }
     const result = this.impl.currentTimeSeconds()
     this.currentTimeSecondsCalls.push(result)
     return result

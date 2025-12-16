@@ -28,6 +28,15 @@ import {
 import { runWithMutex } from '../mutex'
 
 export class EventInteractor {
+  // Evaluation event deduplication cache
+  // Key format: "userId::featureId::variationId"
+  // Value: timestamp when last sent (milliseconds)
+  private readonly evaluationCache = new Map<string, number>()
+
+  private mutex = new Mutex()
+
+  eventUpdateListener: ((events: Event[]) => void) | null = null
+
   constructor(
     private eventsMaxBatchQueueCount: number,
     private apiClient: ApiClient,
@@ -38,11 +47,8 @@ export class EventInteractor {
     private userAgent: string,
     private sourceId: SourceId,
     private sdkVersion: string,
+    private evaluationDedupWindowMillis: number,
   ) {}
-
-  private mutex = new Mutex()
-
-  eventUpdateListener: ((events: Event[]) => void) | null = null
 
   setEventUpdateListener(listener: ((events: Event[]) => void) | null): void {
     this.eventUpdateListener = listener
@@ -53,6 +59,22 @@ export class EventInteractor {
     user: User,
     evaluation: Evaluation,
   ): Promise<void> {
+    // Create deduplication key: user + feature + variation
+    // Same combination within dedup window = skip event
+    const dedupKey = `${user.id}::${evaluation.featureId}::${evaluation.variationId}`
+    const now = this.clock.currentTimeSeconds() * 1000 // Convert to milliseconds
+    const lastSent = this.evaluationCache.get(dedupKey)
+
+    // Check if we already sent this exact evaluation within dedup window
+    if (
+      lastSent !== undefined &&
+      now - lastSent < this.evaluationDedupWindowMillis
+    ) {
+      // Same user+flag+variation within dedup window → Skip duplicate event
+      return
+    }
+
+    // New or changed evaluation → Create event
     await this.eventStorage.add({
       id: this.idGenerator.newId(),
       type: EventType.EVALUATION,
@@ -75,6 +97,9 @@ export class EventInteractor {
       ),
     })
 
+    // Update cache with current timestamp
+    this.evaluationCache.set(dedupKey, now)
+
     await this.notifyEventsUpdated()
   }
 
@@ -83,6 +108,22 @@ export class EventInteractor {
     user: User,
     featureId: string,
   ): Promise<void> {
+    // Create deduplication key for default evaluations
+    // variationId is empty string for defaults
+    const dedupKey = `${user.id}::${featureId}::`
+    const now = this.clock.currentTimeSeconds() * 1000 // Convert to milliseconds
+    const lastSent = this.evaluationCache.get(dedupKey)
+
+    // Check if we already sent this default evaluation within dedup window
+    if (
+      lastSent !== undefined &&
+      now - lastSent < this.evaluationDedupWindowMillis
+    ) {
+      // Same user+flag+default within dedup window → Skip duplicate event
+      return
+    }
+
+    // New or changed default evaluation → Create event
     await this.eventStorage.add({
       id: this.idGenerator.newId(),
       type: EventType.EVALUATION,
@@ -106,6 +147,9 @@ export class EventInteractor {
         },
       ),
     })
+
+    // Update cache with current timestamp
+    this.evaluationCache.set(dedupKey, now)
 
     await this.notifyEventsUpdated()
   }
@@ -185,7 +229,11 @@ export class EventInteractor {
     }
   }
 
-  async trackFailure(apiId: ApiId, featureTag: string, error: BKTException): Promise<void> {
+  async trackFailure(
+    apiId: ApiId,
+    featureTag: string,
+    error: BKTException,
+  ): Promise<void> {
     if (error.type === MetricsEventType.UnauthorizedError) {
       console.error(
         'An unauthorized error occurred. Please check your API Key.',

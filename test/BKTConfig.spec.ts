@@ -29,6 +29,7 @@ suite('defineBKTConfig', () => {
       fetch,
       storageFactory: createBKTStorage,
       enableAutoPageLifecycleFlush: true,
+      evaluationDedupWindowMillis: 30_000,
       sdkVersion: SDK_VERSION,
       sourceId: SourceId.JAVASCRIPT,
     })
@@ -50,6 +51,7 @@ suite('defineBKTConfig', () => {
       fetch,
       storageFactory: createBKTStorage,
       enableAutoPageLifecycleFlush: true,
+      evaluationDedupWindowMillis: 30_000,
       wrapperSdkSourceId: SourceId.REACT,
       wrapperSdkVersion: '1.2.5',
       sdkVersion: '1.2.5',
@@ -290,6 +292,62 @@ suite('defineBKTConfig', () => {
 
       expect(internalResult.sourceId).toBe(SourceId.JAVASCRIPT)
       expect(internalResult.sdkVersion).toBe(SDK_VERSION)
+    })
+  })
+
+  suite('evaluationDedupWindowMillis', () => {
+    test('should use default value when undefined', () => {
+      const result = defineBKTConfig({
+        ...defaultConfig,
+        evaluationDedupWindowMillis: undefined,
+      })
+
+      expect(result.evaluationDedupWindowMillis).toBe(30_000) // 30 seconds default
+    })
+
+    test('should accept valid values >= minimum (10 seconds)', () => {
+      const validValues = [10_000, 20_000, 30_000, 60_000, 300_000]
+
+      validValues.forEach((value) => {
+        const result = defineBKTConfig({
+          ...defaultConfig,
+          evaluationDedupWindowMillis: value,
+        })
+
+        expect(result.evaluationDedupWindowMillis).toBe(value)
+      })
+    })
+
+    test('should replace values below minimum with default', () => {
+      const belowMinimumValues = [0, 1_000, 5_000, 9_999]
+
+      belowMinimumValues.forEach((value) => {
+        const result = defineBKTConfig({
+          ...defaultConfig,
+          evaluationDedupWindowMillis: value,
+        })
+
+        // Values below 10 seconds should be replaced with 30 seconds default
+        expect(result.evaluationDedupWindowMillis).toBe(30_000)
+      })
+    })
+
+    test('should handle exactly minimum value (10 seconds)', () => {
+      const result = defineBKTConfig({
+        ...defaultConfig,
+        evaluationDedupWindowMillis: 10_000,
+      })
+
+      expect(result.evaluationDedupWindowMillis).toBe(10_000)
+    })
+
+    test('should handle large values', () => {
+      const result = defineBKTConfig({
+        ...defaultConfig,
+        evaluationDedupWindowMillis: 600_000, // 10 minutes
+      })
+
+      expect(result.evaluationDedupWindowMillis).toBe(600_000)
     })
   })
 })

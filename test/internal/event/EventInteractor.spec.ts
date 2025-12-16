@@ -455,6 +455,205 @@ suite('internal/event/EventInteractor', () => {
     ])
   })
 
+  suite('Evaluation Event Deduplication', () => {
+    test('should deduplicate same evaluation within dedup window', async () => {
+      // First evaluation - should create event
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Same evaluation within window - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Third call - should still be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+    })
+
+    test('should create new event after dedup window expires', async () => {
+      // First evaluation at time 0
+      clock.setCurrentTimeSeconds(1000)
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Same evaluation at time 0 + 29s (within 30s window) - should be skipped
+      clock.setCurrentTimeSeconds(1029)
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Same evaluation at time 0 + 31s (outside 30s window) - should create new event
+      clock.setCurrentTimeSeconds(1031)
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+    })
+
+    test('should create new event when variation changes', async () => {
+      const evaluation2 = {
+        ...evaluation1,
+        variationId: 'test-feature-1-variation-B',
+      }
+
+      // First evaluation with variation A
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Same flag but variation B - should create new event
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation2,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      // Variation A again (within window) - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      // Variation B again (within window) - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation2,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+    })
+
+    test('should track different users separately', async () => {
+      const user2 = { ...user1, id: 'user-id-2' }
+
+      // User 1 evaluates flag
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // User 2 evaluates same flag - should create new event
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user2,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      // User 1 again (within window) - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      // User 2 again (within window) - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user2,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+    })
+
+    test('should deduplicate default evaluations', async () => {
+      // First default evaluation - should create event
+      await interactor.trackDefaultEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        'feature_id_value',
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Same default evaluation (within window) - should be skipped
+      await interactor.trackDefaultEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        'feature_id_value',
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // After window expires - should create new event
+      clock.setCurrentTimeSeconds(clock.currentTimeSeconds() + 31)
+      await interactor.trackDefaultEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        'feature_id_value',
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+    })
+
+    test('should track different features separately', async () => {
+      const evaluation2 = {
+        ...evaluation1,
+        featureId: 'test-feature-2',
+        variationId: 'test-feature-2-variation-A',
+      }
+
+      // Evaluate feature 1
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Evaluate feature 2 - should create new event
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation2,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      // Feature 1 again (within window) - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      // Feature 2 again (within window) - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation2,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+    })
+  })
+
   suite('sendEvents', () => {
     test('success', async () => {
       server.use(
