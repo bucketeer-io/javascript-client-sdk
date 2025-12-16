@@ -33,6 +33,10 @@ export class EventInteractor {
   // Value: timestamp when last sent (milliseconds)
   private readonly evaluationCache = new Map<string, number>()
 
+  // Track last cleanup time to prevent excessive cleanup operations
+  private lastCleanupTimeMillis = 0
+
+  // Mutex for event storage operations
   private mutex = new Mutex()
 
   eventUpdateListener: ((events: Event[]) => void) | null = null
@@ -54,15 +58,40 @@ export class EventInteractor {
     this.eventUpdateListener = listener
   }
 
+  /**
+   * Removes stale entries from the evaluation cache that are older than the dedup window.
+   * This prevents unbounded memory growth in long-running applications.
+   * Called periodically (approximately once per dedup window) during evaluation tracking.
+   */
+  private cleanupStaleEvaluationCache(): void {
+    const now = this.clock.currentTimeSeconds() * 1000 // milliseconds
+    const cutoffTime = now - this.evaluationDedupWindowMillis
+
+    // Remove entries older than the dedup window
+    for (const [key, timestamp] of this.evaluationCache.entries()) {
+      if (timestamp < cutoffTime) {
+        this.evaluationCache.delete(key)
+      }
+    }
+
+    this.lastCleanupTimeMillis = now
+  }
+
   async trackEvaluationEvent(
     featureTag: string,
     user: User,
     evaluation: Evaluation,
   ): Promise<void> {
+    const now = this.clock.currentTimeSeconds() * 1000 // Convert to milliseconds
+
+    // Periodically cleanup stale cache entries (once per dedup window)
+    if (now - this.lastCleanupTimeMillis >= this.evaluationDedupWindowMillis) {
+      this.cleanupStaleEvaluationCache()
+    }
+
     // Create deduplication key: user + feature + variation
     // Same combination within dedup window = skip event
     const dedupKey = `${user.id}::${evaluation.featureId}::${evaluation.variationId}`
-    const now = this.clock.currentTimeSeconds() * 1000 // Convert to milliseconds
     const lastSent = this.evaluationCache.get(dedupKey)
 
     // Check if we already sent this exact evaluation within dedup window
@@ -108,10 +137,16 @@ export class EventInteractor {
     user: User,
     featureId: string,
   ): Promise<void> {
+    const now = this.clock.currentTimeSeconds() * 1000 // Convert to milliseconds
+
+    // Periodically cleanup stale cache entries (once per dedup window)
+    if (now - this.lastCleanupTimeMillis >= this.evaluationDedupWindowMillis) {
+      this.cleanupStaleEvaluationCache()
+    }
+
     // Create deduplication key for default evaluations
     // variationId is empty string for defaults
     const dedupKey = `${user.id}::${featureId}::`
-    const now = this.clock.currentTimeSeconds() * 1000 // Convert to milliseconds
     const lastSent = this.evaluationCache.get(dedupKey)
 
     // Check if we already sent this default evaluation within dedup window

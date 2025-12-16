@@ -44,7 +44,9 @@ export class FakeClock implements Clock {
 
   currentTimeMillis(): number {
     if (this.manualTimeSeconds !== undefined) {
-      return this.manualTimeSeconds * 1000
+      const result = this.manualTimeSeconds * 1000
+      this.currentTimeMillisCalls.push(result)
+      return result
     }
     const result = this.impl.currentTimeMillis()
     this.currentTimeMillisCalls.push(result)

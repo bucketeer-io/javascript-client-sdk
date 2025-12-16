@@ -652,6 +652,214 @@ suite('internal/event/EventInteractor', () => {
       )
       expect(await eventStorage.getAll()).toHaveLength(2)
     })
+
+    suite('Cache Cleanup Mechanism', () => {
+      test('should cleanup stale cache entries after dedup window', async () => {
+        // Start at time 1000
+        clock.setCurrentTimeSeconds(1000)
+
+        // Track 3 different evaluations
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        const evaluation2 = { ...evaluation1, variationId: 'variation-B' }
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation2,
+        )
+        const evaluation3 = { ...evaluation1, variationId: 'variation-C' }
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation3,
+        )
+        expect(await eventStorage.getAll()).toHaveLength(3)
+
+        // Move time forward by dedup window (30 seconds)
+        // At this point, all 3 cache entries should be stale
+        clock.setCurrentTimeSeconds(1031)
+
+        // Track a new evaluation - this should trigger cleanup
+        const evaluation4 = { ...evaluation1, variationId: 'variation-D' }
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation4,
+        )
+        expect(await eventStorage.getAll()).toHaveLength(4)
+
+        // Now track evaluation1 again - if cache was cleaned up, this should create a new event
+        // If cache wasn't cleaned up, this would be skipped
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        expect(await eventStorage.getAll()).toHaveLength(5) // New event created = cache was cleaned
+      })
+
+      test('should not cleanup recent cache entries', async () => {
+        // Start at time 1000
+        clock.setCurrentTimeSeconds(1000)
+
+        // Track first evaluation
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        expect(await eventStorage.getAll()).toHaveLength(1)
+
+        // Move time forward by 15 seconds (still within 30s window)
+        clock.setCurrentTimeSeconds(1015)
+
+        // Track second evaluation - triggers cleanup check, but first entry is still fresh
+        const evaluation2 = { ...evaluation1, variationId: 'variation-B' }
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation2,
+        )
+        expect(await eventStorage.getAll()).toHaveLength(2)
+
+        // Track first evaluation again - should still be deduplicated (cache entry preserved)
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        expect(await eventStorage.getAll()).toHaveLength(2) // No new event = still cached
+      })
+
+      test('should only run cleanup once per dedup window', async () => {
+        // Start at time 1000
+        clock.setCurrentTimeSeconds(1000)
+
+        // Track evaluation and create cache entry
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+
+        // Move time forward by 5 seconds (not enough to trigger cleanup)
+        clock.setCurrentTimeSeconds(1005)
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          { ...evaluation1, variationId: 'variation-B' },
+        )
+
+        // Move forward by another 5 seconds (still not enough)
+        clock.setCurrentTimeSeconds(1010)
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          { ...evaluation1, variationId: 'variation-C' },
+        )
+
+        // Move forward to exactly 30 seconds from start (should trigger cleanup)
+        clock.setCurrentTimeSeconds(1030)
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          { ...evaluation1, variationId: 'variation-D' },
+        )
+
+        // Move forward by 5 more seconds (cleanup shouldn't run again yet)
+        clock.setCurrentTimeSeconds(1035)
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          { ...evaluation1, variationId: 'variation-E' },
+        )
+
+        // All evaluations should be tracked (5 events total)
+        expect(await eventStorage.getAll()).toHaveLength(5)
+      })
+
+      test('should cleanup works correctly for default evaluations', async () => {
+        // Start at time 1000
+        clock.setCurrentTimeSeconds(1000)
+
+        // Track default evaluation
+        await interactor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-1',
+        )
+        expect(await eventStorage.getAll()).toHaveLength(1)
+
+        // Within window - should be deduplicated
+        clock.setCurrentTimeSeconds(1015)
+        await interactor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-1',
+        )
+        expect(await eventStorage.getAll()).toHaveLength(1)
+
+        // Move forward by dedup window + trigger cleanup
+        clock.setCurrentTimeSeconds(1031)
+        await interactor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-2',
+        )
+
+        // Track feature-1 again - cache should be cleaned, so new event created
+        await interactor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-1',
+        )
+        expect(await eventStorage.getAll()).toHaveLength(3)
+      })
+
+      test('should handle mixed regular and default evaluations cleanup', async () => {
+        // Start at time 1000
+        clock.setCurrentTimeSeconds(1000)
+
+        // Track both regular and default evaluations
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        await interactor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-default',
+        )
+        expect(await eventStorage.getAll()).toHaveLength(2)
+
+        // Move forward and trigger cleanup
+        clock.setCurrentTimeSeconds(1031)
+        const evaluation2 = { ...evaluation1, variationId: 'variation-B' }
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation2,
+        )
+
+        // Both previous entries should be cleaned up
+        // Track them again - should create new events
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        await interactor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-default',
+        )
+        expect(await eventStorage.getAll()).toHaveLength(5)
+      })
+    })
   })
 
   suite('sendEvents', () => {
