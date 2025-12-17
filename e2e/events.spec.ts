@@ -102,7 +102,9 @@ suite('e2e/events', () => {
 
     const events = await component.dataModule.eventStorage().getAll()
     // It includes the Latency and ResponseSize metrics
-    expect(events).toHaveLength(8)
+    // Note: jsonVariation and objectVariation use the same FEATURE_ID_JSON,
+    // so they are deduplicated into a single evaluation event
+    expect(events).toHaveLength(7)
     expect(
       events.some(
         (e) =>
@@ -147,7 +149,9 @@ suite('e2e/events', () => {
 
     const events = await component.dataModule.eventStorage().getAll()
     // It includes the Latency and ResponseSize metrics
-    expect(events).toHaveLength(8)
+    // Note: jsonVariation and objectVariation use the same FEATURE_ID_JSON,
+    // so they are deduplicated into a single evaluation event
+    expect(events).toHaveLength(7)
     expect(
       events.some(
         (e) =>
