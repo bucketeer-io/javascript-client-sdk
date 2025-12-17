@@ -1,3 +1,4 @@
+import { Mutex } from 'async-mutex'
 import { BKTException } from '../../BKTExceptions'
 import { Clock } from '../Clock'
 import { IdGenerator } from '../IdGenerator'
@@ -24,6 +25,7 @@ import {
   SendEventsResult,
   SendEventsSuccess,
 } from './SendEventResult'
+import { runWithMutex } from '../mutex'
 
 export class EventInteractor {
   constructor(
@@ -37,6 +39,8 @@ export class EventInteractor {
     private sourceId: SourceId,
     private sdkVersion: string,
   ) {}
+
+  private mutex = new Mutex()
 
   eventUpdateListener: ((events: Event[]) => void) | null = null
 
@@ -220,6 +224,12 @@ export class EventInteractor {
   }
 
   async sendEvents(force = false): Promise<SendEventsResult> {
+    return runWithMutex(this.mutex, async () => {
+      return this.sendEventsInternal(force)
+    })
+  }
+
+  private async sendEventsInternal(force = false): Promise<SendEventsResult> {
     const current = await this.eventStorage.getAll()
 
     if (current.length === 0) {
