@@ -292,5 +292,4 @@ suite('defineBKTConfig', () => {
       expect(internalResult.sdkVersion).toBe(SDK_VERSION)
     })
   })
-
 })
