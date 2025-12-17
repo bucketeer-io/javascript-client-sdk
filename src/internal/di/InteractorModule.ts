@@ -32,7 +32,6 @@ export class InteractorModule {
     userAgent: string,
     sourceId: SourceId,
     sdkVersion: string,
-    evaluationDedupWindowMillis: number,
   ): EventInteractor {
     return new EventInteractor(
       eventsMaxBatchQueueCount,
@@ -44,7 +43,6 @@ export class InteractorModule {
       userAgent,
       sourceId,
       sdkVersion,
-      evaluationDedupWindowMillis,
     )
   }
 }

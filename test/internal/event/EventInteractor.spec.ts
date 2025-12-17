@@ -492,8 +492,8 @@ suite('internal/event/EventInteractor', () => {
       )
       expect(await eventStorage.getAll()).toHaveLength(1)
 
-      // Same evaluation at time 0 + 29s (within 30s window) - should be skipped
-      clock.setCurrentTimeSeconds(1029)
+      // Same evaluation at time 0 + 4s (within 5s window) - should be skipped
+      clock.setCurrentTimeSeconds(1004)
       await interactor.trackEvaluationEvent(
         'feature_tag_value',
         user1,
@@ -501,8 +501,8 @@ suite('internal/event/EventInteractor', () => {
       )
       expect(await eventStorage.getAll()).toHaveLength(1)
 
-      // Same evaluation at time 0 + 31s (outside 30s window) - should create new event
-      clock.setCurrentTimeSeconds(1031)
+      // Same evaluation at time 0 + 6s (outside 5s window) - should create new event
+      clock.setCurrentTimeSeconds(1006)
       await interactor.trackEvaluationEvent(
         'feature_tag_value',
         user1,
@@ -604,7 +604,7 @@ suite('internal/event/EventInteractor', () => {
       expect(await eventStorage.getAll()).toHaveLength(1)
 
       // After window expires - should create new event
-      clock.setCurrentTimeSeconds(clock.currentTimeSeconds() + 31)
+      clock.setCurrentTimeSeconds(clock.currentTimeSeconds() + 6)
       await interactor.trackDefaultEvaluationEvent(
         'feature_tag_value',
         user1,
@@ -678,9 +678,9 @@ suite('internal/event/EventInteractor', () => {
         )
         expect(await eventStorage.getAll()).toHaveLength(3)
 
-        // Move time forward by dedup window (30 seconds)
+        // Move time forward by dedup window (5 seconds)
         // At this point, all 3 cache entries should be stale
-        clock.setCurrentTimeSeconds(1031)
+        clock.setCurrentTimeSeconds(1006)
 
         // Track a new evaluation - this should trigger cleanup
         const evaluation4 = { ...evaluation1, variationId: 'variation-D' }
@@ -713,8 +713,8 @@ suite('internal/event/EventInteractor', () => {
         )
         expect(await eventStorage.getAll()).toHaveLength(1)
 
-        // Move time forward by 15 seconds (still within 30s window)
-        clock.setCurrentTimeSeconds(1015)
+        // Move time forward by 2 seconds (still within 5s window)
+        clock.setCurrentTimeSeconds(1002)
 
         // Track second evaluation - triggers cleanup check, but first entry is still fresh
         const evaluation2 = { ...evaluation1, variationId: 'variation-B' }
@@ -761,8 +761,8 @@ suite('internal/event/EventInteractor', () => {
           { ...evaluation1, variationId: 'variation-C' },
         )
 
-        // Move forward to exactly 30 seconds from start (should trigger cleanup)
-        clock.setCurrentTimeSeconds(1030)
+        // Move forward to exactly 5 seconds from start (should trigger cleanup)
+        clock.setCurrentTimeSeconds(1005)
         await interactor.trackEvaluationEvent(
           'feature_tag_value',
           user1,
@@ -770,7 +770,7 @@ suite('internal/event/EventInteractor', () => {
         )
 
         // Move forward by 5 more seconds (cleanup shouldn't run again yet)
-        clock.setCurrentTimeSeconds(1035)
+        clock.setCurrentTimeSeconds(1010)
         await interactor.trackEvaluationEvent(
           'feature_tag_value',
           user1,
@@ -794,7 +794,7 @@ suite('internal/event/EventInteractor', () => {
         expect(await eventStorage.getAll()).toHaveLength(1)
 
         // Within window - should be deduplicated
-        clock.setCurrentTimeSeconds(1015)
+        clock.setCurrentTimeSeconds(1002)
         await interactor.trackDefaultEvaluationEvent(
           'feature_tag_value',
           user1,
@@ -803,7 +803,7 @@ suite('internal/event/EventInteractor', () => {
         expect(await eventStorage.getAll()).toHaveLength(1)
 
         // Move forward by dedup window + trigger cleanup
-        clock.setCurrentTimeSeconds(1031)
+        clock.setCurrentTimeSeconds(1006)
         await interactor.trackDefaultEvaluationEvent(
           'feature_tag_value',
           user1,
@@ -837,7 +837,7 @@ suite('internal/event/EventInteractor', () => {
         expect(await eventStorage.getAll()).toHaveLength(2)
 
         // Move forward and trigger cleanup
-        clock.setCurrentTimeSeconds(1031)
+        clock.setCurrentTimeSeconds(1006)
         const evaluation2 = { ...evaluation1, variationId: 'variation-B' }
         await interactor.trackEvaluationEvent(
           'feature_tag_value',
@@ -885,7 +885,6 @@ suite('internal/event/EventInteractor', () => {
           config.userAgent,
           internalConfig.sourceId,
           internalConfig.sdkVersion,
-          config.evaluationDedupWindowMillis,
         )
 
         // Fire two concurrent calls without awaiting the first
@@ -930,7 +929,6 @@ suite('internal/event/EventInteractor', () => {
           config.userAgent,
           internalConfig.sourceId,
           internalConfig.sdkVersion,
-          config.evaluationDedupWindowMillis,
         )
 
         // Fire concurrent default evaluation calls
@@ -974,7 +972,6 @@ suite('internal/event/EventInteractor', () => {
           config.userAgent,
           internalConfig.sourceId,
           internalConfig.sdkVersion,
-          config.evaluationDedupWindowMillis,
         )
 
         // First call should fail gracefully (not throw) and log error
@@ -1004,7 +1001,6 @@ suite('internal/event/EventInteractor', () => {
           config.userAgent,
           internalConfig.sourceId,
           internalConfig.sdkVersion,
-          config.evaluationDedupWindowMillis,
         )
 
         // This should succeed because cache was rolled back
@@ -1040,7 +1036,6 @@ suite('internal/event/EventInteractor', () => {
           config.userAgent,
           internalConfig.sourceId,
           internalConfig.sdkVersion,
-          config.evaluationDedupWindowMillis,
         )
 
         // Fire concurrent calls for DIFFERENT evaluations

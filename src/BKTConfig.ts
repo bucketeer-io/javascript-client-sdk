@@ -14,8 +14,6 @@ const DEFAULT_FLUSH_INTERVAL_MILLIS = 10_000 // 10 seconds
 const DEFAULT_MAX_QUEUE_SIZE = 50
 const MINIMUM_POLLING_INTERVAL_MILLIS = 60_000 // 60 seconds
 const DEFAULT_POLLING_INTERVAL_MILLIS = 600_000 // 10 minutes
-const MINIMUM_EVALUATION_DEDUP_WINDOW_MILLIS = 10_000 // 10 seconds
-const DEFAULT_EVALUATION_DEDUP_WINDOW_MILLIS = 30_000 // 30 seconds
 
 const isValidUrl = (url: string): boolean => {
   try {
@@ -45,14 +43,6 @@ export interface RawBKTConfig {
   // Set to false if you want to manually control event flushing.
   enableAutoPageLifecycleFlush?: boolean
 
-  // Evaluation event deduplication window in milliseconds.
-  // Same user+flag+variation within this window = only 1 event created.
-  // Minimum: 10000 (10 seconds - covers heavy apps with progressive rendering)
-  // Default: 30000 (30 seconds - recommended for most use cases)
-  // Conservative: 60000 (1 minute - for pages with infrequent flag evaluations)
-  // Values below minimum will be automatically adjusted to the default.
-  evaluationDedupWindowMillis?: number
-
   // Use wrapperSdkVersion to set the SDK version explicitly.
   // IMPORTANT: This option is intended for internal use only.
   // It should NOT be set by developers directly integrating this SDK.
@@ -79,7 +69,6 @@ export interface BKTConfig extends RawBKTConfig {
   fetch: FetchLike
   storageFactory: <T>(key: string) => BKTStorage<T>
   enableAutoPageLifecycleFlush: boolean
-  evaluationDedupWindowMillis: number
 }
 
 const defaultUserAgent = () => {
@@ -111,9 +100,6 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     fetch: config.fetch ?? globalThis.fetch,
     storageFactory: config.storageFactory ?? createBKTStorage,
     enableAutoPageLifecycleFlush: config.enableAutoPageLifecycleFlush ?? true,
-    evaluationDedupWindowMillis:
-      config.evaluationDedupWindowMillis ??
-      DEFAULT_EVALUATION_DEDUP_WINDOW_MILLIS,
   }
 
   // Advanced properties: only included when explicitly set (not undefined)
@@ -155,12 +141,6 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
 
   if (result.eventsFlushInterval < MINIMUM_FLUSH_INTERVAL_MILLIS) {
     result.eventsFlushInterval = DEFAULT_FLUSH_INTERVAL_MILLIS
-  }
-
-  if (
-    result.evaluationDedupWindowMillis < MINIMUM_EVALUATION_DEDUP_WINDOW_MILLIS
-  ) {
-    result.evaluationDedupWindowMillis = DEFAULT_EVALUATION_DEDUP_WINDOW_MILLIS
   }
 
   // Resolve SDK version and source Id without exposing SourceId to outside

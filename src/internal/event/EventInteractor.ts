@@ -27,6 +27,10 @@ import {
 } from './SendEventResult'
 import { runWithMutex } from '../mutex'
 
+// Fixed 5-second deduplication window
+// Prevents duplicate evaluation events for same user+flag+variation within 5 seconds
+const EVALUATION_DEDUP_WINDOW_MILLIS = 5_000
+
 export class EventInteractor {
   // Evaluation event deduplication cache
   // Key format: "userId::featureId::variationId"
@@ -51,7 +55,6 @@ export class EventInteractor {
     private userAgent: string,
     private sourceId: SourceId,
     private sdkVersion: string,
-    private evaluationDedupWindowMillis: number,
   ) {}
 
   setEventUpdateListener(listener: ((events: Event[]) => void) | null): void {
@@ -65,7 +68,7 @@ export class EventInteractor {
    */
   private cleanupStaleEvaluationCache(): void {
     const now = this.clock.currentTimeSeconds() * 1000 // milliseconds
-    const cutoffTime = now - this.evaluationDedupWindowMillis
+    const cutoffTime = now - EVALUATION_DEDUP_WINDOW_MILLIS
 
     // Remove entries older than the dedup window
     for (const [key, timestamp] of this.evaluationCache.entries()) {
@@ -85,7 +88,7 @@ export class EventInteractor {
     const now = this.clock.currentTimeSeconds() * 1000 // Convert to milliseconds
 
     // Periodically cleanup stale cache entries (once per dedup window)
-    if (now - this.lastCleanupTimeMillis >= this.evaluationDedupWindowMillis) {
+    if (now - this.lastCleanupTimeMillis >= EVALUATION_DEDUP_WINDOW_MILLIS) {
       this.cleanupStaleEvaluationCache()
     }
 
@@ -97,7 +100,7 @@ export class EventInteractor {
     // Check if we already sent this exact evaluation within dedup window
     if (
       lastSent !== undefined &&
-      now - lastSent < this.evaluationDedupWindowMillis
+      now - lastSent < EVALUATION_DEDUP_WINDOW_MILLIS
     ) {
       // Same user+flag+variation within dedup window → Skip duplicate event
       return
@@ -148,7 +151,7 @@ export class EventInteractor {
     const now = this.clock.currentTimeSeconds() * 1000 // Convert to milliseconds
 
     // Periodically cleanup stale cache entries (once per dedup window)
-    if (now - this.lastCleanupTimeMillis >= this.evaluationDedupWindowMillis) {
+    if (now - this.lastCleanupTimeMillis >= EVALUATION_DEDUP_WINDOW_MILLIS) {
       this.cleanupStaleEvaluationCache()
     }
 
@@ -160,7 +163,7 @@ export class EventInteractor {
     // Check if we already sent this default evaluation within dedup window
     if (
       lastSent !== undefined &&
-      now - lastSent < this.evaluationDedupWindowMillis
+      now - lastSent < EVALUATION_DEDUP_WINDOW_MILLIS
     ) {
       // Same user+flag+default within dedup window → Skip duplicate event
       return
@@ -201,7 +204,10 @@ export class EventInteractor {
       // Rollback: Remove cache entry on failure so the event can be retried
       this.evaluationCache.delete(dedupKey)
       // Log error but don't throw - event tracking is best-effort and shouldn't crash the app
-      console.error('[Bucketeer] Failed to track default evaluation event:', error)
+      console.error(
+        '[Bucketeer] Failed to track default evaluation event:',
+        error,
+      )
     }
   }
 

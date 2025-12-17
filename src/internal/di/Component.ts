@@ -52,7 +52,6 @@ export class DefaultComponent implements Component {
       this.dataModule.config().userAgent,
       this.dataModule.config().sourceId,
       this.dataModule.config().sdkVersion,
-      this.dataModule.config().evaluationDedupWindowMillis,
     ))
   }
 }
