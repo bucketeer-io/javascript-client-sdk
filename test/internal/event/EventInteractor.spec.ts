@@ -772,5 +772,84 @@ suite('internal/event/EventInteractor', () => {
       expect(requestCount).toBe(2)
       expect(await eventStorage.getAll()).toHaveLength(0)
     })
+
+    // This test verifies that the mutex lock covers the entire read -> send -> delete cycle.
+    // If a new event is added while a send is in progress, the next send (which waits for the lock)
+    // should see the clean state (old events deleted) and only send the new event.
+    // This prevents duplicate events from being sent.
+    test('new events added during sendEvents are sent in next call', async () => {
+      const requests: RegisterEventsRequest[] = []
+      server.use(
+        http.post(`${config.apiEndpoint}/register_events`, async ({ request }) => {
+          const body = (await request.json()) as RegisterEventsRequest
+          requests.push(body)
+          // Simulate a slow network request to ensure the first sendEvents is still running
+          // when the second sendEvents is called.
+          await new Promise((resolve) => setTimeout(resolve, 100))
+          return HttpResponse.json({ errors: {} })
+        }),
+      )
+
+      // 1. Track some initial events
+      await interactor.trackSuccess(
+        ApiId.GET_EVALUATION,
+        'feature_tag_value',
+        1,
+        723,
+      )
+
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      // 2. Start the first sendEvents call. This will take at least 100ms.
+      const p1 = interactor.sendEvents(true)
+
+      // 3. Wait a bit to ensure the first request has started processing but hasn't finished.
+      await new Promise((resolve) => setTimeout(resolve, 10))
+
+      // 4. Track a new event while the first sendEvents is in progress.
+      await interactor.trackGoalEvent(
+        'feature_tag_value',
+        user1,
+        'goal_id_value',
+        0.5,
+      )
+
+      // 5. Start the second sendEvents call.
+      // Because of the mutex in EventInteractor, this should wait for p1 to complete.
+      // It should then pick up the new event (GoalEvent) which was not included in p1.
+      const p2 = interactor.sendEvents(true)
+
+      const [r1, r2] = await Promise.all([p1, p2])
+
+      assert(r1.type === 'success')
+      assert(r2.type === 'success')
+
+      expect(r1.sent).toBe(true)
+      expect(r2.sent).toBe(true)
+
+      expect(requests).toHaveLength(2)
+
+      // The first request should contain the initial 2 metrics events
+      expect(requests[0].events).toHaveLength(2)
+      expect(
+        requests[0].events.map((e) => {
+          if (e.type === EventType.METRICS) {
+            return e.event.event['@type']
+          }
+          return undefined
+        }),
+      ).toEqual(
+        expect.arrayContaining([
+          MetricsEventType.LatencyMetrics,
+          MetricsEventType.SizeMetrics,
+        ]),
+      )
+
+      // The second request should contain the new goal event
+      expect(requests[1].events).toHaveLength(1)
+      expect(requests[1].events[0].event['@type']).toBe(RootEventType.GoalEvent)
+
+      expect(await eventStorage.getAll()).toHaveLength(0)
+    })
   })
 })
