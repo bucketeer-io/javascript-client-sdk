@@ -103,33 +103,41 @@ export class EventInteractor {
       return
     }
 
-    // New or changed evaluation → Create event
-    await this.eventStorage.add({
-      id: this.idGenerator.newId(),
-      type: EventType.EVALUATION,
-      event: newEvaluationEvent(
-        newBaseEvent(
-          this.clock.currentTimeSeconds(),
-          newMetadata(this.appVersion, this.userAgent),
-          this.sourceId,
-          this.sdkVersion,
-        ),
-        {
-          featureId: evaluation.featureId,
-          featureVersion: evaluation.featureVersion,
-          variationId: evaluation.variationId,
-          userId: user.id,
-          user,
-          reason: evaluation.reason,
-          tag: featureTag,
-        },
-      ),
-    })
-
-    // Update cache with current timestamp
+    // Optimistically update cache BEFORE async operations to prevent race conditions
+    // This ensures concurrent calls see the updated cache immediately
     this.evaluationCache.set(dedupKey, now)
 
-    await this.notifyEventsUpdated()
+    try {
+      // Create event
+      await this.eventStorage.add({
+        id: this.idGenerator.newId(),
+        type: EventType.EVALUATION,
+        event: newEvaluationEvent(
+          newBaseEvent(
+            this.clock.currentTimeSeconds(),
+            newMetadata(this.appVersion, this.userAgent),
+            this.sourceId,
+            this.sdkVersion,
+          ),
+          {
+            featureId: evaluation.featureId,
+            featureVersion: evaluation.featureVersion,
+            variationId: evaluation.variationId,
+            userId: user.id,
+            user,
+            reason: evaluation.reason,
+            tag: featureTag,
+          },
+        ),
+      })
+
+      await this.notifyEventsUpdated()
+    } catch (error) {
+      // Rollback: Remove cache entry on failure so the event can be retried
+      this.evaluationCache.delete(dedupKey)
+      // Log error but don't throw - event tracking is best-effort and shouldn't crash the app
+      console.error('[Bucketeer] Failed to track evaluation event:', error)
+    }
   }
 
   async trackDefaultEvaluationEvent(
@@ -158,35 +166,43 @@ export class EventInteractor {
       return
     }
 
-    // New or changed default evaluation → Create event
-    await this.eventStorage.add({
-      id: this.idGenerator.newId(),
-      type: EventType.EVALUATION,
-      event: newDefaultEvaluationEvent(
-        newBaseEvent(
-          this.clock.currentTimeSeconds(),
-          newMetadata(this.appVersion, this.userAgent),
-          this.sourceId,
-          this.sdkVersion,
-        ),
-        {
-          featureId,
-          featureVersion: 0,
-          variationId: '',
-          userId: user.id,
-          user,
-          reason: {
-            type: 'CLIENT',
-          },
-          tag: featureTag,
-        },
-      ),
-    })
-
-    // Update cache with current timestamp
+    // Optimistically update cache BEFORE async operations to prevent race conditions
+    // This ensures concurrent calls see the updated cache immediately
     this.evaluationCache.set(dedupKey, now)
 
-    await this.notifyEventsUpdated()
+    try {
+      // Create event
+      await this.eventStorage.add({
+        id: this.idGenerator.newId(),
+        type: EventType.EVALUATION,
+        event: newDefaultEvaluationEvent(
+          newBaseEvent(
+            this.clock.currentTimeSeconds(),
+            newMetadata(this.appVersion, this.userAgent),
+            this.sourceId,
+            this.sdkVersion,
+          ),
+          {
+            featureId,
+            featureVersion: 0,
+            variationId: '',
+            userId: user.id,
+            user,
+            reason: {
+              type: 'CLIENT',
+            },
+            tag: featureTag,
+          },
+        ),
+      })
+
+      await this.notifyEventsUpdated()
+    } catch (error) {
+      // Rollback: Remove cache entry on failure so the event can be retried
+      this.evaluationCache.delete(dedupKey)
+      // Log error but don't throw - event tracking is best-effort and shouldn't crash the app
+      console.error('[Bucketeer] Failed to track default evaluation event:', error)
+    }
   }
 
   async trackGoalEvent(

@@ -860,6 +860,208 @@ suite('internal/event/EventInteractor', () => {
         expect(await eventStorage.getAll()).toHaveLength(5)
       })
     })
+
+    suite('Concurrent Call Handling', () => {
+      test('should prevent duplicate events from concurrent calls', async () => {
+        // Create a delayed storage to simulate real async behavior
+        let addCallCount = 0
+        const delayedStorage = {
+          ...eventStorage,
+          add: async (event: Event) => {
+            addCallCount++
+            // Simulate async delay that yields control to event loop
+            await new Promise((resolve) => setTimeout(resolve, 10))
+            return eventStorage.add(event)
+          },
+        }
+
+        const delayedInteractor = new EventInteractor(
+          config.eventsMaxQueueSize,
+          component.dataModule.apiClient(),
+          delayedStorage as unknown as EventStorageImpl,
+          clock,
+          idGenerator,
+          config.appVersion,
+          config.userAgent,
+          internalConfig.sourceId,
+          internalConfig.sdkVersion,
+          config.evaluationDedupWindowMillis,
+        )
+
+        // Fire two concurrent calls without awaiting the first
+        const promise1 = delayedInteractor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        const promise2 = delayedInteractor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+
+        // Wait for both to complete
+        await Promise.all([promise1, promise2])
+
+        // Only ONE event should be created (second call was blocked by cache)
+        expect(await eventStorage.getAll()).toHaveLength(1)
+        // Only ONE storage.add() should have been called
+        expect(addCallCount).toBe(1)
+      })
+
+      test('should handle concurrent default evaluation calls', async () => {
+        let addCallCount = 0
+        const delayedStorage = {
+          ...eventStorage,
+          add: async (event: Event) => {
+            addCallCount++
+            await new Promise((resolve) => setTimeout(resolve, 10))
+            return eventStorage.add(event)
+          },
+        }
+
+        const delayedInteractor = new EventInteractor(
+          config.eventsMaxQueueSize,
+          component.dataModule.apiClient(),
+          delayedStorage as unknown as EventStorageImpl,
+          clock,
+          idGenerator,
+          config.appVersion,
+          config.userAgent,
+          internalConfig.sourceId,
+          internalConfig.sdkVersion,
+          config.evaluationDedupWindowMillis,
+        )
+
+        // Fire concurrent default evaluation calls
+        const promise1 = delayedInteractor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-1',
+        )
+        const promise2 = delayedInteractor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-1',
+        )
+
+        await Promise.all([promise1, promise2])
+
+        // Only ONE event should be created
+        expect(await eventStorage.getAll()).toHaveLength(1)
+        expect(addCallCount).toBe(1)
+      })
+
+      test('should rollback cache on storage error', async () => {
+        // Spy on console.error to verify error is logged
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation()
+
+        // Create storage that throws error
+        const errorStorage = {
+          ...eventStorage,
+          add: async () => {
+            throw new Error('Storage error')
+          },
+        }
+
+        const errorInteractor = new EventInteractor(
+          config.eventsMaxQueueSize,
+          component.dataModule.apiClient(),
+          errorStorage as unknown as EventStorageImpl,
+          clock,
+          idGenerator,
+          config.appVersion,
+          config.userAgent,
+          internalConfig.sourceId,
+          internalConfig.sdkVersion,
+          config.evaluationDedupWindowMillis,
+        )
+
+        // First call should fail gracefully (not throw) and log error
+        await errorInteractor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+
+        // Verify error was logged
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          '[Bucketeer] Failed to track evaluation event:',
+          expect.any(Error),
+        )
+
+        consoleErrorSpy.mockRestore()
+
+        // After rollback, the same call should be retried (not blocked by cache)
+        // Use working storage for second attempt
+        const workingInteractor = new EventInteractor(
+          config.eventsMaxQueueSize,
+          component.dataModule.apiClient(),
+          eventStorage,
+          clock,
+          idGenerator,
+          config.appVersion,
+          config.userAgent,
+          internalConfig.sourceId,
+          internalConfig.sdkVersion,
+          config.evaluationDedupWindowMillis,
+        )
+
+        // This should succeed because cache was rolled back
+        await workingInteractor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+
+        expect(await eventStorage.getAll()).toHaveLength(1)
+      })
+
+      test('should allow concurrent calls for different evaluations', async () => {
+        const evaluation2 = { ...evaluation1, variationId: 'variation-B' }
+        let addCallCount = 0
+
+        const delayedStorage = {
+          ...eventStorage,
+          add: async (event: Event) => {
+            addCallCount++
+            await new Promise((resolve) => setTimeout(resolve, 10))
+            return eventStorage.add(event)
+          },
+        }
+
+        const delayedInteractor = new EventInteractor(
+          config.eventsMaxQueueSize,
+          component.dataModule.apiClient(),
+          delayedStorage as unknown as EventStorageImpl,
+          clock,
+          idGenerator,
+          config.appVersion,
+          config.userAgent,
+          internalConfig.sourceId,
+          internalConfig.sdkVersion,
+          config.evaluationDedupWindowMillis,
+        )
+
+        // Fire concurrent calls for DIFFERENT evaluations
+        const promise1 = delayedInteractor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        const promise2 = delayedInteractor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation2,
+        )
+
+        await Promise.all([promise1, promise2])
+
+        // Both events should be created (different variations)
+        expect(await eventStorage.getAll()).toHaveLength(2)
+        expect(addCallCount).toBe(2)
+      })
+    })
   })
 
   suite('sendEvents', () => {
