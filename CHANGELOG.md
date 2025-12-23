@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.5.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.4.0...v2.5.0) (2025-12-23)
+
+
+### Features
+
+* add fixed 5-second evaluation event deduplication ([#298](https://github.com/bucketeer-io/javascript-client-sdk/issues/298)) ([f336314](https://github.com/bucketeer-io/javascript-client-sdk/commit/f3363146275b4f4d67dc1e9b7de6b20a8dbb5270))
+
+
+### Bug Fixes
+
+* duplicate event submissions when sendEvents is called multiple times concurrently ([#296](https://github.com/bucketeer-io/javascript-client-sdk/issues/296)) ([3d582f8](https://github.com/bucketeer-io/javascript-client-sdk/commit/3d582f8ba308352c918b2668495e59c002017607))
+
+
+### Miscellaneous
+
+* add new source ID for OpenFeature React providers ([#295](https://github.com/bucketeer-io/javascript-client-sdk/issues/295)) ([5583179](https://github.com/bucketeer-io/javascript-client-sdk/commit/5583179560968a03e09efea896b1ccbf0bb6532e))
+
+
+### Build System
+
+* bump @typescript-eslint/eslint-plugin from 8.41.0 to 8.46.3 ([#284](https://github.com/bucketeer-io/javascript-client-sdk/issues/284)) ([556783b](https://github.com/bucketeer-io/javascript-client-sdk/commit/556783b0d8b3146b7a5f92185bd0479493b776c3))
+* bump @typescript-eslint/parser from 8.41.0 to 8.46.3 ([#279](https://github.com/bucketeer-io/javascript-client-sdk/issues/279)) ([dcfa5b4](https://github.com/bucketeer-io/javascript-client-sdk/commit/dcfa5b4f160afc4e4a9c59289994b83936717049))
+* bump happy-dom in the test-dependencies group across 1 directory ([#283](https://github.com/bucketeer-io/javascript-client-sdk/issues/283)) ([8b4ec4e](https://github.com/bucketeer-io/javascript-client-sdk/commit/8b4ec4eeddcef24e16072b8119cef75cf4bf8983))
+* bump the build-patch group with 2 updates ([#275](https://github.com/bucketeer-io/javascript-client-sdk/issues/275)) ([088ba8c](https://github.com/bucketeer-io/javascript-client-sdk/commit/088ba8cf86e5ca3033f03c42fd6632a2a7ed608a))
+* **deps:** bump build-minor ([#292](https://github.com/bucketeer-io/javascript-client-sdk/issues/292)) ([030f1bc](https://github.com/bucketeer-io/javascript-client-sdk/commit/030f1bc1f6fcac1b070ee729132928d8930c56d3))
+
 ## [2.4.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.3.1...v2.4.0) (2025-10-22)
 
 
