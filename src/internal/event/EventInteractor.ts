@@ -27,7 +27,24 @@ import {
 } from './SendEventResult'
 import { runWithMutex } from '../mutex'
 
+// Fixed 5-second deduplication window
+// Prevents duplicate evaluation events for same user+flag+variation within 5 seconds
+const EVALUATION_DEDUP_WINDOW_MILLIS = 5_000
+
 export class EventInteractor {
+  // Evaluation event deduplication cache
+  // Key format: "userId::featureId::variationId"
+  // Value: timestamp when last sent (milliseconds)
+  private readonly evaluationCache = new Map<string, number>()
+
+  // Track last cleanup time to prevent excessive cleanup operations
+  private lastCleanupTimeMillis = 0
+
+  // Mutex for event storage operations
+  private mutex = new Mutex()
+
+  eventUpdateListener: ((events: Event[]) => void) | null = null
+
   constructor(
     private eventsMaxBatchQueueCount: number,
     private apiClient: ApiClient,
@@ -40,12 +57,27 @@ export class EventInteractor {
     private sdkVersion: string,
   ) {}
 
-  private mutex = new Mutex()
-
-  eventUpdateListener: ((events: Event[]) => void) | null = null
-
   setEventUpdateListener(listener: ((events: Event[]) => void) | null): void {
     this.eventUpdateListener = listener
+  }
+
+  /**
+   * Removes stale entries from the evaluation cache that are older than the dedup window.
+   * This prevents unbounded memory growth in long-running applications.
+   * Called periodically (approximately once per dedup window) during evaluation tracking.
+   */
+  private cleanupStaleEvaluationCache(): void {
+    const now = this.clock.currentTimeSeconds() * 1000 // milliseconds
+    const cutoffTime = now - EVALUATION_DEDUP_WINDOW_MILLIS
+
+    // Remove entries older than the dedup window
+    for (const [key, timestamp] of this.evaluationCache.entries()) {
+      if (timestamp < cutoffTime) {
+        this.evaluationCache.delete(key)
+      }
+    }
+
+    this.lastCleanupTimeMillis = now
   }
 
   async trackEvaluationEvent(
@@ -53,29 +85,62 @@ export class EventInteractor {
     user: User,
     evaluation: Evaluation,
   ): Promise<void> {
-    await this.eventStorage.add({
-      id: this.idGenerator.newId(),
-      type: EventType.EVALUATION,
-      event: newEvaluationEvent(
-        newBaseEvent(
-          this.clock.currentTimeSeconds(),
-          newMetadata(this.appVersion, this.userAgent),
-          this.sourceId,
-          this.sdkVersion,
-        ),
-        {
-          featureId: evaluation.featureId,
-          featureVersion: evaluation.featureVersion,
-          variationId: evaluation.variationId,
-          userId: user.id,
-          user,
-          reason: evaluation.reason,
-          tag: featureTag,
-        },
-      ),
-    })
+    const now = this.clock.currentTimeSeconds() * 1000 // Convert to milliseconds
 
-    await this.notifyEventsUpdated()
+    // Periodically cleanup stale cache entries (once per dedup window)
+    if (now - this.lastCleanupTimeMillis >= EVALUATION_DEDUP_WINDOW_MILLIS) {
+      this.cleanupStaleEvaluationCache()
+    }
+
+    // Create deduplication key: user + feature + variation
+    // Same combination within dedup window = skip event
+    const dedupKey = `${user.id}::${evaluation.featureId}::${evaluation.variationId}`
+    const lastSent = this.evaluationCache.get(dedupKey)
+
+    // Check if we already sent this exact evaluation within dedup window
+    if (
+      lastSent !== undefined &&
+      now - lastSent < EVALUATION_DEDUP_WINDOW_MILLIS
+    ) {
+      // Same user+flag+variation within dedup window → Skip duplicate event
+      return
+    }
+
+    // Optimistically update cache BEFORE async operations to prevent race conditions
+    // This ensures concurrent calls see the updated cache immediately
+    this.evaluationCache.set(dedupKey, now)
+
+    try {
+      // Create event
+      await this.eventStorage.add({
+        id: this.idGenerator.newId(),
+        type: EventType.EVALUATION,
+        event: newEvaluationEvent(
+          newBaseEvent(
+            this.clock.currentTimeSeconds(),
+            newMetadata(this.appVersion, this.userAgent),
+            this.sourceId,
+            this.sdkVersion,
+          ),
+          {
+            featureId: evaluation.featureId,
+            featureVersion: evaluation.featureVersion,
+            variationId: evaluation.variationId,
+            userId: user.id,
+            user,
+            reason: evaluation.reason,
+            tag: featureTag,
+          },
+        ),
+      })
+
+      await this.notifyEventsUpdated()
+    } catch (error) {
+      // Rollback: Remove cache entry on failure so the event can be retried
+      this.evaluationCache.delete(dedupKey)
+      // Log error but don't throw - event tracking is best-effort and shouldn't crash the app
+      console.error('[Bucketeer] Failed to track evaluation event:', error)
+    }
   }
 
   async trackDefaultEvaluationEvent(
@@ -83,31 +148,67 @@ export class EventInteractor {
     user: User,
     featureId: string,
   ): Promise<void> {
-    await this.eventStorage.add({
-      id: this.idGenerator.newId(),
-      type: EventType.EVALUATION,
-      event: newDefaultEvaluationEvent(
-        newBaseEvent(
-          this.clock.currentTimeSeconds(),
-          newMetadata(this.appVersion, this.userAgent),
-          this.sourceId,
-          this.sdkVersion,
-        ),
-        {
-          featureId,
-          featureVersion: 0,
-          variationId: '',
-          userId: user.id,
-          user,
-          reason: {
-            type: 'CLIENT',
-          },
-          tag: featureTag,
-        },
-      ),
-    })
+    const now = this.clock.currentTimeSeconds() * 1000 // Convert to milliseconds
 
-    await this.notifyEventsUpdated()
+    // Periodically cleanup stale cache entries (once per dedup window)
+    if (now - this.lastCleanupTimeMillis >= EVALUATION_DEDUP_WINDOW_MILLIS) {
+      this.cleanupStaleEvaluationCache()
+    }
+
+    // Create deduplication key for default evaluations
+    // variationId is empty string for defaults
+    const dedupKey = `${user.id}::${featureId}::`
+    const lastSent = this.evaluationCache.get(dedupKey)
+
+    // Check if we already sent this default evaluation within dedup window
+    if (
+      lastSent !== undefined &&
+      now - lastSent < EVALUATION_DEDUP_WINDOW_MILLIS
+    ) {
+      // Same user+flag+default within dedup window → Skip duplicate event
+      return
+    }
+
+    // Optimistically update cache BEFORE async operations to prevent race conditions
+    // This ensures concurrent calls see the updated cache immediately
+    this.evaluationCache.set(dedupKey, now)
+
+    try {
+      // Create event
+      await this.eventStorage.add({
+        id: this.idGenerator.newId(),
+        type: EventType.EVALUATION,
+        event: newDefaultEvaluationEvent(
+          newBaseEvent(
+            this.clock.currentTimeSeconds(),
+            newMetadata(this.appVersion, this.userAgent),
+            this.sourceId,
+            this.sdkVersion,
+          ),
+          {
+            featureId,
+            featureVersion: 0,
+            variationId: '',
+            userId: user.id,
+            user,
+            reason: {
+              type: 'CLIENT',
+            },
+            tag: featureTag,
+          },
+        ),
+      })
+
+      await this.notifyEventsUpdated()
+    } catch (error) {
+      // Rollback: Remove cache entry on failure so the event can be retried
+      this.evaluationCache.delete(dedupKey)
+      // Log error but don't throw - event tracking is best-effort and shouldn't crash the app
+      console.error(
+        '[Bucketeer] Failed to track default evaluation event:',
+        error,
+      )
+    }
   }
 
   async trackGoalEvent(
@@ -185,7 +286,11 @@ export class EventInteractor {
     }
   }
 
-  async trackFailure(apiId: ApiId, featureTag: string, error: BKTException): Promise<void> {
+  async trackFailure(
+    apiId: ApiId,
+    featureTag: string,
+    error: BKTException,
+  ): Promise<void> {
     if (error.type === MetricsEventType.UnauthorizedError) {
       console.error(
         'An unauthorized error occurred. Please check your API Key.',

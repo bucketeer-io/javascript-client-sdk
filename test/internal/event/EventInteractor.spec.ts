@@ -455,6 +455,610 @@ suite('internal/event/EventInteractor', () => {
     ])
   })
 
+  suite('Evaluation Event Deduplication', () => {
+    test('should deduplicate same evaluation within dedup window', async () => {
+      // First evaluation - should create event
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Same evaluation within window - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Third call - should still be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+    })
+
+    test('should create new event after dedup window expires', async () => {
+      // First evaluation at time 0
+      clock.setCurrentTimeSeconds(1000)
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Same evaluation at time 0 + 4s (within 5s window) - should be skipped
+      clock.setCurrentTimeSeconds(1004)
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Same evaluation at time 0 + 6s (outside 5s window) - should create new event
+      clock.setCurrentTimeSeconds(1006)
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+    })
+
+    test('should create new event when variation changes', async () => {
+      const evaluation2 = {
+        ...evaluation1,
+        variationId: 'test-feature-1-variation-B',
+      }
+
+      // First evaluation with variation A
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Same flag but variation B - should create new event
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation2,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      // Variation A again (within window) - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      // Variation B again (within window) - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation2,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+    })
+
+    test('should track different users separately', async () => {
+      const user2 = { ...user1, id: 'user-id-2' }
+
+      // User 1 evaluates flag
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // User 2 evaluates same flag - should create new event
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user2,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      // User 1 again (within window) - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      // User 2 again (within window) - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user2,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+    })
+
+    test('should deduplicate default evaluations', async () => {
+      // First default evaluation - should create event
+      await interactor.trackDefaultEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        'feature_id_value',
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Same default evaluation (within window) - should be skipped
+      await interactor.trackDefaultEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        'feature_id_value',
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // After window expires - should create new event
+      clock.setCurrentTimeSeconds(clock.currentTimeSeconds() + 6)
+      await interactor.trackDefaultEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        'feature_id_value',
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+    })
+
+    test('should track different features separately', async () => {
+      const evaluation2 = {
+        ...evaluation1,
+        featureId: 'test-feature-2',
+        variationId: 'test-feature-2-variation-A',
+      }
+
+      // Evaluate feature 1
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(1)
+
+      // Evaluate feature 2 - should create new event
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation2,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      // Feature 1 again (within window) - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation1,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+
+      // Feature 2 again (within window) - should be skipped
+      await interactor.trackEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        evaluation2,
+      )
+      expect(await eventStorage.getAll()).toHaveLength(2)
+    })
+
+    suite('Cache Cleanup Mechanism', () => {
+      test('should cleanup stale cache entries after dedup window', async () => {
+        // Start at time 1000
+        clock.setCurrentTimeSeconds(1000)
+
+        // Track 3 different evaluations
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        const evaluation2 = { ...evaluation1, variationId: 'variation-B' }
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation2,
+        )
+        const evaluation3 = { ...evaluation1, variationId: 'variation-C' }
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation3,
+        )
+        expect(await eventStorage.getAll()).toHaveLength(3)
+
+        // Move time forward by dedup window (5 seconds)
+        // At this point, all 3 cache entries should be stale
+        clock.setCurrentTimeSeconds(1006)
+
+        // Track a new evaluation - this should trigger cleanup
+        const evaluation4 = { ...evaluation1, variationId: 'variation-D' }
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation4,
+        )
+        expect(await eventStorage.getAll()).toHaveLength(4)
+
+        // Now track evaluation1 again - if cache was cleaned up, this should create a new event
+        // If cache wasn't cleaned up, this would be skipped
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        expect(await eventStorage.getAll()).toHaveLength(5) // New event created = cache was cleaned
+      })
+
+      test('should not cleanup recent cache entries', async () => {
+        // Start at time 1000
+        clock.setCurrentTimeSeconds(1000)
+
+        // Track first evaluation
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        expect(await eventStorage.getAll()).toHaveLength(1)
+
+        // Move time forward by 2 seconds (still within 5s window)
+        clock.setCurrentTimeSeconds(1002)
+
+        // Track second evaluation - triggers cleanup check, but first entry is still fresh
+        const evaluation2 = { ...evaluation1, variationId: 'variation-B' }
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation2,
+        )
+        expect(await eventStorage.getAll()).toHaveLength(2)
+
+        // Track first evaluation again - should still be deduplicated (cache entry preserved)
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        expect(await eventStorage.getAll()).toHaveLength(2) // No new event = still cached
+      })
+
+      test('should only run cleanup once per dedup window', async () => {
+        // Start at time 1000
+        clock.setCurrentTimeSeconds(1000)
+
+        // Track evaluation and create cache entry
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+
+        // Move time forward by 5 seconds (not enough to trigger cleanup)
+        clock.setCurrentTimeSeconds(1005)
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          { ...evaluation1, variationId: 'variation-B' },
+        )
+
+        // Move forward by another 5 seconds (still not enough)
+        clock.setCurrentTimeSeconds(1010)
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          { ...evaluation1, variationId: 'variation-C' },
+        )
+
+        // Move forward to exactly 5 seconds from start (should trigger cleanup)
+        clock.setCurrentTimeSeconds(1005)
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          { ...evaluation1, variationId: 'variation-D' },
+        )
+
+        // Move forward by 5 more seconds (cleanup shouldn't run again yet)
+        clock.setCurrentTimeSeconds(1010)
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          { ...evaluation1, variationId: 'variation-E' },
+        )
+
+        // All evaluations should be tracked (5 events total)
+        expect(await eventStorage.getAll()).toHaveLength(5)
+      })
+
+      test('should cleanup works correctly for default evaluations', async () => {
+        // Start at time 1000
+        clock.setCurrentTimeSeconds(1000)
+
+        // Track default evaluation
+        await interactor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-1',
+        )
+        expect(await eventStorage.getAll()).toHaveLength(1)
+
+        // Within window - should be deduplicated
+        clock.setCurrentTimeSeconds(1002)
+        await interactor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-1',
+        )
+        expect(await eventStorage.getAll()).toHaveLength(1)
+
+        // Move forward by dedup window + trigger cleanup
+        clock.setCurrentTimeSeconds(1006)
+        await interactor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-2',
+        )
+
+        // Track feature-1 again - cache should be cleaned, so new event created
+        await interactor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-1',
+        )
+        expect(await eventStorage.getAll()).toHaveLength(3)
+      })
+
+      test('should handle mixed regular and default evaluations cleanup', async () => {
+        // Start at time 1000
+        clock.setCurrentTimeSeconds(1000)
+
+        // Track both regular and default evaluations
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        await interactor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-default',
+        )
+        expect(await eventStorage.getAll()).toHaveLength(2)
+
+        // Move forward and trigger cleanup
+        clock.setCurrentTimeSeconds(1006)
+        const evaluation2 = { ...evaluation1, variationId: 'variation-B' }
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation2,
+        )
+
+        // Both previous entries should be cleaned up
+        // Track them again - should create new events
+        await interactor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        await interactor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-default',
+        )
+        expect(await eventStorage.getAll()).toHaveLength(5)
+      })
+    })
+
+    suite('Concurrent Call Handling', () => {
+      test('should prevent duplicate events from concurrent calls', async () => {
+        // Create a delayed storage to simulate real async behavior
+        let addCallCount = 0
+        const delayedStorage = {
+          ...eventStorage,
+          add: async (event: Event) => {
+            addCallCount++
+            // Simulate async delay that yields control to event loop
+            await new Promise((resolve) => setTimeout(resolve, 10))
+            return eventStorage.add(event)
+          },
+        }
+
+        const delayedInteractor = new EventInteractor(
+          config.eventsMaxQueueSize,
+          component.dataModule.apiClient(),
+          delayedStorage as unknown as EventStorageImpl,
+          clock,
+          idGenerator,
+          config.appVersion,
+          config.userAgent,
+          internalConfig.sourceId,
+          internalConfig.sdkVersion,
+        )
+
+        // Fire two concurrent calls without awaiting the first
+        const promise1 = delayedInteractor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        const promise2 = delayedInteractor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+
+        // Wait for both to complete
+        await Promise.all([promise1, promise2])
+
+        // Only ONE event should be created (second call was blocked by cache)
+        expect(await eventStorage.getAll()).toHaveLength(1)
+        // Only ONE storage.add() should have been called
+        expect(addCallCount).toBe(1)
+      })
+
+      test('should handle concurrent default evaluation calls', async () => {
+        let addCallCount = 0
+        const delayedStorage = {
+          ...eventStorage,
+          add: async (event: Event) => {
+            addCallCount++
+            await new Promise((resolve) => setTimeout(resolve, 10))
+            return eventStorage.add(event)
+          },
+        }
+
+        const delayedInteractor = new EventInteractor(
+          config.eventsMaxQueueSize,
+          component.dataModule.apiClient(),
+          delayedStorage as unknown as EventStorageImpl,
+          clock,
+          idGenerator,
+          config.appVersion,
+          config.userAgent,
+          internalConfig.sourceId,
+          internalConfig.sdkVersion,
+        )
+
+        // Fire concurrent default evaluation calls
+        const promise1 = delayedInteractor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-1',
+        )
+        const promise2 = delayedInteractor.trackDefaultEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          'feature-1',
+        )
+
+        await Promise.all([promise1, promise2])
+
+        // Only ONE event should be created
+        expect(await eventStorage.getAll()).toHaveLength(1)
+        expect(addCallCount).toBe(1)
+      })
+
+      test('should rollback cache on storage error', async () => {
+        // Spy on console.error to verify error is logged
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation()
+
+        // Create storage that throws error
+        const errorStorage = {
+          ...eventStorage,
+          add: async () => {
+            throw new Error('Storage error')
+          },
+        }
+
+        const errorInteractor = new EventInteractor(
+          config.eventsMaxQueueSize,
+          component.dataModule.apiClient(),
+          errorStorage as unknown as EventStorageImpl,
+          clock,
+          idGenerator,
+          config.appVersion,
+          config.userAgent,
+          internalConfig.sourceId,
+          internalConfig.sdkVersion,
+        )
+
+        // First call should fail gracefully (not throw) and log error
+        await errorInteractor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+
+        // Verify error was logged
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          '[Bucketeer] Failed to track evaluation event:',
+          expect.any(Error),
+        )
+
+        consoleErrorSpy.mockRestore()
+
+        // After rollback, the same call should be retried (not blocked by cache)
+        // Use working storage for second attempt
+        const workingInteractor = new EventInteractor(
+          config.eventsMaxQueueSize,
+          component.dataModule.apiClient(),
+          eventStorage,
+          clock,
+          idGenerator,
+          config.appVersion,
+          config.userAgent,
+          internalConfig.sourceId,
+          internalConfig.sdkVersion,
+        )
+
+        // This should succeed because cache was rolled back
+        await workingInteractor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+
+        expect(await eventStorage.getAll()).toHaveLength(1)
+      })
+
+      test('should allow concurrent calls for different evaluations', async () => {
+        const evaluation2 = { ...evaluation1, variationId: 'variation-B' }
+        let addCallCount = 0
+
+        const delayedStorage = {
+          ...eventStorage,
+          add: async (event: Event) => {
+            addCallCount++
+            await new Promise((resolve) => setTimeout(resolve, 10))
+            return eventStorage.add(event)
+          },
+        }
+
+        const delayedInteractor = new EventInteractor(
+          config.eventsMaxQueueSize,
+          component.dataModule.apiClient(),
+          delayedStorage as unknown as EventStorageImpl,
+          clock,
+          idGenerator,
+          config.appVersion,
+          config.userAgent,
+          internalConfig.sourceId,
+          internalConfig.sdkVersion,
+        )
+
+        // Fire concurrent calls for DIFFERENT evaluations
+        const promise1 = delayedInteractor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation1,
+        )
+        const promise2 = delayedInteractor.trackEvaluationEvent(
+          'feature_tag_value',
+          user1,
+          evaluation2,
+        )
+
+        await Promise.all([promise1, promise2])
+
+        // Both events should be created (different variations)
+        expect(await eventStorage.getAll()).toHaveLength(2)
+        expect(addCallCount).toBe(2)
+      })
+    })
+  })
+
   suite('sendEvents', () => {
     test('success', async () => {
       server.use(
