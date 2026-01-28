@@ -5,6 +5,7 @@ import { IdGenerator } from '../IdGenerator'
 import { Evaluation } from '../model/Evaluation'
 import { EventType, Event, MetricsEvent } from '../model/Event'
 import { ApiId, MetricsEventType } from '../model/MetricsEventData'
+import { ReasonType } from '../model/Reason'
 import { SourceId } from '../model/SourceId'
 import { User } from '../model/User'
 import { ApiClient } from '../remote/ApiClient'
@@ -143,10 +144,22 @@ export class EventInteractor {
     }
   }
 
+  /**
+   * Track a default evaluation event when the feature flag evaluation fails.
+   *
+   * @param featureTag - The feature tag
+   * @param user - The user
+   * @param featureId - The feature flag ID
+   * @param reason - The reason for using the default value:
+   *   - ERROR_FLAG_NOT_FOUND: The specified feature flag was not found in storage
+   *   - ERROR_WRONG_TYPE: The variation type does not match the expected type
+   *   - ERROR_EXCEPTION: An unexpected error occurred during evaluation
+   */
   async trackDefaultEvaluationEvent(
     featureTag: string,
     user: User,
     featureId: string,
+    reason: ReasonType,
   ): Promise<void> {
     const now = this.clock.currentTimeSeconds() * 1000 // Convert to milliseconds
 
@@ -192,7 +205,7 @@ export class EventInteractor {
             userId: user.id,
             user,
             reason: {
-              type: 'CLIENT',
+              type: reason,
             },
             tag: featureTag,
           },
