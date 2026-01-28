@@ -160,6 +160,7 @@ suite('internal/event/EventInteractor', () => {
       'feature_tag_value',
       user1,
       'feature_id_value',
+      'ERROR_FLAG_NOT_FOUND',
     )
 
     const expected: Event[] = [
@@ -180,7 +181,7 @@ suite('internal/event/EventInteractor', () => {
             device_model: 'user_agent_value',
           },
           reason: {
-            type: 'CLIENT',
+            type: 'ERROR_FLAG_NOT_FOUND',
           },
           sdkVersion: SDK_VERSION,
           tag: 'feature_tag_value',

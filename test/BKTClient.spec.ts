@@ -1164,6 +1164,7 @@ suite('BKTClient', () => {
         userId,
         featureId,
         defaultValue,
+        'ERROR_FLAG_NOT_FOUND',
       )
       expect(actualEvaluationDetails).toStrictEqual({
         featureId: featureId,
@@ -1172,7 +1173,7 @@ suite('BKTClient', () => {
         variationId: '',
         variationName: '',
         variationValue: defaultValue,
-        reason: 'CLIENT',
+        reason: 'ERROR_FLAG_NOT_FOUND',
       })
     })
 
@@ -1186,6 +1187,7 @@ suite('BKTClient', () => {
         userId,
         featureId,
         defaultValue,
+        'ERROR_FLAG_NOT_FOUND',
       )
       expect(actualEvaluationDetails.variationValue).toBe(defaultValue)
       expect(actualEvaluationDetails).toStrictEqual({
@@ -1195,7 +1197,7 @@ suite('BKTClient', () => {
         variationId: '',
         variationName: '',
         variationValue: defaultValue,
-        reason: 'CLIENT',
+        reason: 'ERROR_FLAG_NOT_FOUND',
       })
     })
 
@@ -1209,6 +1211,7 @@ suite('BKTClient', () => {
         userId,
         featureId,
         defaultValue,
+        'ERROR_FLAG_NOT_FOUND',
       )
       expect(actualEvaluationDetails.variationValue).toBe(defaultValue)
       expect(actualEvaluationDetails).toStrictEqual({
@@ -1218,7 +1221,7 @@ suite('BKTClient', () => {
         variationId: '',
         variationName: '',
         variationValue: defaultValue,
-        reason: 'CLIENT',
+        reason: 'ERROR_FLAG_NOT_FOUND',
       })
     })
 
@@ -1233,6 +1236,7 @@ suite('BKTClient', () => {
         userId,
         featureId,
         defaultValue,
+        'ERROR_FLAG_NOT_FOUND',
       )
       expect(JSON.stringify(actualEvaluationDetails.variationValue)).toBe(
         JSON.stringify(defaultValue),
@@ -1244,7 +1248,7 @@ suite('BKTClient', () => {
         variationId: '',
         variationName: '',
         variationValue: defaultValue,
-        reason: 'CLIENT',
+        reason: 'ERROR_FLAG_NOT_FOUND',
       })
     })
   })
@@ -1405,53 +1409,53 @@ suite('BKTClient', () => {
       expect(
         client.stringVariationDetails(featureId, 'default1'),
       ).toStrictEqual(
-        newDefaultBKTEvaluationDetails(userId, featureId, 'default1'),
+        newDefaultBKTEvaluationDetails(userId, featureId, 'default1', 'ERROR_FLAG_NOT_FOUND'),
       )
 
       expect(client.numberVariationDetails(featureId, 22)).toStrictEqual(
-        newDefaultBKTEvaluationDetails(userId, featureId, 22.0),
+        newDefaultBKTEvaluationDetails(userId, featureId, 22.0, 'ERROR_FLAG_NOT_FOUND'),
       )
 
       expect(client.booleanVariationDetails(featureId, true)).toStrictEqual(
-        newDefaultBKTEvaluationDetails(userId, featureId, true),
+        newDefaultBKTEvaluationDetails(userId, featureId, true, 'ERROR_FLAG_NOT_FOUND'),
       )
 
       expect(client.booleanVariationDetails(featureId, false)).toStrictEqual(
-        newDefaultBKTEvaluationDetails(userId, featureId, false),
+        newDefaultBKTEvaluationDetails(userId, featureId, false, 'ERROR_FLAG_NOT_FOUND'),
       )
 
       expect(client.objectVariationDetails(featureId, true)).toStrictEqual(
-        newDefaultBKTEvaluationDetails(userId, featureId, true),
+        newDefaultBKTEvaluationDetails(userId, featureId, true, 'ERROR_FLAG_NOT_FOUND'),
       )
 
       expect(client.objectVariationDetails(featureId, 1)).toStrictEqual(
-        newDefaultBKTEvaluationDetails(userId, featureId, 1),
+        newDefaultBKTEvaluationDetails(userId, featureId, 1, 'ERROR_FLAG_NOT_FOUND'),
       )
 
       expect(client.objectVariationDetails(featureId, 'true')).toStrictEqual(
-        newDefaultBKTEvaluationDetails(userId, featureId, 'true'),
+        newDefaultBKTEvaluationDetails(userId, featureId, 'true', 'ERROR_FLAG_NOT_FOUND'),
       )
 
       expect(
         client.objectVariationDetails(featureId, { key: 'value22' }),
       ).toStrictEqual(
-        newDefaultBKTEvaluationDetails(userId, featureId, { key: 'value22' }),
+        newDefaultBKTEvaluationDetails(userId, featureId, { key: 'value22' }, 'ERROR_FLAG_NOT_FOUND'),
       )
 
       expect(
         client.objectVariationDetails(featureId, { key: 'value' }),
       ).not.toStrictEqual(
-        newDefaultBKTEvaluationDetails(userId, featureId, { key: 'value22' }),
+        newDefaultBKTEvaluationDetails(userId, featureId, { key: 'value22' }, 'ERROR_FLAG_NOT_FOUND'),
       )
 
       expect(client.objectVariationDetails(featureId, [])).toStrictEqual(
-        newDefaultBKTEvaluationDetails(userId, featureId, []),
+        newDefaultBKTEvaluationDetails(userId, featureId, [], 'ERROR_FLAG_NOT_FOUND'),
       )
 
       expect(
         client.objectVariationDetails(featureId, [{ key: 'value' }]),
       ).toStrictEqual(
-        newDefaultBKTEvaluationDetails(userId, featureId, [{ key: 'value' }]),
+        newDefaultBKTEvaluationDetails(userId, featureId, [{ key: 'value' }], 'ERROR_FLAG_NOT_FOUND'),
       )
     })
 
@@ -1493,7 +1497,7 @@ suite('BKTClient', () => {
         variationId: mockStringEvaluation.variationId,
         variationName: mockStringEvaluation.variationName,
         variationValue: mockStringEvaluation.variationValue,
-        reason: 'CLIENT',
+        reason: mockStringEvaluation.reason.type,
       } satisfies BKTEvaluationDetails<string>)
 
       expect(client.numberVariationDetails(featureId, 1)).toStrictEqual({
@@ -1503,7 +1507,7 @@ suite('BKTClient', () => {
         variationId: '',
         variationName: '',
         variationValue: 1,
-        reason: 'CLIENT',
+        reason: 'ERROR_WRONG_TYPE',
       } satisfies BKTEvaluationDetails<number>)
 
       expect(client.booleanVariationDetails(featureId, true)).toStrictEqual({
@@ -1513,7 +1517,7 @@ suite('BKTClient', () => {
         variationId: '',
         variationName: '',
         variationValue: true,
-        reason: 'CLIENT',
+        reason: 'ERROR_WRONG_TYPE',
       } satisfies BKTEvaluationDetails<boolean>)
 
       expect(
@@ -1525,7 +1529,7 @@ suite('BKTClient', () => {
         variationId: '',
         variationName: '',
         variationValue: { key: 'value11' },
-        reason: 'CLIENT',
+        reason: 'ERROR_WRONG_TYPE',
       } satisfies BKTEvaluationDetails<BKTValue>)
     })
 
@@ -1641,7 +1645,7 @@ suite('BKTClient', () => {
         variationId: mockStringEvaluation.variationId,
         variationName: mockStringEvaluation.variationName,
         variationValue: true,
-        reason: 'CLIENT',
+        reason: mockStringEvaluation.reason.type,
       } satisfies BKTEvaluationDetails<boolean>)
 
       expect(client.stringVariationDetails(featureId, '')).toStrictEqual({
@@ -1651,7 +1655,7 @@ suite('BKTClient', () => {
         variationId: mockStringEvaluation.variationId,
         variationName: mockStringEvaluation.variationName,
         variationValue: 'true',
-        reason: 'CLIENT',
+        reason: mockStringEvaluation.reason.type,
       } satisfies BKTEvaluationDetails<string>)
 
       expect(client.numberVariationDetails(featureId, 1)).toStrictEqual({
@@ -1661,7 +1665,7 @@ suite('BKTClient', () => {
         variationId: '',
         variationName: '',
         variationValue: 1,
-        reason: 'CLIENT',
+        reason: 'ERROR_WRONG_TYPE',
       } satisfies BKTEvaluationDetails<number>)
 
       expect(
@@ -1673,7 +1677,7 @@ suite('BKTClient', () => {
         variationId: '',
         variationName: '',
         variationValue: { key: 'value11' },
-        reason: 'CLIENT',
+        reason: 'ERROR_WRONG_TYPE',
       } satisfies BKTEvaluationDetails<BKTValue>)
     })
 
@@ -1727,7 +1731,7 @@ suite('BKTClient', () => {
         variationId: mockJsonArrayEvaluation.variationId,
         variationName: mockJsonArrayEvaluation.variationName,
         variationValue: [{ key1: 'value1' }],
-        reason: 'CLIENT',
+        reason: mockJsonArrayEvaluation.reason.type,
       } satisfies BKTEvaluationDetails<BKTValue>)
 
       expect(client.objectVariationDetails(featureId, {})).toStrictEqual({
@@ -1737,7 +1741,7 @@ suite('BKTClient', () => {
         variationId: mockJsonObjectEvaluation.variationId,
         variationName: mockJsonObjectEvaluation.variationName,
         variationValue: { key1: 'value1' },
-        reason: 'CLIENT',
+        reason: mockJsonObjectEvaluation.reason.type,
       } satisfies BKTEvaluationDetails<BKTValue>)
 
       expect(client.objectVariationDetails(featureId, '')).toStrictEqual({
@@ -1747,7 +1751,7 @@ suite('BKTClient', () => {
         variationId: mockJsonObjectEvaluation.variationId,
         variationName: mockJsonObjectEvaluation.variationName,
         variationValue: { key1: 'value1' },
-        reason: 'CLIENT',
+        reason: mockJsonObjectEvaluation.reason.type,
       } satisfies BKTEvaluationDetails<BKTValue>)
 
       expect(client.objectVariationDetails(featureId, true)).toStrictEqual({
@@ -1757,7 +1761,7 @@ suite('BKTClient', () => {
         variationId: mockJsonObjectEvaluation.variationId,
         variationName: mockJsonObjectEvaluation.variationName,
         variationValue: { key1: 'value1' },
-        reason: 'CLIENT',
+        reason: mockJsonObjectEvaluation.reason.type,
       } satisfies BKTEvaluationDetails<BKTValue>)
 
       expect(client.objectVariationDetails(featureId, 1)).toStrictEqual({
@@ -1767,7 +1771,7 @@ suite('BKTClient', () => {
         variationId: mockJsonObjectEvaluation.variationId,
         variationName: mockJsonObjectEvaluation.variationName,
         variationValue: { key1: 'value1' },
-        reason: 'CLIENT',
+        reason: mockJsonObjectEvaluation.reason.type,
       } satisfies BKTEvaluationDetails<BKTValue>)
 
       expect(client.stringVariationDetails(featureId, '')).toStrictEqual({
@@ -1777,7 +1781,7 @@ suite('BKTClient', () => {
         variationId: mockJsonObjectEvaluation.variationId,
         variationName: mockJsonObjectEvaluation.variationName,
         variationValue: '{"key1": "value1"}',
-        reason: 'CLIENT',
+        reason: mockJsonObjectEvaluation.reason.type,
       } satisfies BKTEvaluationDetails<string>)
 
       expect(client.numberVariationDetails(featureId, 1)).toStrictEqual({
@@ -1787,7 +1791,7 @@ suite('BKTClient', () => {
         variationId: '',
         variationName: '',
         variationValue: 1,
-        reason: 'CLIENT',
+        reason: 'ERROR_WRONG_TYPE',
       } satisfies BKTEvaluationDetails<number>)
 
       expect(client.booleanVariationDetails(featureId, true)).toStrictEqual({
@@ -1797,7 +1801,7 @@ suite('BKTClient', () => {
         variationId: '',
         variationName: '',
         variationValue: true,
-        reason: 'CLIENT',
+        reason: 'ERROR_WRONG_TYPE',
       } satisfies BKTEvaluationDetails<boolean>)
     })
   })
