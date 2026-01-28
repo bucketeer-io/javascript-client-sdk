@@ -1836,7 +1836,7 @@ function buildEvaluation(
     variationName: 'variation_name_value',
     variationValue: value,
     reason: {
-      type: 'CLIENT',
+      type: 'DEFAULT',
     },
   }
 }

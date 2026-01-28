@@ -41,7 +41,7 @@ import {
 import { RegisterEventsRequest } from '../../../src/internal/model/request/RegisterEventsRequest'
 import { RegisterEventsResponse } from '../../../src/internal/model/response/RegisterEventsResponse'
 import { SourceId } from '../../../src/internal/model/SourceId'
-import { evaluation1 } from '../../mocks/evaluations'
+import { evaluation1, evaluation2 } from '../../mocks/evaluations'
 import { user1 } from '../../mocks/users'
 import {
   FakeClock,
@@ -117,7 +117,7 @@ suite('internal/event/EventInteractor', () => {
     await interactor.trackEvaluationEvent(
       'feature_tag_value',
       user1,
-      evaluation1,
+      evaluation2,
     )
 
     const expected: Event[] = [
@@ -128,9 +128,9 @@ suite('internal/event/EventInteractor', () => {
           '@type': RootEventType.EvaluationEvent,
           timestamp: clock.currentTimeSecondsCalls[0],
           sourceId: SourceId.JAVASCRIPT,
-          featureId: 'test-feature-1',
+          featureId: 'test-feature-2',
           featureVersion: 9,
-          variationId: 'test-feature-1-variation-A',
+          variationId: 'test-feature-2-variation-A',
           userId: user1.id,
           user: user1,
           metadata: {
@@ -138,7 +138,7 @@ suite('internal/event/EventInteractor', () => {
             device_model: 'user_agent_value',
           },
           reason: {
-            type: 'ERROR_WRONG_TYPE',
+            type: 'RULE',
           },
           sdkVersion: SDK_VERSION,
           tag: 'feature_tag_value',
@@ -593,6 +593,7 @@ suite('internal/event/EventInteractor', () => {
         'feature_tag_value',
         user1,
         'feature_id_value',
+        'ERROR_WRONG_TYPE'
       )
       expect(await eventStorage.getAll()).toHaveLength(1)
 
@@ -601,6 +602,7 @@ suite('internal/event/EventInteractor', () => {
         'feature_tag_value',
         user1,
         'feature_id_value',
+        'ERROR_WRONG_TYPE'
       )
       expect(await eventStorage.getAll()).toHaveLength(1)
 
@@ -610,6 +612,7 @@ suite('internal/event/EventInteractor', () => {
         'feature_tag_value',
         user1,
         'feature_id_value',
+        'ERROR_WRONG_TYPE'
       )
       expect(await eventStorage.getAll()).toHaveLength(2)
     })
@@ -791,6 +794,7 @@ suite('internal/event/EventInteractor', () => {
           'feature_tag_value',
           user1,
           'feature-1',
+          'ERROR_WRONG_TYPE'
         )
         expect(await eventStorage.getAll()).toHaveLength(1)
 
@@ -800,6 +804,7 @@ suite('internal/event/EventInteractor', () => {
           'feature_tag_value',
           user1,
           'feature-1',
+          'ERROR_WRONG_TYPE'
         )
         expect(await eventStorage.getAll()).toHaveLength(1)
 
@@ -809,6 +814,7 @@ suite('internal/event/EventInteractor', () => {
           'feature_tag_value',
           user1,
           'feature-2',
+          'ERROR_FLAG_NOT_FOUND'
         )
 
         // Track feature-1 again - cache should be cleaned, so new event created
@@ -816,6 +822,7 @@ suite('internal/event/EventInteractor', () => {
           'feature_tag_value',
           user1,
           'feature-1',
+          'ERROR_WRONG_TYPE'
         )
         expect(await eventStorage.getAll()).toHaveLength(3)
       })
@@ -834,6 +841,7 @@ suite('internal/event/EventInteractor', () => {
           'feature_tag_value',
           user1,
           'feature-default',
+          'ERROR_WRONG_TYPE',
         )
         expect(await eventStorage.getAll()).toHaveLength(2)
 
@@ -857,6 +865,7 @@ suite('internal/event/EventInteractor', () => {
           'feature_tag_value',
           user1,
           'feature-default',
+          'ERROR_WRONG_TYPE',
         )
         expect(await eventStorage.getAll()).toHaveLength(5)
       })
@@ -937,11 +946,13 @@ suite('internal/event/EventInteractor', () => {
           'feature_tag_value',
           user1,
           'feature-1',
+          'ERROR_FLAG_NOT_FOUND',
         )
         const promise2 = delayedInteractor.trackDefaultEvaluationEvent(
           'feature_tag_value',
           user1,
           'feature-1',
+          'ERROR_FLAG_NOT_FOUND',
         )
 
         await Promise.all([promise1, promise2])
@@ -953,7 +964,7 @@ suite('internal/event/EventInteractor', () => {
 
       test('should rollback cache on storage error', async () => {
         // Spy on console.error to verify error is logged
-        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation()
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
         // Create storage that throws error
         const errorStorage = {

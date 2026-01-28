@@ -10,7 +10,7 @@ export const evaluation1 = {
   variationName: 'test variation name1',
   variationValue: 'test variation value1',
   reason: {
-    type: 'ERROR_WRONG_TYPE',
+    type: 'CLIENT',
   },
 } satisfies Evaluation
 
@@ -23,7 +23,7 @@ export const evaluation2 = {
   variationName: 'test variation name2',
   variationValue: 'test variation value2',
   reason: {
-    type: 'CLIENT',
+    type: 'RULE',
   },
 } satisfies Evaluation
 
