@@ -13,7 +13,15 @@ export interface BKTEvaluation {
     | 'TARGET'
     | 'RULE'
     | 'DEFAULT'
-    | 'CLIENT'
     | 'OFF_VARIATION'
     | 'PREREQUISITE'
+    | 'CLIENT'
+    // Although this interface is deprecated, we keep these new error values for backward compatibility
+    | 'ERROR_FLAG_NOT_FOUND'
+    | 'ERROR_WRONG_TYPE'
+    | 'ERROR_EXCEPTION'
+    | 'ERROR_NO_EVALUATIONS'
+    | 'ERROR_USER_ID_NOT_SPECIFIED'
+    | 'ERROR_FEATURE_FLAG_ID_NOT_SPECIFIED'
+    | 'ERROR_CACHE_NOT_FOUND'
 }
