@@ -15,8 +15,10 @@ export interface BKTEvaluation {
     | 'DEFAULT'
     | 'OFF_VARIATION'
     | 'PREREQUISITE'
+    /** @deprecated Use error-specific reasons (ERROR_FLAG_NOT_FOUND, ERROR_WRONG_TYPE, etc.) instead */
     | 'CLIENT'
-    // Although this interface is deprecated, we keep these new error values for backward compatibility
+    // Although this interface is deprecated, we include these new error values to maintain consistency with BKTEvaluationDetails 
+    // and support detailed error reporting for existing code still using this interface.
     | 'ERROR_FLAG_NOT_FOUND'
     | 'ERROR_WRONG_TYPE'
     | 'ERROR_EXCEPTION'
