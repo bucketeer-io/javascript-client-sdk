@@ -1591,7 +1591,7 @@ suite('BKTClient', () => {
         variationId: '',
         variationName: '',
         variationValue: true,
-        reason: 'CLIENT',
+        reason: 'ERROR_WRONG_TYPE',
       } satisfies BKTEvaluationDetails<boolean>)
 
       expect(
@@ -1603,7 +1603,7 @@ suite('BKTClient', () => {
         variationId: '',
         variationName: '',
         variationValue: { key: 'value11' },
-        reason: 'CLIENT',
+        reason: 'ERROR_WRONG_TYPE',
       } satisfies BKTEvaluationDetails<BKTValue>)
     })
 

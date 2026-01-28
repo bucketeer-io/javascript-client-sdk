@@ -138,7 +138,7 @@ suite('internal/event/EventInteractor', () => {
             device_model: 'user_agent_value',
           },
           reason: {
-            type: 'CLIENT',
+            type: 'ERROR_WRONG_TYPE',
           },
           sdkVersion: SDK_VERSION,
           tag: 'feature_tag_value',
