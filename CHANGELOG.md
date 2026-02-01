@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.5.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.5.0...v2.5.1) (2026-02-01)
+
+
+### Build System
+
+* **deps:** bump build-minor ([#302](https://github.com/bucketeer-io/javascript-client-sdk/issues/302)) ([68cac2f](https://github.com/bucketeer-io/javascript-client-sdk/commit/68cac2fa85e791860e594f03f464dc3f313c86e7))
+* **deps:** bump build-minor ([#310](https://github.com/bucketeer-io/javascript-client-sdk/issues/310)) ([5dcf31b](https://github.com/bucketeer-io/javascript-client-sdk/commit/5dcf31bafe3f365d9402cd786a81fa9408b0189b))
+* **deps:** bump build-patch ([#309](https://github.com/bucketeer-io/javascript-client-sdk/issues/309)) ([e52b5b7](https://github.com/bucketeer-io/javascript-client-sdk/commit/e52b5b79f79a50c04a2029491e1f03d82bc49682))
+
 ## [2.5.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.4.0...v2.5.0) (2025-12-23)
 
 
