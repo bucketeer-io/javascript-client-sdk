@@ -19,5 +19,5 @@
     "noEmit": false,
     "emitDeclarationOnly": false
   },
-  "include": ["src", "test", "e2e", "types/vitest.d.ts"]
+  "include": ["src", "test", "e2e"]
 }

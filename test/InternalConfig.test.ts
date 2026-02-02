@@ -16,6 +16,7 @@ const inputConfig = {
   eventsFlushInterval: 0,
   eventsMaxQueueSize: 0,
   pollingInterval: 0,
+  enableAutoPageLifecycleFlush: false,
   fetch: function (_url: string, _request: FetchRequestLike): Promise<FetchResponseLike> {
     throw new Error('Just a stub for testing')
   },
