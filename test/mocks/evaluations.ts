@@ -23,7 +23,7 @@ export const evaluation2 = {
   variationName: 'test variation name2',
   variationValue: 'test variation value2',
   reason: {
-    type: 'CLIENT',
+    type: 'RULE',
   },
 } satisfies Evaluation
 
@@ -36,7 +36,7 @@ export const evaluation3 = {
   variationName: 'test variation name2',
   variationValue: 'test variation value2',
   reason: {
-    type: 'CLIENT',
+    type: 'ERROR_FLAG_NOT_FOUND',
   },
 } satisfies Evaluation
 

@@ -266,12 +266,20 @@ export class BKTClientImpl implements BKTClient {
         variationValue: result,
         reason: raw.reason.type,
       } satisfies BKTEvaluationDetails<T>
-    } else {
+    } else if (raw === null) {
+      // Flag not found in storage
       this.component
         .eventInteractor()
-        .trackDefaultEvaluationEvent(featureTag, user, featureId)
+        .trackDefaultEvaluationEvent(featureTag, user, featureId, 'ERROR_FLAG_NOT_FOUND')
 
-      return newDefaultBKTEvaluationDetails(user.id, featureId, defaultValue)
+      return newDefaultBKTEvaluationDetails(user.id, featureId, defaultValue, 'ERROR_FLAG_NOT_FOUND')
+    } else {
+      // raw !== null but result === null (type conversion failed)
+      this.component
+        .eventInteractor()
+        .trackDefaultEvaluationEvent(featureTag, user, featureId, 'ERROR_WRONG_TYPE')
+
+      return newDefaultBKTEvaluationDetails(user.id, featureId, defaultValue, 'ERROR_WRONG_TYPE')
     }
   }
 
@@ -288,7 +296,7 @@ export class BKTClientImpl implements BKTClient {
     } else {
       this.component
         .eventInteractor()
-        .trackDefaultEvaluationEvent(featureTag, user, featureId)
+        .trackDefaultEvaluationEvent(featureTag, user, featureId, 'ERROR_FLAG_NOT_FOUND')
     }
 
     return raw?.variationValue ?? null
@@ -399,6 +407,7 @@ export const newDefaultBKTEvaluationDetails = <T extends BKTValue>(
   userId: string,
   featureId: string,
   defaultValue: T,
+  reason: BKTEvaluationDetails<T>['reason'],
 ): BKTEvaluationDetails<T> => {
   return {
     featureId: featureId,
@@ -407,7 +416,7 @@ export const newDefaultBKTEvaluationDetails = <T extends BKTValue>(
     variationId: '',
     variationName: '',
     variationValue: defaultValue,
-    reason: 'CLIENT',
+    reason: reason,
   } satisfies BKTEvaluationDetails<T>
 }
 

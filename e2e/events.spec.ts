@@ -155,7 +155,7 @@ suite('e2e/events', () => {
     expect(
       events.some(
         (e) =>
-          e.type === EventType.EVALUATION && e.event.reason.type === 'CLIENT',
+          e.type === EventType.EVALUATION && e.event.reason.type === 'ERROR_FLAG_NOT_FOUND',
       ),
     ).toBe(true)
 

@@ -90,6 +90,7 @@ suite('internal/scheduler/EventTask', () => {
         'feature_tag_value',
         user1,
         'variation_id_value',
+        'ERROR_FLAG_NOT_FOUND',
       )
 
     expect(requestCount).toBe(0)
@@ -156,6 +157,7 @@ suite('internal/scheduler/EventTask', () => {
           'feature_tag_value',
           user1,
           'variation_id_value',
+          'ERROR_FLAG_NOT_FOUND',
         )
 
       task.stop()
