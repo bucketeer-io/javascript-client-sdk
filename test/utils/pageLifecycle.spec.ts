@@ -4,7 +4,7 @@ import { setupPageLifecycleListeners } from '../../src/utils/pageLifecycle'
 describe('pageLifecycle', () => {
   describe('setupPageLifecycleListeners', () => {
     let mockWindow: typeof window
-    let mockDocument: typeof document
+    let mockDocument: Document & { visibilityState: DocumentVisibilityState }
     let addEventListenerSpy: ReturnType<typeof vi.spyOn>
     let removeEventListenerSpy: ReturnType<typeof vi.spyOn>
     let documentAddEventListenerSpy: ReturnType<typeof vi.spyOn>

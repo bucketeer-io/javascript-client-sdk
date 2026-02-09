@@ -952,7 +952,7 @@ suite('internal/event/EventInteractor', () => {
 
       test('should rollback cache on storage error', async () => {
         // Spy on console.error to verify error is logged
-        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation()
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
         // Create storage that throws error
         const errorStorage = {
