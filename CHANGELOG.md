@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.6.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.5.0...v2.6.0) (2026-03-01)
+## [2.6.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.5.0...v2.6.0) (2026-03-05)
 
 
 ### Features
