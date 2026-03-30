@@ -43,8 +43,8 @@ importers:
         specifier: 5.5.5
         version: 5.5.5(eslint-config-prettier@10.1.8(eslint@9.32.0(jiti@2.6.1)))(eslint@9.32.0(jiti@2.6.1))(prettier@3.6.2)
       happy-dom:
-        specifier: 20.8.8
-        version: 20.8.8
+        specifier: 20.8.9
+        version: 20.8.9
       jiti:
         specifier: 2.6.1
         version: 2.6.1
@@ -65,7 +65,7 @@ importers:
         version: 3.6.1(typescript@5.9.3)
       vitest:
         specifier: 3.2.4
-        version: 3.2.4(@types/node@22.17.2)(@vitest/browser@3.2.4)(happy-dom@20.8.8)(jiti@2.6.1)(msw@2.12.7(@types/node@22.17.2)(typescript@5.9.3))
+        version: 3.2.4(@types/node@22.17.2)(@vitest/browser@3.2.4)(happy-dom@20.8.9)(jiti@2.6.1)(msw@2.12.7(@types/node@22.17.2)(typescript@5.9.3))
       webdriverio:
         specifier: 9.22.0
         version: 9.22.0
@@ -2051,8 +2051,8 @@ packages:
     resolution: {integrity: sha512-DKKrynuQRne0PNpEbzuEdHlYOMksHSUI8Zc9Unei5gTsMNA2/vMpoMz/yKba50pejK56qj98qM0SjYxAKi13gQ==}
     engines: {node: ^12.22.0 || ^14.16.0 || ^16.0.0 || >=17.0.0}
 
-  happy-dom@20.8.8:
-    resolution: {integrity: sha512-5/F8wxkNxYtsN0bXfMwIyNLZ9WYsoOYPbmoluqVJqv8KBUbcyKZawJ7uYK4WTX8IHBLYv+VXIwfeNDPy1oKMwQ==}
+  happy-dom@20.8.9:
+    resolution: {integrity: sha512-Tz23LR9T9jOGVZm2x1EPdXqwA37G/owYMxRwU0E4miurAtFsPMQ1d2Jc2okUaSjZqAFz2oEn3FLXC5a0a+siyA==}
     engines: {node: '>=20.0.0'}
 
   has-bigints@1.1.0:
@@ -4266,7 +4266,7 @@ snapshots:
       magic-string: 0.30.17
       sirv: 3.0.1
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/node@22.17.2)(@vitest/browser@3.2.4)(happy-dom@20.8.8)(jiti@2.6.1)(msw@2.12.7(@types/node@22.17.2)(typescript@5.9.3))
+      vitest: 3.2.4(@types/node@22.17.2)(@vitest/browser@3.2.4)(happy-dom@20.8.9)(jiti@2.6.1)(msw@2.12.7(@types/node@22.17.2)(typescript@5.9.3))
       ws: 8.18.3
     optionalDependencies:
       webdriverio: 9.22.0
@@ -5438,7 +5438,7 @@ snapshots:
 
   graphql@16.12.0: {}
 
-  happy-dom@20.8.8:
+  happy-dom@20.8.9:
     dependencies:
       '@types/node': 22.17.2
       '@types/whatwg-mimetype': 3.0.2
@@ -6839,7 +6839,7 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.6.1
 
-  vitest@3.2.4(@types/node@22.17.2)(@vitest/browser@3.2.4)(happy-dom@20.8.8)(jiti@2.6.1)(msw@2.12.7(@types/node@22.17.2)(typescript@5.9.3)):
+  vitest@3.2.4(@types/node@22.17.2)(@vitest/browser@3.2.4)(happy-dom@20.8.9)(jiti@2.6.1)(msw@2.12.7(@types/node@22.17.2)(typescript@5.9.3)):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
@@ -6867,7 +6867,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 22.17.2
       '@vitest/browser': 3.2.4(msw@2.12.7(@types/node@22.17.2)(typescript@5.9.3))(vite@7.1.12(@types/node@22.17.2)(jiti@2.6.1))(vitest@3.2.4)(webdriverio@9.22.0)
-      happy-dom: 20.8.8
+      happy-dom: 20.8.9
     transitivePeerDependencies:
       - jiti
       - less
