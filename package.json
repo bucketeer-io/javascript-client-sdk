@@ -64,13 +64,13 @@
     "eslint-plugin-prettier": "5.5.5",
     "happy-dom": "20.8.9",
     "jiti": "2.6.1",
-    "msw": "2.12.7",
+    "msw": "2.12.14",
     "prettier": "3.6.2",
     "typescript": "5.9.3",
     "typescript-eslint": "8.56.1",
     "unbuild": "3.6.1",
     "vitest": "3.2.4",
-    "webdriverio": "9.22.0"
+    "webdriverio": "9.27.0"
   },
   "packageManager": "pnpm@10.30.3",
   "dependencies": {
