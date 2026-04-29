@@ -14,18 +14,21 @@ const AUTO_INIT_FLAG = true
 
 export default async function start(root: HTMLElement) {
   const logsEl = root.querySelector('#logs')
-  const buttonEl = root.querySelector('#track_goal') as HTMLButtonElement
-  const flushEl = root.querySelector('#flush') as HTMLButtonElement
-  const setUserAttributesEl = root.querySelector('#set_user_attributes') as HTMLButtonElement
-  const viewUserAttributesEl = root.querySelector('#view_user_attributes') as HTMLButtonElement
-  const initEl = root.querySelector('#init') as HTMLButtonElement
-  const destroyEl = root.querySelector('#destroy') as HTMLButtonElement
+  const buttonEl = root.querySelector<HTMLButtonElement>('#track_goal')
+  const flushEl = root.querySelector<HTMLButtonElement>('#flush')
+  const setUserAttributesEl = root.querySelector<HTMLButtonElement>('#set_user_attributes')
+  const viewUserAttributesEl = root.querySelector<HTMLButtonElement>('#view_user_attributes')
+  const initEl = root.querySelector<HTMLButtonElement>('#init')
+  const destroyEl = root.querySelector<HTMLButtonElement>('#destroy')
 
   let listenerId: string | null | undefined = null
+  let initializing = false
 
   function log(message: string) {
     if (logsEl) {
-      logsEl.innerHTML += `[${new Date().toLocaleTimeString()}] ${message}<br/>`
+      const logLine = document.createElement('div')
+      logLine.textContent = `[${new Date().toLocaleTimeString()}] ${message}`
+      logsEl.appendChild(logLine)
       logsEl.scrollTop = logsEl.scrollHeight
     }
     console.log(message)
@@ -39,6 +42,9 @@ export default async function start(root: HTMLElement) {
   }
 
   const handleInit = async () => {
+    if (initializing) return
+    initializing = true
+    if (initEl) initEl.disabled = true
     const config = defineBKTConfig({
       apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
       apiKey: import.meta.env.VITE_BKT_API_KEY,
@@ -54,6 +60,7 @@ export default async function start(root: HTMLElement) {
     log('Initializing BKTClient...')
     try {
       await initializeBKTClient(config, user)
+      initializing = false
       log('Initialization completed')
       updateButtons(true)
 
@@ -67,7 +74,11 @@ export default async function start(root: HTMLElement) {
         log(`Value for ${STRING_FEATURE_ID}: ${newValue}`)
       })
     } catch (error) {
+      initializing = false
       log(`Initialization failed: ${error}`)
+      listenerId = null
+      destroyBKTClient()
+      updateButtons(false)
     }
   }
 
@@ -85,9 +96,13 @@ export default async function start(root: HTMLElement) {
   initEl?.addEventListener('click', handleInit)
   destroyEl?.addEventListener('click', handleDestroy)
 
-  buttonEl?.addEventListener('click', () => {
-    getBKTClient()?.track(GOAL_ID, 1)
-    log('Goal tracked')
+  buttonEl?.addEventListener('click', async () => {
+    try {
+      await getBKTClient()?.track(GOAL_ID, 1)
+      log('Goal tracked')
+    } catch (error) {
+      log(`Track failed: ${error}`)
+    }
   })
 
   flushEl?.addEventListener('click', () => {
@@ -100,11 +115,15 @@ export default async function start(root: HTMLElement) {
     }
   })
 
-  setUserAttributesEl?.addEventListener('click', () => {
+  setUserAttributesEl?.addEventListener('click', async () => {
     const client = getBKTClient()
     if (client) {
-      client.updateUserAttributes({ kYear: 'value_2025' })
-      log('User attributes updated')
+      try {
+        await client.updateUserAttributes({ kYear: 'value_2025' })
+        log('User attributes updated')
+      } catch (error) {
+        log(`Update user attributes failed: ${error}`)
+      }
     }
   })
 
