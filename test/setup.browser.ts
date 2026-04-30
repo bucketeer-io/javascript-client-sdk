@@ -1,10 +1,11 @@
-import { randomUUID } from 'node:crypto'
+import { randomUUID, webcrypto } from 'node:crypto'
 import { afterEach } from 'vitest'
 
-// setup crypto.randomUUID
+// setup crypto APIs used by the browser generator
 Object.defineProperty(global.self, 'crypto', {
   value: {
-    randomUUID: randomUUID,
+    randomUUID,
+    getRandomValues: webcrypto.getRandomValues.bind(webcrypto),
   },
 })
 
