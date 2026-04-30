@@ -13,6 +13,7 @@ import { Event } from '../model/Event'
 import { RegisterEventsResult } from './RegisterEventsResult'
 import { RegisterEventsRequest } from '../model/request/RegisterEventsRequest'
 import { RegisterEventsResponse } from '../model/response/RegisterEventsResponse'
+import { latencySecondsSince, latencyStartMillis } from '../utils/time'
 
 export interface ApiClient {
   getEvaluations(
@@ -45,7 +46,7 @@ export class ApiClientImpl implements ApiClient {
     }
 
     try {
-      const start = Date.now()
+      const startMillis = latencyStartMillis()
 
       const res = await postInternal(
         `${this.endpoint}/get_evaluations`,
@@ -55,7 +56,7 @@ export class ApiClientImpl implements ApiClient {
         timeoutMillis,
       )
 
-      const finish = Date.now()
+      const seconds = latencySecondsSince(startMillis)
 
       // all non-ok status code is already converted to BKTException,
       // so we can assume that the status code is 200 here.
@@ -71,7 +72,7 @@ export class ApiClientImpl implements ApiClient {
       return {
         type: 'success',
         sizeByte: contentLength,
-        seconds: (finish - start) / 1000,
+        seconds,
         featureTag: request.tag,
         value: await this.parseJSON<GetEvaluationsResponse>(res),
       } satisfies GetEvaluationsSuccess
