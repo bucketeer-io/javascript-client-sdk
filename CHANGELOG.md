@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.6.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.6.0...v2.6.1) (2026-05-01)
+
+
+### Bug Fixes
+
+* fall back when id_generator return wrong uuidv4 ([#320](https://github.com/bucketeer-io/javascript-client-sdk/issues/320)) ([b6ed405](https://github.com/bucketeer-io/javascript-client-sdk/commit/b6ed40502dce0e6216d2e70cb00807198a0ae633))
+
+
+### Build System
+
+* **deps:** bump build-minor ([#323](https://github.com/bucketeer-io/javascript-client-sdk/issues/323)) ([0ac3bdf](https://github.com/bucketeer-io/javascript-client-sdk/commit/0ac3bdf697e87af194a16d4470a338b652eeba5c))
+* **deps:** bump build-patch group to v7.3.2 [SECURITY] ([#318](https://github.com/bucketeer-io/javascript-client-sdk/issues/318)) ([94684ec](https://github.com/bucketeer-io/javascript-client-sdk/commit/94684ec75ebb42a6dfbd16acdbf6df673f0d322c))
+* **deps:** bump Node.js to v22.22.2 ([#316](https://github.com/bucketeer-io/javascript-client-sdk/issues/316)) ([f63a3c7](https://github.com/bucketeer-io/javascript-client-sdk/commit/f63a3c7416c9053f049ac24016a3e50cadd91331))
+
 ## [2.6.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.5.0...v2.6.0) (2026-03-01)
 
 
