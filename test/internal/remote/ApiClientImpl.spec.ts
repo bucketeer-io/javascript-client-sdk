@@ -67,5 +67,9 @@ describe('ApiClientImpl', () => {
       30000, // default timeout
       expect.any(Function),
     )
+    const onAttemptStart = spy.mock.calls[0][5]
+    expect(onAttemptStart).toHaveLength(0)
+    expect(onAttemptStart).toBeDefined()
+    expect(onAttemptStart!()).toBeUndefined()
   })
 })
