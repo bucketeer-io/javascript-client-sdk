@@ -3,12 +3,30 @@ import { FetchLike, FetchRequestLike, FetchResponseLike } from './fetch'
 import { promiseRetriable, RetryPolicy } from './PromiseRetriable'
 import { addTimeoutValueIfNeeded, toBKTException } from './toBKTException'
 
+/**
+ * Sends a POST request with automatic retry on deployment-related 499 errors.
+ *
+ * @param onAttemptStart - Optional callback invoked at the start of **each** attempt
+ *   (including the first and every retry). Use this hook when you need a measurement
+ *   that reflects only the most-recent attempt — for example, resetting a latency timer
+ *   so that backoff delays and prior failed attempts are excluded from the final value.
+ *
+ *   Example — accurate per-attempt latency:
+ *   ```ts
+ *   let startMillis = latencyStartMillis()
+ *   await postInternal(endpoint, headers, body, fetch, timeoutMillis,
+ *     () => { startMillis = latencyStartMillis() }
+ *   )
+ *   const seconds = latencySecondsSince(startMillis) // reflects the last attempt only
+ *   ```
+ */
 export const postInternal = async (
   endpoint: string,
   headers: FetchRequestLike['headers'],
   body: object,
   fetch: FetchLike,
   timeoutMillis: number,
+  onAttemptStart?: () => void,
 ): Promise<FetchResponseLike> => {
   const retryPolicy: RetryPolicy = {
     maxRetries: 3,
@@ -21,13 +39,18 @@ export const postInternal = async (
   }
   // Default retry logic when we got a deployment-related 499 error
   return promiseRetriable(
-    () => _postInternal(
-      endpoint,
-      headers,
-      body,
-      fetch,
-      timeoutMillis,
-    ),
+    () => {
+      // Notify the caller that a new attempt is starting before issuing the request.
+      // This allows the caller to reset any per-attempt state (e.g. a latency timer).
+      onAttemptStart?.()
+      return _postInternal(
+        endpoint,
+        headers,
+        body,
+        fetch,
+        timeoutMillis,
+      )
+    },
     retryPolicy,
     shouldRetry,
   )

@@ -65,6 +65,7 @@ describe('ApiClientImpl', () => {
       },
       fetch,
       30000, // default timeout
+      expect.any(Function),
     )
   })
 })
