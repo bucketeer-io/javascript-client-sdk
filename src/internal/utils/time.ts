@@ -15,10 +15,25 @@
 // natively in all targets this SDK builds for (browser, Node 16+, and
 // React Native), so a single helper covers every entrypoint.
 
+// The smallest non-zero latency we will ever report.
+//
+// `performance.now()` is allowed by spec to be quantized for Spectre-style
+// timing-attack mitigation. Without cross-origin isolation, Firefox and
+// Safari quantize it to 1 ms, which is *the same granularity as
+// `Date.now()`* — so two reads inside the same 1 ms window can still
+// produce a diff of 0 even with the new clock. The backend rejects
+// `latencySecond: 0` ("duration is nil and latencySecond is 0"), so we
+// clamp here. 1 µs is well below the smallest Prometheus histogram
+// bucket on the server (~1 ms) and therefore doesn't skew metrics, while
+// being large enough to convey "a real, sub-microsecond-bounded
+// measurement happened".
+const MIN_LATENCY_SECONDS = 1e-6
+
 export function latencyStartMillis(): number {
   return performance.now()
 }
 
 export function latencySecondsSince(startMillis: number): number {
-  return (performance.now() - startMillis) / 1000
+  const elapsed = (performance.now() - startMillis) / 1000
+  return elapsed > MIN_LATENCY_SECONDS ? elapsed : MIN_LATENCY_SECONDS
 }

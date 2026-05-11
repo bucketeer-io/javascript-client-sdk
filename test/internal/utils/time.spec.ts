@@ -1,4 +1,4 @@
-import { expect, suite, test } from 'vitest'
+import { afterEach, expect, suite, test, vi } from 'vitest'
 
 import {
   latencySecondsSince,
@@ -8,83 +8,79 @@ import {
 // Regression tests for: "duration is nil and latencySecond is 0".
 //
 // Before the fix, the JS SDK measured latency with `Date.now()`, which has
-// 1ms resolution. For sub-millisecond network responses (cached responses,
-// fast LANs, very small payloads on a hot fetch path) `(Date.now() -
-// startTime) / 1000` rounded to exactly 0, the SDK shipped
+// 1ms resolution. For sub-millisecond network responses
+// `(Date.now() - startTime) / 1000` rounded to exactly 0, the SDK shipped
 // `latencySecond: 0`, and the backend rejected the metrics event. The fix
-// replaces the timer with `performance.now()` (sub-millisecond, monotonic).
+// swaps the timer for `performance.now()` AND clamps the helper's return
+// value to a small positive minimum so that even in browsers that
+// quantize `performance.now()` to 1 ms (Firefox / Safari without
+// cross-origin isolation) we never emit a zero.
+//
+// These tests stub `performance.now()` directly so they are fully
+// deterministic regardless of the host's scheduler or clock resolution.
 
 suite('internal/utils/time', () => {
-  test('latencyStartMillis returns a finite number', () => {
-    const start = latencyStartMillis()
-    expect(typeof start).toBe('number')
-    expect(Number.isFinite(start)).toBe(true)
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
-  test('latencySecondsSince returns a finite, non-negative number', () => {
+  test('latencyStartMillis returns whatever performance.now() returns', () => {
+    const spy = vi.spyOn(performance, 'now').mockReturnValue(123_456.789)
+    expect(latencyStartMillis()).toBe(123_456.789)
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+
+  test('latencySecondsSince converts the millisecond delta to seconds exactly', () => {
+    vi.spyOn(performance, 'now')
+      .mockReturnValueOnce(1_000) // start
+      .mockReturnValueOnce(2_500) // end
     const start = latencyStartMillis()
     const elapsed = latencySecondsSince(start)
-    expect(typeof elapsed).toBe('number')
-    expect(Number.isFinite(elapsed)).toBe(true)
-    expect(elapsed).toBeGreaterThanOrEqual(0)
+    expect(elapsed).toBeCloseTo(1.5, 10)
   })
 
-  test('latencySecondsSince > 0 for an awaited microtask (regression for "latencySecond is 0")', async () => {
-    // The most realistic SDK scenario: a fetch call that resolves quickly.
-    // `await` schedules a microtask, which always takes >> 1ns. With the
-    // old `Date.now()` clock this measurement routinely came back 0; with
-    // `performance.now()` it must be strictly > 0 every time.
-    for (let i = 0; i < 100; i++) {
-      const start = latencyStartMillis()
-      await Promise.resolve()
-      const second = latencySecondsSince(start)
-      expect(
-        second,
-        `iteration ${i}: expected latencySecondsSince > 0 for an awaited microtask, got ${second}`,
-      ).toBeGreaterThan(0)
-    }
-  })
-
-  test('latencySecondsSince has sub-millisecond resolution (proves the fix)', async () => {
-    // The pre-fix `Date.now()` timer has 1ms granularity, so this assertion
-    // would have been impossible to satisfy. Show that the new helper can
-    // measure intervals smaller than 1 millisecond. We sample several
-    // microtasks; at least one should come back below 1ms on any
-    // reasonable hardware.
-    let sawSubMs = false
-    for (let i = 0; i < 50; i++) {
-      const start = latencyStartMillis()
-      await Promise.resolve()
-      const second = latencySecondsSince(start)
-      if (second > 0 && second < 0.001) {
-        sawSubMs = true
-        break
-      }
-    }
-    expect(
-      sawSubMs,
-      'expected at least one awaited microtask to measure < 1ms with the new helper',
-    ).toBe(true)
-  })
-
-  test('latencySecondsSince matches a parallel performance.now() reading', () => {
-    // Sanity: the helper actually divides the performance.now() diff by
-    // 1000. Compute the same interval independently and confirm the
-    // helper's value is consistent with it.
+  test('latencySecondsSince preserves sub-millisecond fractional intervals', () => {
+    // Real `performance.now()` returns ms with a fractional part. This is
+    // the exact resolution that `Date.now()` lacked and that the fix
+    // restores. Stub to a 250 µs interval and assert we get 0.00025 s.
+    vi.spyOn(performance, 'now')
+      .mockReturnValueOnce(10.0) // start (ms)
+      .mockReturnValueOnce(10.25) // end (ms)  -> diff = 0.25 ms = 250 µs
     const start = latencyStartMillis()
-    const perfStart = performance.now()
-    // tiny burn of work so the interval is non-zero
-    let acc = 0
-    for (let i = 0; i < 1000; i++) {
-      acc += Math.sqrt(i)
-    }
-    expect(acc).toBeGreaterThan(0)
-    const second = latencySecondsSince(start)
-    const perfDiffSec = (performance.now() - perfStart) / 1000
-    expect(second).toBeGreaterThan(0)
-    // helper measured BEFORE the second performance.now() read, so it
-    // must be <= the independently-computed value (with a small ε for
-    // jitter).
-    expect(second).toBeLessThanOrEqual(perfDiffSec + 1e-6)
+    expect(latencySecondsSince(start)).toBeCloseTo(0.00025, 12)
+  })
+
+  test('latencySecondsSince clamps to a positive minimum when the clock has not advanced (regression for "latencySecond is 0")', () => {
+    // The core regression. In Firefox/Safari without cross-origin
+    // isolation, `performance.now()` is quantized to 1 ms, so two reads
+    // inside the same 1 ms tick produce a diff of exactly 0. The pre-fix
+    // SDK shipped that as `latencySecond: 0` and the backend rejected
+    // the event. The helper must clamp to a positive value so this
+    // payload is never emitted again.
+    vi.spyOn(performance, 'now').mockReturnValue(42.0)
+    const start = latencyStartMillis()
+    const elapsed = latencySecondsSince(start)
+    expect(elapsed).toBeGreaterThan(0)
+    // Should be the documented 1 µs floor, not some unspecified epsilon.
+    expect(elapsed).toBe(1e-6)
+  })
+
+  test('latencySecondsSince clamps a negative interval to the positive minimum', () => {
+    // Defensive: if the (stubbed) clock ever appears to go backwards,
+    // the helper must still report a positive latency rather than a
+    // negative number that the backend would silently bucket.
+    vi.spyOn(performance, 'now')
+      .mockReturnValueOnce(100)
+      .mockReturnValueOnce(99)
+    const start = latencyStartMillis()
+    expect(latencySecondsSince(start)).toBe(1e-6)
+  })
+
+  test('latencySecondsSince returns the raw delta (not the clamp) when it exceeds the minimum', () => {
+    vi.spyOn(performance, 'now')
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(50) // 50 ms = 0.05 s, well above the 1 µs floor
+    const start = latencyStartMillis()
+    expect(latencySecondsSince(start)).toBeCloseTo(0.05, 10)
   })
 })
