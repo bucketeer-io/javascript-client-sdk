@@ -46,7 +46,10 @@ export class ApiClientImpl implements ApiClient {
     }
 
     try {
-      const startMillis = latencyStartMillis()
+      let startMillis = latencyStartMillis()
+      const onAttemptStart = (): void => {
+        startMillis = latencyStartMillis()
+      }
 
       const res = await postInternal(
         `${this.endpoint}/get_evaluations`,
@@ -54,6 +57,7 @@ export class ApiClientImpl implements ApiClient {
         body,
         this.fetch,
         timeoutMillis,
+        onAttemptStart,
       )
 
       const seconds = latencySecondsSince(startMillis)
