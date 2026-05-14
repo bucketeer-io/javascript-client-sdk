@@ -1,0 +1,66 @@
+name: Publish to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Manual publish: version to ship without the "v" prefix (e.g. 2.6.1, or "patch"/"minor"/"major"). Leave empty to publish the version currently in package.json.'
+        required: false
+        type: string
+      dry_run:
+        description: "Dry run (do not actually publish)"
+        required: false
+        default: false
+        type: boolean
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write # required for npm OIDC trusted publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+
+      - name: Setup node env
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # 6.4.0
+        with:
+          node-version-file: ".node-version"
+          package-manager-cache: false
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Ensure npm supports OIDC trusted publishing
+        run: npm install -g npm@11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Set version (manual mode only)
+        if: ${{ inputs.version != '' && inputs.version != null }}
+        run: |
+          case "${{ inputs.version }}" in
+            patch|minor|major)
+              pnpm version "${{ inputs.version }}" --no-git-tag-version
+              ;;
+            *)
+              pnpm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version
+              ;;
+          esac
+
+      - name: Build SDK
+        run: pnpm build
+
+      - name: Publish to npm via OIDC
+        run: |
+          npm publish \
+            --provenance \
+            --access public \
+            ${{ inputs.dry_run && '--dry-run' || '' }}
