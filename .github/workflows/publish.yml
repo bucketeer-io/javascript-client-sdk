@@ -37,8 +37,12 @@ jobs:
           package-manager-cache: false
           registry-url: "https://registry.npmjs.org"
 
+      # npm >= 11.5.1 is required for OIDC trusted publishing.
+      # Pinned to 11.10.0 to avoid a self-upgrade crash on the GitHub-hosted runner
+      # image (npm 10.9.7 + npm >= 11.12.0 hits MODULE_NOT_FOUND: promise-retry).
+      # See https://github.com/actions/runner-images/issues/13883
       - name: Ensure npm supports OIDC trusted publishing
-        run: npm install -g npm@11
+        run: npm install -g npm@11.10.0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
