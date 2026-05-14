@@ -13,43 +13,7 @@ jobs:
       pull-requests: write
     name: Release Please
     runs-on: ubuntu-latest
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
     steps:
       - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
-        id: release
         with:
-          token: ${{ secrets.WORKFLOW_TOKEN }} # We need to set the PAT so the update changelog docs page workflow can be triggered
-
-  publish:
-    needs: [release_please]
-    if: ${{ needs.release_please.outputs.release_created }}
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
-
-      - name: Setup node env
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # 6.4.0
-        with:
-          node-version-file: ".node-version"
-          package-manager-cache: false
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Upgrade npm to a version that supports OIDC trusted publishing
-        run: npm install -g npm@latest
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build SDK
-        run: pnpm build
-
-      - name: Publish to npm via OIDC
-        run: npm publish --provenance --access public
+          token: ${{ secrets.WORKFLOW_TOKEN }} # PAT so the tag push can trigger publish.yml
