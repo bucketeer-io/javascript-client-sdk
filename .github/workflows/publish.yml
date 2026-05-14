@@ -3,10 +3,6 @@ name: Publish to npm
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Manual publish: version to ship without the "v" prefix (e.g. 2.6.1, or "patch"/"minor"/"major"). Leave empty to publish the version currently in package.json.'
-        required: false
-        type: string
       dry_run:
         description: "Dry run (do not actually publish)"
         required: false
@@ -37,23 +33,15 @@ jobs:
           package-manager-cache: false
           registry-url: "https://registry.npmjs.org"
 
+      # npm >= 11.5.1 is required for OIDC trusted publishing.
+      # Pinned to 11.10.0 to avoid a self-upgrade crash on the GitHub-hosted runner
+      # image (npm 10.9.7 + npm >= 11.12.0 hits MODULE_NOT_FOUND: promise-retry).
+      # See https://github.com/actions/runner-images/issues/13883
       - name: Ensure npm supports OIDC trusted publishing
-        run: npm install -g npm@11
+        run: npm install -g npm@11.10.0
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Set version (manual mode only)
-        if: ${{ inputs.version != '' && inputs.version != null }}
-        run: |
-          case "${{ inputs.version }}" in
-            patch|minor|major)
-              pnpm version "${{ inputs.version }}" --no-git-tag-version
-              ;;
-            *)
-              pnpm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version
-              ;;
-          esac
 
       - name: Build SDK
         run: pnpm build
