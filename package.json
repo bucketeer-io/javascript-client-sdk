@@ -1,6 +1,14 @@
 {
   "name": "@bucketeer/js-client-sdk",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bucketeer-io/javascript-client-sdk.git"
+  },
+  "homepage": "https://github.com/bucketeer-io/javascript-client-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/bucketeer-io/javascript-client-sdk/issues"
+  },
   "publishConfig": {
     "access": "public"
   },

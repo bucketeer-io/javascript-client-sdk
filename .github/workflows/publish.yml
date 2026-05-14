@@ -3,10 +3,6 @@ name: Publish to npm
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Manual publish: version to ship without the "v" prefix (e.g. 2.6.1, or "patch"/"minor"/"major"). Leave empty to publish the version currently in package.json.'
-        required: false
-        type: string
       dry_run:
         description: "Dry run (do not actually publish)"
         required: false
@@ -46,18 +42,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Set version (manual mode only)
-        if: ${{ inputs.version != '' && inputs.version != null }}
-        run: |
-          case "${{ inputs.version }}" in
-            patch|minor|major)
-              pnpm version "${{ inputs.version }}" --no-git-tag-version
-              ;;
-            *)
-              pnpm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version
-              ;;
-          esac
 
       - name: Build SDK
         run: pnpm build
