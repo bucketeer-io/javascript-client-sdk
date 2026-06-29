@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.6.2](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.6.1...v2.6.2) (2026-06-29)
+
+
+### Miscellaneous
+
+* **example:** improve example app for more easy testing ([#321](https://github.com/bucketeer-io/javascript-client-sdk/issues/321)) ([d242d5a](https://github.com/bucketeer-io/javascript-client-sdk/commit/d242d5a16ab348943e8aaf564484ac56db371d41))
+
+
+### Build System
+
+* **deps:** bump build-patch group to v7.3.5 [SECURITY] ([#330](https://github.com/bucketeer-io/javascript-client-sdk/issues/330)) ([c2d82fc](https://github.com/bucketeer-io/javascript-client-sdk/commit/c2d82fcc52bc8bfdd3199ca117960ca28f1b398b))
+
 ## [2.6.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.6.0...v2.6.1) (2026-05-13)
 
 
