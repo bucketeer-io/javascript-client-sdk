@@ -27,3 +27,5 @@ types
 *.sln
 *.sw?
 *.tsbuildinfo
+/refs
+/REPORTS
