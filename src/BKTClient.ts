@@ -179,6 +179,7 @@ export class BKTClientImpl implements BKTClient {
   ): Promise<void> {
     this.component.userHolder().updateAttributes((_prev) => ({ ...attributes }))
     await this.component.evaluationInteractor().setUserAttributesUpdated()
+    this.taskScheduler?.reconnectStreaming()
   }
 
   async fetchEvaluations(timeoutMillis?: number): Promise<void> {

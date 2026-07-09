@@ -1,6 +1,7 @@
 import { IdGenerator } from '../IdGenerator'
 import { Evaluation } from '../model/Evaluation'
 import { User } from '../model/User'
+import { GetEvaluationsResponse } from '../model/response/GetEvaluationsResponse'
 import { ApiClient } from '../remote/ApiClient'
 import { GetEvaluationsResult } from '../remote/GetEvaluationsResult'
 import { EvaluationStorage } from './EvaluationStorage'
@@ -49,38 +50,37 @@ export class EvaluationInteractor {
     )
 
     if (result.type === 'success') {
-      const response = result.value
-
-      let shouldNotify: boolean
-      if (response.evaluations.forceUpdate) {
-        // 1- Delete all the evaluations from local storage, and save the latest evaluations from the response into the local storage
-        // 2- Save the UserEvaluations.CreatedAt in the response as evaluatedAt in the localStorage
-        await this.evaluationStorage.deleteAllAndInsert(
-          response.userEvaluationsId,
-          response.evaluations.evaluations ?? [],
-          response.evaluations.createdAt,
-        )
-        shouldNotify = true
-      } else {
-        // 1- Check the evaluation list in the response and upsert them in the localStorage if the list is not empty
-        // 2- Check the archivedFeatureIds list and delete them from the localStorage if is not empty
-        // 3- Save the UserEvaluations.CreatedAt in the response as evaluatedAt in the localStorage
-        shouldNotify = await this.evaluationStorage.update(
-          response.userEvaluationsId,
-          response.evaluations.evaluations ?? [],
-          response.evaluations.archivedFeatureIds ?? [],
-          response.evaluations.createdAt,
-        )
-      }
-
-      await this.evaluationStorage.clearUserAttributesUpdated()
-
-      if (shouldNotify) {
-        Object.values(this.updateListeners).forEach((listener) => listener())
-      }
+      await this.applyEvaluationsResponse(result.value)
     }
 
     return result
+  }
+
+  async applyEvaluationsResponse(
+    response: GetEvaluationsResponse,
+  ): Promise<void> {
+    let shouldNotify: boolean
+    if (response.evaluations.forceUpdate) {
+      await this.evaluationStorage.deleteAllAndInsert(
+        response.userEvaluationsId,
+        response.evaluations.evaluations ?? [],
+        response.evaluations.createdAt,
+      )
+      shouldNotify = true
+    } else {
+      shouldNotify = await this.evaluationStorage.update(
+        response.userEvaluationsId,
+        response.evaluations.evaluations ?? [],
+        response.evaluations.archivedFeatureIds ?? [],
+        response.evaluations.createdAt,
+      )
+    }
+
+    await this.evaluationStorage.clearUserAttributesUpdated()
+
+    if (shouldNotify) {
+      Object.values(this.updateListeners).forEach((listener) => listener())
+    }
   }
 
   getLatest(featureId: string): Evaluation | null {
