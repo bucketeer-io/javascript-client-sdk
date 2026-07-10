@@ -28,4 +28,3 @@ types
 *.sw?
 *.tsbuildinfo
 /refs
-/REPORTS
