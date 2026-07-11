@@ -7,3 +7,8 @@ export function isRecoverableStatus(status: number | undefined): boolean {
   }
   return true
 }
+
+// Authentication failures — retrying with the same API key can never succeed.
+export function isTerminalStatus(status: number | undefined): boolean {
+  return status === 401 || status === 403
+}
