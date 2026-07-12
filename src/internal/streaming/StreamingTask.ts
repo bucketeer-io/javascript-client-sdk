@@ -6,7 +6,7 @@ import { EvaluationTask } from '../scheduler/EvaluationTask'
 import { ScheduledTask } from '../scheduler/ScheduledTask'
 import { FetchEventSource } from './FetchEventSource'
 import { EventSourceLike, EventSourceLikeInit } from './EventSourceLike'
-import { StreamConnection } from './StreamConnection'
+import { StreamConnection, StreamConnectionErrorInfo } from './StreamConnection'
 
 // Confirm the real path with the backend team before shipping.
 const STREAM_EVALUATIONS_PATH = '/stream_evaluations'
@@ -36,7 +36,8 @@ export class StreamingTask implements ScheduledTask {
       // Transport re-invokes requestBuilder → picks up fresh attributes.
       this.connection.reconnect()
     } else {
-      // Currently on polling fallback — jump straight back to streaming.
+      // Currently on polling fallback (or idle after a terminal error) —
+      // jump straight back to streaming.
       this.stopFallback()
       this.openStream()
     }
@@ -47,8 +48,6 @@ export class StreamingTask implements ScheduledTask {
     this.connection?.stop()
     this.connection = null
     this.stopFallback()
-    clearTimeout(this.recoveryTimer)
-    this.recoveryTimer = undefined
   }
 
   // private
@@ -65,11 +64,11 @@ export class StreamingTask implements ScheduledTask {
       events: {
         evaluations: (data) => this.handleData(data),
         message: (data) => this.handleData(data),
-        heartbeat: () => {}, // liveness only — any bytes already reset the watchdog
+        heartbeat: () => {}, // liveness only — receiving it already marks healthy
       },
       callbacks: {
         onOpen: () => this.stopFallback(),
-        onError: () => this.handleError(),
+        onError: (info) => this.handleError(info),
       },
     })
     this.connection.start()
@@ -86,8 +85,11 @@ export class StreamingTask implements ScheduledTask {
     }
   }
 
-  // Single unified POST body profile — no platform branching needed in V4.
+  // Single unified POST body profile — identical on every platform.
   // Credentials go in the Authorization header; user identification in the body.
+  // The FULL header profile lives here so injected EventSourceLike
+  // implementations receive a complete request; the built-in FetchEventSource
+  // merely re-asserts the same Content-Type/Accept defaults defensively.
   private buildRequest(): { url: string; init: EventSourceLikeInit } {
     const config = requiredInternalConfig(this.component.config())
     const user = this.component.userHolder().get()
@@ -101,23 +103,30 @@ export class StreamingTask implements ScheduledTask {
       url: `${config.apiEndpoint}${STREAM_EVALUATIONS_PATH}`,
       init: {
         method: 'POST',
-        headers: { Authorization: config.apiKey },
+        headers: {
+          Authorization: config.apiKey,
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
         body: JSON.stringify(body),
       },
     }
   }
 
-  private handleError(): void {
+  private handleError(info: StreamConnectionErrorInfo): void {
     if (!this.running) return
-    if (this.component.config().streamingFallbackToPolling) { 
-      this.connection?.stop()
-      this.connection = null
-      this.startFallback()
+    this.connection?.stop()
+    this.connection = null
+    this.startFallback()
+    if (!info.terminal) {
+      // Terminal failures (bad API key, streaming unsupported) are not retried;
+      // everything else gets a streaming retry after the recovery interval.
+      this.scheduleRecovery()
     }
   }
 
   private async handleData(data: string): Promise<void> {
-    if (!this.running) return // S7
+    if (!this.running) return // guard: data may arrive after stop()
     let response: GetEvaluationsResponse
     try {
       response = JSON.parse(data) as GetEvaluationsResponse
@@ -125,14 +134,17 @@ export class StreamingTask implements ScheduledTask {
       return
     }
     await this.component.evaluationInteractor().applyEvaluationsResponse(response)
-    if (!this.running) return // S7 — re-check after await
   }
 
   private startFallback(): void {
+    if (!this.component.config().streamingFallbackToPolling) return
     if (!this.fallbackTask) {
       this.fallbackTask = new EvaluationTask(this.component)
       this.fallbackTask.start()
     }
+  }
+
+  private scheduleRecovery(): void {
     clearTimeout(this.recoveryTimer)
     this.recoveryTimer = setTimeout(() => {
       if (!this.running) return
