@@ -9,11 +9,17 @@ const READY_STATE_CONNECTING = 0
 const READY_STATE_OPEN = 1
 const READY_STATE_CLOSED = 2
 
+// SSE lines may end with \r\n, \n, or \r (WHATWG spec). Normalize to \n so the
+// parser only deals with one framing. Idempotent on already-normalized text.
+const normalizeLineEndings = (text: string): string =>
+  text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+
 export class FetchEventSource implements EventSourceInstance {
   readyState: number = READY_STATE_CONNECTING
   onopen: ((ev: unknown) => void) | null = null
   onmessage: ((ev: MessageEventLike) => void) | null = null
-  onerror: ((ev: { status?: number } | unknown) => void) | null = null
+  onerror: ((ev: { status?: number; terminal?: boolean } | unknown) => void) | null =
+    null
 
   private readonly listeners = new Map<
     string,
@@ -60,12 +66,20 @@ export class FetchEventSource implements EventSourceInstance {
     const ac = new AbortController()
     this.abortController = ac
 
+    // Object.assign, not spread: caller headers (e.g. Authorization) must win
+    // over the defaults, and the no-spread-after-defaults lint rule forbids
+    // writing that as a spread after default properties.
+    const headers = Object.assign(
+      {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+      },
+      this.init.headers,
+    )
+
     this.fetchImpl(this.url, {
       method: this.init.method ?? 'POST',
-      headers: {
-        ...(this.init.headers ?? {}),
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: this.init.body ?? '',
       signal: ac.signal,
     })
@@ -76,19 +90,23 @@ export class FetchEventSource implements EventSourceInstance {
           this.onerror?.({ status: response.status })
           return
         }
-        if (!response.body) {
-          // Null body means the runtime doesn't support ReadableStream streaming.
+        if (!response.body || typeof response.body.getReader !== 'function') {
+          // No WHATWG ReadableStream: the runtime's fetch cannot stream (e.g.
+          // React Native without a polyfill), or an injected fetch returns a
+          // non-WHATWG body (e.g. node-fetch → Node.js Readable, no
+          // getReader()). Retrying can never succeed with this fetch
+          // implementation → terminal.
           this.readyState = READY_STATE_CLOSED
-          this.onerror?.({})
+          this.onerror?.({ terminal: true })
           return
         }
         this.readyState = READY_STATE_OPEN
         this.onopen?.({})
-        return this.readStream(response.body as ReadableStream<Uint8Array>)
+        return this.readStream(response.body)
       })
       .then(() => {
-        // Stream ended naturally (server closed) — signal error so StreamConnection
-        // can decide whether to reconnect.
+        // Stream ended naturally (server closed) — signal a recoverable error
+        // so StreamConnection can decide whether to reconnect.
         if (this.readyState !== READY_STATE_CLOSED) {
           this.readyState = READY_STATE_CLOSED
           this.onerror?.({})
@@ -109,19 +127,42 @@ export class FetchEventSource implements EventSourceInstance {
     try {
       while (this.readyState === READY_STATE_OPEN) {
         const { done, value } = await reader.read()
-        if (done) break
-        // Fire a bare onmessage on every chunk so StreamConnection's watchdog
-        // resets on any received bytes, including SSE comments / heartbeats (S6).
+        if (done) {
+          // End of stream: flush the decoder (the stream may end mid
+          // multi-byte character). The output is deliberately discarded — it
+          // can only belong to an unterminated block, and SSE dispatches
+          // events only on a blank-line terminator, so nothing parseable is
+          // ever lost here.
+          decoder.decode()
+          break
+        }
+        // Liveness tick: fire a bare onmessage on every chunk so the caller's
+        // watchdog resets on any received bytes, including SSE comment
+        // heartbeats (": ping"). The tick carries no data; StreamConnection
+        // ignores events whose data is undefined. NOTE: this rides on the
+        // 'message' handler being wired — StreamingTask always registers it.
         this.onmessage?.({ data: undefined })
         buffer += decoder.decode(value, { stream: true })
-        buffer = this.parseBuffer(buffer)
+        // A trailing \r may be half of a \r\n split across chunks — hold it
+        // back so normalization can't turn one CRLF into two newlines.
+        let pendingCR = ''
+        if (buffer.endsWith('\r')) {
+          pendingCR = '\r'
+          buffer = buffer.slice(0, -1)
+        }
+        buffer = this.parseBuffer(normalizeLineEndings(buffer)) + pendingCR
       }
     } finally {
-      reader.cancel()
+      try {
+        await reader.cancel()
+      } catch {
+        // cancel() rejects if the stream already errored — nothing to clean up
+      }
     }
   }
 
-  // Parses complete SSE events from the buffer. Returns unconsumed remainder.
+  // Parses complete SSE events from the (LF-normalized) buffer.
+  // Returns the unconsumed remainder.
   private parseBuffer(buffer: string): string {
     const blocks = buffer.split(/\n\n/)
     const remainder = blocks.pop() ?? ''
@@ -135,7 +176,7 @@ export class FetchEventSource implements EventSourceInstance {
         } else if (line.startsWith('event:')) {
           eventName = line.slice(6).trim()
         }
-        // Comment lines (':') counted as liveness via the onmessage chunk tick above
+        // Comment lines (':') count as liveness via the per-chunk tick above
       }
       if (dataLines.length === 0) continue
       const ev: MessageEventLike = { data: dataLines.join('\n') }
@@ -143,7 +184,7 @@ export class FetchEventSource implements EventSourceInstance {
       if (handlers && handlers.length > 0) {
         handlers.forEach((h) => h(ev))
       } else {
-        this.onmessage?.(ev)
+        this.onmessage?.(ev) // unnamed events fall back to onmessage
       }
     }
     return remainder
