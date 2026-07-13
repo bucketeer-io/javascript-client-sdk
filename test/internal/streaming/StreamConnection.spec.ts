@@ -60,9 +60,10 @@ function latest(): FakeEventSource {
   return FakeEventSource.instances[FakeEventSource.instances.length - 1]
 }
 
-// Regression coverage for REPORTS/CyberAgent/2026/07/JS-004/ISSUES/BACKOFF_RESET_NEVER_FIRES.md:
-// the backoff reset is now a timer owned here, armed on open and canceled on close, instead of
-// a timestamp comparison inside Backoff itself.
+// Regression coverage: the backoff reset used to be a timestamp comparison inside
+// Backoff itself, gated on success(), which only fires once per connection (on
+// onopen) — so the reset never fired for the ordinary stable-then-drop case. It is
+// now a timer owned here: armed on open, canceled if the connection drops first.
 suite('internal/streaming/StreamConnection — backoff reset timer', () => {
   beforeEach(() => {
     FakeEventSource.instances = []

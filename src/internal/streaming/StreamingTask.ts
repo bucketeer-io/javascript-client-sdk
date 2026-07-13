@@ -8,7 +8,8 @@ import { FetchEventSource } from './FetchEventSource'
 import { EventSourceLike, EventSourceLikeInit } from './EventSourceLike'
 import { StreamConnection, StreamConnectionErrorInfo } from './StreamConnection'
 
-// Confirm the real path with the backend team before shipping.
+// SSE endpoint path. Pending confirmation from the backend team; update this
+// constant once the route is finalized.
 const STREAM_EVALUATIONS_PATH = '/stream_evaluations'
 const RECOVERY_INTERVAL_MILLIS = 5 * 60_000
 
@@ -62,8 +63,15 @@ export class StreamingTask implements ScheduledTask {
       eventSource,
       requestBuilder: () => this.buildRequest(),
       events: {
-        evaluations: (data) => this.handleData(data),
-        message: (data) => this.handleData(data),
+        // handleData is async; the events map requires void-returning handlers,
+        // so the call is explicitly caught here — otherwise a rejection (e.g. a
+        // storage failure) would surface as an unhandled promise rejection.
+        evaluations: (data) => {
+          this.handleData(data).catch(() => {})
+        },
+        message: (data) => {
+          this.handleData(data).catch(() => {})
+        },
         heartbeat: () => {}, // liveness only — receiving it already marks healthy
       },
       callbacks: {
