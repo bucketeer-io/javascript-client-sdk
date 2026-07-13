@@ -51,6 +51,9 @@ export class EvaluationInteractor {
 
     if (result.type === 'success') {
       await this.applyEvaluationsResponse(result.value)
+      // Only the polling/fetch path clears the flag: this request carried the
+      // current user attributes. Streamed data must never clear it (race).
+      await this.evaluationStorage.clearUserAttributesUpdated()
     }
 
     return result
@@ -75,8 +78,6 @@ export class EvaluationInteractor {
         response.evaluations.createdAt,
       )
     }
-
-    await this.evaluationStorage.clearUserAttributesUpdated()
 
     if (shouldNotify) {
       Object.values(this.updateListeners).forEach((listener) => listener())
