@@ -28,6 +28,13 @@ export type {
   BKTJsonPrimitive,
 } from './BKTValue'
 export type { BKTEvaluationDetails } from './BKTEvaluationDetails'
+export type {
+  EventSourceLike,
+  EventSourceLikeInit,
+  EventSourceInstance,
+  EventSourceErrorLike,
+  MessageEventLike,
+} from './internal/streaming/EventSourceLike'
 
 const createNodeComponent = (config: BKTConfig, user: User): Component => {
   return new DefaultComponent(
