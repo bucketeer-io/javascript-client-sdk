@@ -29,6 +29,13 @@ export type {
   BKTJsonPrimitive,
 } from './BKTValue'
 export type { BKTEvaluationDetails } from './BKTEvaluationDetails'
+export type {
+  EventSourceLike,
+  EventSourceLikeInit,
+  EventSourceInstance,
+  EventSourceErrorLike,
+  MessageEventLike,
+} from './internal/streaming/EventSourceLike'
 
 // This endpoint is intended for use in React Native - Expo environments.
 const createComponent = (config: BKTConfig, user: User): Component => {
