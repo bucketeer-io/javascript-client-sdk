@@ -209,6 +209,28 @@ suite('internal/streaming/StreamingTask', () => {
     expect(apply).not.toHaveBeenCalled()
   })
 
+  test('applyEvaluationsResponse rejecting does not surface as an unhandled rejection', async () => {
+    const component = buildComponent()
+    const unhandled = vi.fn()
+    process.on('unhandledRejection', unhandled)
+    vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockRejectedValue(new Error('storage failure'))
+    startTask(component)
+
+    const response = {
+      evaluations: user1Evaluations,
+      userEvaluationsId: 'user_evaluation_id_value',
+    }
+    latest().onopen?.({})
+    latest().emit('evaluations', { data: JSON.stringify(response) })
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(unhandled).not.toHaveBeenCalled()
+    process.off('unhandledRejection', unhandled)
+  })
+
   test('data arriving after stop() is not applied', async () => {
     const component = buildComponent()
     const apply = vi

@@ -25,7 +25,9 @@ export class TaskScheduler {
   // Called by BKTClientImpl.updateUserAttributes when streaming is active.
   // No-op when polling (the find returns nothing).
   reconnectStreaming(): void {
-    const task = this.schedulers.find((s) => s instanceof StreamingTask)
-    ;(task as StreamingTask | undefined)?.reconnect()
+    const task = this.schedulers.find(
+      (s) => s instanceof StreamingTask,
+    ) as StreamingTask | undefined
+    task?.reconnect()
   }
 }
