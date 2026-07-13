@@ -8,8 +8,6 @@ import { FetchEventSource } from './FetchEventSource'
 import { EventSourceLike, EventSourceLikeInit } from './EventSourceLike'
 import { StreamConnection, StreamConnectionErrorInfo } from './StreamConnection'
 
-// SSE endpoint path. Pending confirmation from the backend team; update this
-// constant once the route is finalized.
 const STREAM_EVALUATIONS_PATH = '/stream_evaluations'
 const RECOVERY_INTERVAL_MILLIS = 5 * 60_000
 
@@ -67,10 +65,17 @@ export class StreamingTask implements ScheduledTask {
         // so the call is explicitly caught here — otherwise a rejection (e.g. a
         // storage failure) would surface as an unhandled promise rejection.
         evaluations: (data) => {
-          this.handleData(data).catch(() => {})
+          this.handleData(data).catch((e) => {
+            console.error(
+              'StreamingTask: failed to handle evaluations event',
+              e,
+            )
+          })
         },
         message: (data) => {
-          this.handleData(data).catch(() => {})
+          this.handleData(data).catch((e) => {
+            console.error('StreamingTask: failed to handle message event', e)
+          })
         },
         heartbeat: () => {}, // liveness only — receiving it already marks healthy
       },
@@ -141,7 +146,9 @@ export class StreamingTask implements ScheduledTask {
     } catch {
       return
     }
-    await this.component.evaluationInteractor().applyEvaluationsResponse(response)
+    await this.component
+      .evaluationInteractor()
+      .applyEvaluationsResponse(response)
   }
 
   private startFallback(): void {
