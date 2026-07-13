@@ -30,11 +30,14 @@ suite('internal/streaming/httpStatus', () => {
   })
 
   suite('isTerminalStatus', () => {
-    test.each([401, 403])('%i is terminal', (status) => {
-      expect(isTerminalStatus(status)).toBe(true)
-    })
+    test.each([401, 403, 404, 405, 406, 410, 413, 414, 415, 422, 431, 451])(
+      '%i is terminal',
+      (status) => {
+        expect(isTerminalStatus(status)).toBe(true)
+      },
+    )
 
-    test.each([undefined, 400, 404, 405, 408, 429, 500, 503])(
+    test.each([undefined, 400, 402, 408, 409, 428, 429, 500, 503])(
       '%s is not terminal',
       (status) => {
         expect(isTerminalStatus(status)).toBe(false)
