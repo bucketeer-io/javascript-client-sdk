@@ -126,7 +126,10 @@ export class StreamingTask implements ScheduledTask {
     // StreamConnection's requestBuilder), so a reconnect always carries the
     // latest cached state — the backend can then reply with a diff instead of
     // a full snapshot. Same '' / '0' defaults as the polling path
-    // (EvaluationInteractor.fetch()) for the pre-initialize / never-fetched case.
+    // (EvaluationInteractor.fetch()) for a fresh install that has never
+    // cached any evaluations yet (getCurrentEvaluationsCondition() is always
+    // called after initialize() — see its own comment — so these defaults
+    // handle "initialized but empty," not "not yet initialized").
     const condition = this.component
       .evaluationInteractor()
       .getCurrentEvaluationsCondition()

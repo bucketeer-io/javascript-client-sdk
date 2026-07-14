@@ -127,6 +127,9 @@ suite('internal/evaluation/EvaluationStorage', () => {
       await expect(evaluationStorage.getUserAttributesUpdated()).rejects.toThrow(
         'Cache Evaluation entity is not loaded. Call initialize() first.'
       )
+      expect(() => evaluationStorage.getCurrentEvaluationsCondition()).toThrow(
+        'Cache Evaluation entity is not loaded. Call initialize() first.'
+      )
     })
   })
 
@@ -271,11 +274,13 @@ suite('internal/evaluation/EvaluationStorage', () => {
   })
 
   suite('getCurrentEvaluationsCondition', () => {
-    test('returns nulls before initialize() — must not throw (StreamingTask starts before the interactor initializes)', () => {
-      expect(evaluationStorage.getCurrentEvaluationsCondition()).toStrictEqual({
-        currentEvaluationsId: null,
-        evaluatedAt: null,
-      })
+    test('throws before initialize() — same contract as the other getters', () => {
+      // BKTClientImpl.initializeInternal() guarantees initialize() always
+      // resolves before any task (including StreamingTask's first connect)
+      // can reach this storage — see the ordering comment there.
+      expect(() => evaluationStorage.getCurrentEvaluationsCondition()).toThrow(
+        'Cache Evaluation entity is not loaded. Call initialize() first.',
+      )
     })
 
     test('returns nulls after initialize() when storage is empty', async () => {
