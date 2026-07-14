@@ -64,20 +64,42 @@ export class StreamingTask implements ScheduledTask {
         // handleData is async; the events map requires void-returning handlers,
         // so the call is explicitly caught here — otherwise a rejection (e.g. a
         // storage failure) would surface as an unhandled promise rejection.
-        evaluations: (data) => {
+        // Backend event names (evaluations.go): 'put' is the full snapshot sent
+        // once after connecting, 'patch' is a per-change diff.
+        put: (data) => {
           this.handleData(data).catch((e) => {
-            console.error(
-              'StreamingTask: failed to handle evaluations event',
-              e,
-            )
+            console.error('StreamingTask: failed to handle put event', e)
           })
         },
+        patch: (data) => {
+          this.handleData(data).catch((e) => {
+            console.error('StreamingTask: failed to handle patch event', e)
+          })
+        },
+        // Not a real backend event name — this backend never sends an unnamed
+        // SSE block. DO NOT REMOVE: StreamConnection only assigns es.onmessage
+        // when the events map contains a 'message' key (StreamConnection.ts,
+        // openConnection()), and FetchEventSource's per-chunk liveness tick
+        // (onmessage({ data: undefined }), fired on every chunk read —
+        // including heartbeat-only chunks) rides on es.onmessage being set.
+        // Deleting this entry silently breaks liveness detection during any
+        // period where only heartbeats arrive (no put/patch): the 70s watchdog
+        // would false-trip an otherwise-healthy connection. Also serves as a
+        // defensive fallback for a genuinely unnamed data event, should some
+        // other transport ever send one. Regression-guarded by the
+        // heartbeat-only-period test in StreamingTask.spec.ts.
         message: (data) => {
           this.handleData(data).catch((e) => {
             console.error('StreamingTask: failed to handle message event', e)
           })
         },
-        heartbeat: () => {}, // liveness only — receiving it already marks healthy
+        // The backend sends this right before closing the stream to report an
+        // internal error. Handle it distinctly instead of letting it fall
+        // through to handleData, which would JSON-parse it fine and then throw
+        // on the missing GetEvaluationsResponse shape.
+        error: (data) => {
+          console.error('StreamingTask: server reported a stream error', data)
+        },
       },
       callbacks: {
         onOpen: () => this.stopFallback(),

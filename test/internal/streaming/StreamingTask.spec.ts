@@ -177,7 +177,7 @@ suite('internal/streaming/StreamingTask', () => {
     expect(FakeEventSource.instances).toHaveLength(1)
   })
 
-  test('data event with valid JSON is applied via applyEvaluationsResponse', async () => {
+  test('put event with valid JSON is applied via applyEvaluationsResponse', async () => {
     const component = buildComponent()
     const apply = vi
       .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
@@ -189,10 +189,68 @@ suite('internal/streaming/StreamingTask', () => {
       userEvaluationsId: 'user_evaluation_id_value',
     }
     latest().onopen?.({})
-    latest().emit('evaluations', { data: JSON.stringify(response) })
+    latest().emit('put', { data: JSON.stringify(response) })
     await Promise.resolve()
 
     expect(apply).toHaveBeenCalledWith(response)
+  })
+
+  test('patch event with valid JSON is applied via applyEvaluationsResponse', async () => {
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    startTask(component)
+
+    const response = {
+      evaluations: user1Evaluations,
+      userEvaluationsId: 'user_evaluation_id_value',
+    }
+    latest().onopen?.({})
+    latest().emit('patch', { data: JSON.stringify(response) })
+    await Promise.resolve()
+
+    expect(apply).toHaveBeenCalledWith(response)
+  })
+
+  test('error event is logged distinctly and never applied', async () => {
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    startTask(component)
+
+    latest().onopen?.({})
+    latest().emit('error', { data: '{"code":13,"message":"internal"}' })
+    await Promise.resolve()
+
+    expect(apply).not.toHaveBeenCalled()
+    expect(consoleError).toHaveBeenCalledWith(
+      'StreamingTask: server reported a stream error',
+      '{"code":13,"message":"internal"}',
+    )
+  })
+
+  test('a long heartbeat-only period (no put/patch) never reconnects — regression guard for the message key', () => {
+    // FetchEventSource fires a bare onmessage({ data: undefined }) tick on
+    // every chunk it reads, including chunks that contain nothing but the
+    // backend's SSE comment heartbeat. The 'message' entry in StreamingTask's
+    // events map exists solely so StreamConnection wires up es.onmessage to
+    // receive that tick. If 'message' were ever removed, es.onmessage would
+    // stay unset, this tick would land on nothing, and the 70s watchdog would
+    // false-trip a healthy connection — this test fails immediately if that
+    // regresses.
+    startTask(buildComponent())
+    latest().onopen?.({})
+
+    for (let i = 0; i < 5; i++) {
+      vi.advanceTimersByTime(60_000) // < 70s watchdog between ticks
+      latest().onmessage?.({ data: undefined })
+    }
+
+    expect(FakeEventSource.instances).toHaveLength(1)
+    expect(evaluationTaskStart).not.toHaveBeenCalled()
   })
 
   test('data event with invalid JSON is ignored', async () => {
@@ -224,7 +282,7 @@ suite('internal/streaming/StreamingTask', () => {
         userEvaluationsId: 'user_evaluation_id_value',
       }
       latest().onopen?.({})
-      latest().emit('evaluations', { data: JSON.stringify(response) })
+      latest().emit('put', { data: JSON.stringify(response) })
       await Promise.resolve()
       await Promise.resolve()
 

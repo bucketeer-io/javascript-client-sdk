@@ -192,6 +192,28 @@ suite('internal/streaming/StreamConnection — health model', () => {
     expect(onError).not.toHaveBeenCalled()
   })
 
+  test('a named event with no data (e.g. a connection-error signal) does not reset the watchdog — it still trips on schedule', () => {
+    // Regression guard: see the decision chart above openConnection()'s event
+    // wiring in StreamConnection.ts. A named event with no data (like a native
+    // EventSource's connection-error 'error' event) is a failure signal, not
+    // proof the stream is working — it must not reset the watchdog, or a
+    // repeatedly failing connection could mask itself as healthy forever.
+    startConnection()
+    latest().onopen?.({})
+
+    vi.advanceTimersByTime(69_000)
+    latest().emit('evaluations', { data: undefined })
+    expect(namedHandler).not.toHaveBeenCalled() // no data → handler not invoked
+
+    // The dataless named event must NOT have reset the watchdog: only 1_000ms
+    // remain until the original 70s mark set at onopen.
+    vi.advanceTimersByTime(999)
+    expect(FakeEventSource.instances).toHaveLength(1)
+    vi.advanceTimersByTime(1) // watchdog trips → scheduleReconnect()
+    vi.advanceTimersByTime(1_000) // backoff delay → instance #2
+    expect(FakeEventSource.instances).toHaveLength(2)
+  })
+
   test('transient error after open self-heals with backoff, onError NOT called', () => {
     startConnection()
     latest().onopen?.({})

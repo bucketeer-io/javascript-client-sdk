@@ -94,11 +94,30 @@ export class StreamConnection {
       this.options.callbacks.onOpen()
     }
 
-    // Wire every caller-named event; each proves liveness.
+    // Wire every caller-named event. Whether it counts as proof of liveness
+    // depends on what it is:
+    //
+    //                 Event arrives
+    //                       │
+    //         ┌─────────────┴─────────────┐
+    //         │ is it 'message'?          │
+    //        yes                          no (a named event, e.g. 'put'/'error')
+    //         │                            │
+    //         ▼                     ┌──────┴──────┐
+    //   mark HEALTHY           does it have data?
+    //   (the built-in                │         │
+    //   transport's per-           yes         no
+    //   chunk tick has no            │         │
+    //   data but still               ▼         ▼
+    //   proves bytes are      mark HEALTHY  do NOT mark healthy
+    //   arriving)             + deliver     (e.g. a standards EventSource's
+    //                         the data      connection-error event — that's
+    //                                       a failure signal, not proof the
+    //                                       stream is working)
     Object.entries(this.options.events).forEach(([name, handler]) => {
       const wrapped = (ev: MessageEventLike) => {
         if (this.es !== es) return // stale instance — already replaced
-        this.markHealthy()
+        if (name === 'message' || ev?.data !== undefined) this.markHealthy()
         if (ev?.data !== undefined) handler(ev.data)
       }
       if (name === 'message') {
