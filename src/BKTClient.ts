@@ -78,8 +78,18 @@ export class BKTClientImpl implements BKTClient {
   constructor(public component: Component) {}
 
   async initializeInternal(timeoutMillis: number): Promise<void> {
-    this.scheduleTasks()
+    // Order matters: scheduleTasks() must run AFTER initialize(), not before.
+    // scheduleTasks() starts StreamingTask (when enableStreaming), whose start()
+    // synchronously opens the first connection and reads the evaluation cache
+    // via EvaluationStorage.getCurrentEvaluationsCondition() — which throws if
+    // the cache isn't loaded yet, same contract as getCurrentEvaluationsId() /
+    // getEvaluatedAt(). Swapping this back reintroduces a synchronous crash on
+    // every app startup with enableStreaming: true. (Polling's EvaluationTask
+    // never had this constraint: EvaluationTask.start() only arms a timer, its
+    // real first cache read is the explicit fetchEvaluations() call below,
+    // which was already sequenced after this await.)
     await this.component.evaluationInteractor().initialize()
+    this.scheduleTasks()
     return this.fetchEvaluations(timeoutMillis)
   }
 

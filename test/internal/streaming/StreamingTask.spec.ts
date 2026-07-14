@@ -126,14 +126,20 @@ suite('internal/streaming/StreamingTask', () => {
     )
   }
 
-  function startTask(component: DefaultComponent): StreamingTask {
+  // Mirrors the real init order (BKTClient.ts's initializeInternal()):
+  // evaluationInteractor().initialize() always resolves before any task's
+  // start() can read the cache. StreamingTask.start() synchronously reads it
+  // via buildRequest() → getCurrentEvaluationsCondition(), which throws if
+  // called too early — so tests must initialize() first, same as real usage.
+  async function startTask(component: DefaultComponent): Promise<StreamingTask> {
+    await component.evaluationInteractor().initialize()
     task = new StreamingTask(component)
     task.start()
     return task
   }
 
-  test('buildRequest: POST to /stream_evaluations with the full header profile and body', () => {
-    startTask(buildComponent())
+  test('buildRequest: POST to /stream_evaluations with the full header profile and body', async () => {
+    await startTask(buildComponent())
 
     expect(FakeEventSource.instances).toHaveLength(1)
     const es = latest()
@@ -150,14 +156,14 @@ suite('internal/streaming/StreamingTask', () => {
       user: { id: user1.id, data: user1.data },
       sourceId: SourceId.JAVASCRIPT,
       sdkVersion: SDK_VERSION,
-      // No cached state yet (storage is never initialize()'d in these tests,
-      // mirroring the real pre-initialize first connect) — proto3 zero values.
+      // Storage is initialized but empty (fresh install, nothing cached yet)
+      // — proto3 zero values.
       userEvaluationsId: '',
       evaluatedAt: '0',
     })
   })
 
-  test('buildRequest includes the stored userEvaluationsId/evaluatedAt when available', () => {
+  test('buildRequest includes the stored userEvaluationsId/evaluatedAt when available', async () => {
     const component = buildComponent()
     vi.spyOn(
       component.evaluationInteractor(),
@@ -166,14 +172,14 @@ suite('internal/streaming/StreamingTask', () => {
       currentEvaluationsId: 'stored_evaluations_id',
       evaluatedAt: '1700000000',
     })
-    startTask(component)
+    await startTask(component)
 
     const body = JSON.parse(latest().init?.body ?? '')
     expect(body.userEvaluationsId).toBe('stored_evaluations_id')
     expect(body.evaluatedAt).toBe('1700000000')
   })
 
-  test('without config.eventSource the built-in FetchEventSource is used', () => {
+  test('without config.eventSource the built-in FetchEventSource is used', async () => {
     const fetchImpl = vi.fn(
       () => new Promise(() => {}),
     ) as unknown as FetchLike
@@ -181,7 +187,7 @@ suite('internal/streaming/StreamingTask', () => {
       eventSource: undefined,
       fetch: fetchImpl,
     })
-    startTask(component)
+    await startTask(component)
 
     // No injected fake constructed; the built-in transport went through fetch.
     expect(FakeEventSource.instances).toHaveLength(0)
@@ -192,8 +198,8 @@ suite('internal/streaming/StreamingTask', () => {
     expect(request.headers.Authorization).toBe('api_key_value')
   })
 
-  test('config.eventSource injected: the injected constructor is used', () => {
-    startTask(buildComponent())
+  test('config.eventSource injected: the injected constructor is used', async () => {
+    await startTask(buildComponent())
     expect(FakeEventSource.instances).toHaveLength(1)
   })
 
@@ -202,7 +208,7 @@ suite('internal/streaming/StreamingTask', () => {
     const apply = vi
       .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
       .mockResolvedValue(undefined)
-    startTask(component)
+    await startTask(component)
 
     const response = {
       evaluations: user1Evaluations,
@@ -220,7 +226,7 @@ suite('internal/streaming/StreamingTask', () => {
     const apply = vi
       .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
       .mockResolvedValue(undefined)
-    startTask(component)
+    await startTask(component)
 
     const response = {
       evaluations: user1Evaluations,
@@ -239,7 +245,7 @@ suite('internal/streaming/StreamingTask', () => {
       .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
       .mockResolvedValue(undefined)
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    startTask(component)
+    await startTask(component)
 
     latest().onopen?.({})
     latest().emit('error', { data: '{"code":13,"message":"internal"}' })
@@ -260,7 +266,7 @@ suite('internal/streaming/StreamingTask', () => {
     const apply = vi
       .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
       .mockResolvedValue(undefined)
-    startTask(component)
+    await startTask(component)
 
     const response = {
       evaluations: user1Evaluations,
@@ -278,7 +284,7 @@ suite('internal/streaming/StreamingTask', () => {
     const apply = vi
       .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
       .mockResolvedValue(undefined)
-    startTask(component)
+    await startTask(component)
 
     latest().onopen?.({})
     latest().onmessage?.({ data: 'not-json' })
@@ -295,7 +301,7 @@ suite('internal/streaming/StreamingTask', () => {
       vi
         .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
         .mockRejectedValue(new Error('storage failure'))
-      startTask(component)
+      await startTask(component)
 
       const response = {
         evaluations: user1Evaluations,
@@ -317,7 +323,7 @@ suite('internal/streaming/StreamingTask', () => {
     const apply = vi
       .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
       .mockResolvedValue(undefined)
-    const t = startTask(component)
+    const t = await startTask(component)
 
     const es = latest()
     es.onopen?.({})
@@ -328,8 +334,8 @@ suite('internal/streaming/StreamingTask', () => {
     expect(apply).not.toHaveBeenCalled()
   })
 
-  test('non-terminal error with fallback enabled starts polling AND arms recovery', () => {
-    startTask(buildComponent())
+  test('non-terminal error with fallback enabled starts polling AND arms recovery', async () => {
+    await startTask(buildComponent())
 
     // Never-opened + recoverable status → StreamConnection gives up non-terminal.
     latest().onerror?.({ status: 500 })
@@ -342,8 +348,8 @@ suite('internal/streaming/StreamingTask', () => {
     expect(FakeEventSource.instances).toHaveLength(2)
   })
 
-  test('non-terminal error with fallback DISABLED still arms recovery', () => {
-    startTask(buildComponent({ streamingFallbackToPolling: false }))
+  test('non-terminal error with fallback DISABLED still arms recovery', async () => {
+    await startTask(buildComponent({ streamingFallbackToPolling: false }))
 
     latest().onerror?.({ status: 500 })
 
@@ -354,8 +360,8 @@ suite('internal/streaming/StreamingTask', () => {
     expect(FakeEventSource.instances).toHaveLength(2)
   })
 
-  test('terminal error starts fallback but never schedules recovery', () => {
-    startTask(buildComponent())
+  test('terminal error starts fallback but never schedules recovery', async () => {
+    await startTask(buildComponent())
 
     latest().onerror?.({ status: 401 })
 
@@ -366,8 +372,8 @@ suite('internal/streaming/StreamingTask', () => {
     expect(FakeEventSource.instances).toHaveLength(1)
   })
 
-  test('onOpen after recovery cancels fallback and leaves no recovery pending', () => {
-    startTask(buildComponent())
+  test('onOpen after recovery cancels fallback and leaves no recovery pending', async () => {
+    await startTask(buildComponent())
 
     latest().onerror?.({ status: 500 }) // → fallback + recovery
     vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS) // recovery reopens the stream
@@ -380,9 +386,9 @@ suite('internal/streaming/StreamingTask', () => {
     expect(vi.getTimerCount()).toBe(2)
   })
 
-  test('reconnect() while streaming opens exactly one fresh connection with fresh attributes', () => {
+  test('reconnect() while streaming opens exactly one fresh connection with fresh attributes', async () => {
     const component = buildComponent()
-    const t = startTask(component)
+    const t = await startTask(component)
     latest().onopen?.({})
 
     component.userHolder().updateAttributes(() => ({ plan: 'premium' }))
@@ -398,14 +404,14 @@ suite('internal/streaming/StreamingTask', () => {
     expect(FakeEventSource.instances).toHaveLength(2)
   })
 
-  test('reconnect() rebuilds the body with the latest stored userEvaluationsId/evaluatedAt', () => {
+  test('reconnect() rebuilds the body with the latest stored userEvaluationsId/evaluatedAt', async () => {
     const component = buildComponent()
     const conditionSpy = vi.spyOn(
       component.evaluationInteractor(),
       'getCurrentEvaluationsCondition',
     )
     conditionSpy.mockReturnValue({ currentEvaluationsId: '', evaluatedAt: '0' })
-    const t = startTask(component)
+    const t = await startTask(component)
     latest().onopen?.({})
 
     // Storage advanced between the first connect and the reconnect (e.g. a
@@ -422,8 +428,8 @@ suite('internal/streaming/StreamingTask', () => {
     expect(body.evaluatedAt).toBe('1700000999')
   })
 
-  test('reconnect() while on polling fallback jumps straight back to streaming', () => {
-    const t = startTask(buildComponent())
+  test('reconnect() while on polling fallback jumps straight back to streaming', async () => {
+    const t = await startTask(buildComponent())
 
     latest().onerror?.({ status: 500 }) // → fallback + recovery
     expect(evaluationTaskStart).toHaveBeenCalledTimes(1)
@@ -438,8 +444,8 @@ suite('internal/streaming/StreamingTask', () => {
     expect(vi.getTimerCount()).toBe(1)
   })
 
-  test('stop() stops connection, fallback, and recovery', () => {
-    const t = startTask(buildComponent())
+  test('stop() stops connection, fallback, and recovery', async () => {
+    const t = await startTask(buildComponent())
 
     latest().onerror?.({ status: 500 }) // → fallback + recovery
     t.stop()

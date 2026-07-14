@@ -90,7 +90,8 @@ export class EvaluationInteractor {
 
   // Used by StreamingTask.buildRequest() to send the last-known state on
   // every (re)connect, so the backend can reply with a diff instead of a
-  // full snapshot. Synchronous and safe to call before initialize().
+  // full snapshot. Throws before initialize() — see the comment on
+  // EvaluationStorage.getCurrentEvaluationsCondition().
   getCurrentEvaluationsCondition(): {
     currentEvaluationsId: string | null
     evaluatedAt: string | null

@@ -50,6 +50,13 @@ import { InteractorModule } from '../src/internal/di/InteractorModule'
 import { BKTEvaluationDetails } from '../src/BKTEvaluationDetails'
 import { requiredInternalConfig } from '../src/internal/InternalConfig'
 import { SourceId } from '../src/internal/model/SourceId'
+import {
+  EventSourceErrorLike,
+  EventSourceInstance,
+  EventSourceLike,
+  EventSourceLikeInit,
+  MessageEventLike,
+} from '../src/internal/streaming/EventSourceLike'
 
 suite('BKTClient', () => {
   let server: SetupServer
@@ -178,6 +185,72 @@ suite('BKTClient', () => {
       await initializeBKTClientInternal(component, 1000)
 
       await initializeBKTClientInternal(component, 1000)
+    })
+
+    test('streaming: first connect does not throw even though StreamingTask starts before the fetchEvaluations() call (regression guard for the init-ordering bug)', async () => {
+      // StreamingTask.start() synchronously reads the evaluation cache via
+      // buildRequest() -> getCurrentEvaluationsCondition(), which throws if
+      // called before evaluationInteractor().initialize() has resolved. A
+      // StreamingTask-only unit test can't catch a regression here — the bug
+      // lives in BKTClientImpl.initializeInternal()'s ordering, external to
+      // StreamingTask itself — so this goes through the real
+      // initializeBKTClientInternal() entry point instead.
+      class FakeEventSourceForInit implements EventSourceInstance {
+        static instances: FakeEventSourceForInit[] = []
+        readyState = 0
+        onopen: ((ev: unknown) => void) | null = null
+        onmessage: ((ev: MessageEventLike) => void) | null = null
+        onerror: ((ev: EventSourceErrorLike | unknown) => void) | null = null
+        constructor(
+          public readonly url: string,
+          public readonly init?: EventSourceLikeInit,
+        ) {
+          FakeEventSourceForInit.instances.push(this)
+        }
+        addEventListener(): void {}
+        removeEventListener(): void {}
+        close(): void {}
+      }
+
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+
+      const streamingConfig = defineBKTConfig({
+        apiKey: 'api_key_value',
+        apiEndpoint: 'https://api.bucketeer.io',
+        featureTag: 'feature_tag_value',
+        appVersion: '1.2.3',
+        enableStreaming: true,
+        eventSource: FakeEventSourceForInit as unknown as EventSourceLike,
+        fetch,
+      })
+      const streamingComponent = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(user1, requiredInternalConfig(streamingConfig)),
+        new InteractorModule(),
+      )
+
+      await initializeBKTClientInternal(streamingComponent, 1000)
+
+      expect(FakeEventSourceForInit.instances).toHaveLength(1)
+      const body = JSON.parse(
+        FakeEventSourceForInit.instances[0].init?.body ?? '',
+      )
+      // Fresh in-memory storage, no evaluations cached yet — proto3 zero
+      // values. The point isn't the exact values, it's that buildRequest()'s
+      // synchronous cache read succeeded instead of throwing.
+      expect(body.userEvaluationsId).toBe('')
+      expect(body.evaluatedAt).toBe('0')
     })
   })
 

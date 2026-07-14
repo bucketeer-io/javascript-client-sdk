@@ -38,11 +38,12 @@ export interface EvaluationStorage {
   getEvaluatedAt(): Promise<string | null>
 
   /**
-   * Synchronous cache read for the streaming request builder. Unlike the
-   * getters above this must not throw before initialize(): StreamingTask
-   * starts before the interactor is initialized (BKTClient.initializeInternal
-   * calls scheduleTasks() before evaluationInteractor().initialize()), so the
-   * first stream connect legitimately runs against an unloaded cache.
+   * Synchronous cache read for the streaming request builder. Throws before
+   * initialize(), same contract as getCurrentEvaluationsId() / getEvaluatedAt()
+   * above — safe because BKTClientImpl.initializeInternal() guarantees
+   * initialize() always resolves before any task (including StreamingTask's
+   * first connect) can reach this storage. See the ordering comment on
+   * initializeInternal() in BKTClient.ts before changing that guarantee.
    */
   getCurrentEvaluationsCondition(): {
     currentEvaluationsId: string | null
