@@ -122,11 +122,21 @@ export class StreamingTask implements ScheduledTask {
   private buildRequest(): { url: string; init: EventSourceLikeInit } {
     const config = requiredInternalConfig(this.component.config())
     const user = this.component.userHolder().get()
+    // Re-read on every (re)connect (this method is re-invoked by
+    // StreamConnection's requestBuilder), so a reconnect always carries the
+    // latest cached state — the backend can then reply with a diff instead of
+    // a full snapshot. Same '' / '0' defaults as the polling path
+    // (EvaluationInteractor.fetch()) for the pre-initialize / never-fetched case.
+    const condition = this.component
+      .evaluationInteractor()
+      .getCurrentEvaluationsCondition()
     const body: StreamEvaluationsRequest = {
       tag: config.featureTag,
       user: { id: user.id, data: user.data },
       sourceId: config.sourceId,
       sdkVersion: config.sdkVersion,
+      userEvaluationsId: condition.currentEvaluationsId ?? '',
+      evaluatedAt: condition.evaluatedAt ?? '0',
     }
     return {
       url: `${config.apiEndpoint}${STREAM_EVALUATIONS_PATH}`,

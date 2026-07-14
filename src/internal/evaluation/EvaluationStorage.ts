@@ -38,6 +38,18 @@ export interface EvaluationStorage {
   getEvaluatedAt(): Promise<string | null>
 
   /**
+   * Synchronous cache read for the streaming request builder. Unlike the
+   * getters above this must not throw before initialize(): StreamingTask
+   * starts before the interactor is initialized (BKTClient.initializeInternal
+   * calls scheduleTasks() before evaluationInteractor().initialize()), so the
+   * first stream connect legitimately runs against an unloaded cache.
+   */
+  getCurrentEvaluationsCondition(): {
+    currentEvaluationsId: string | null
+    evaluatedAt: string | null
+  }
+
+  /**
    * @returns true if featureTag has been updated
    */
   updateFeatureTag(featureTag: string): Promise<boolean>
@@ -161,6 +173,17 @@ export class EvaluationStorageImpl implements EvaluationStorage {
 
   async getEvaluatedAt(): Promise<string | null> {
     return this.getCachedEvaluationEntity().evaluatedAt
+  }
+
+  getCurrentEvaluationsCondition(): {
+    currentEvaluationsId: string | null
+    evaluatedAt: string | null
+  } {
+    const entity = this.getCachedEvaluationEntity()
+    return {
+      currentEvaluationsId: entity?.currentEvaluationsId ?? null,
+      evaluatedAt: entity?.evaluatedAt ?? null,
+    }
   }
 
   async updateFeatureTag(featureTag: string): Promise<boolean> {
