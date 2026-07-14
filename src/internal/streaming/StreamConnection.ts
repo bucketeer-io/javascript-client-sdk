@@ -35,10 +35,17 @@ export interface StreamConnectionOptions {
   eventSource: EventSourceLike
   // Re-invoked on every (re)connect so reconnect() picks up fresh URL/headers/body.
   requestBuilder: () => { url: string; init?: EventSourceLikeInit }
-  // Caller names the events. 'message' maps to es.onmessage; others to
-  // addEventListener. Every received event resets the watchdog and marks the
-  // stream healthy.
+  // Named backend events only (e.g. 'put', 'patch', 'error'), wired via
+  // addEventListener. A 'message' key is ignored — that channel is owned by
+  // this class (see openConnection()). A named event proves liveness only
+  // when it carries data.
   events: Record<string, (data: string) => void>
+  // Optional: receives data that matched no named handler above — a genuinely
+  // unnamed SSE event ('message' is the SSE standard's default event type for
+  // a block with no `event:` line — see EventSourceLike.ts) or, with the
+  // built-in FetchEventSource, a named event nobody registered. Liveness
+  // tracking on the message channel does NOT depend on this being provided.
+  onUnhandledMessage?: (data: string) => void
   callbacks: StreamConnectionCallbacks
 }
 
@@ -94,37 +101,45 @@ export class StreamConnection {
       this.options.callbacks.onOpen()
     }
 
-    // Wire every caller-named event. Whether it counts as proof of liveness
-    // depends on what it is:
+    // 'message' is not a name the backend chooses — it's the SSE/EventSource web
+    // standard's reserved event type for a block with no `event:` line (see
+    // EventSourceLike.ts). It is wired here UNCONDITIONALLY — not gated behind
+    // the caller supplying onUnhandledMessage — because FetchEventSource's
+    // per-chunk liveness tick always fires through onmessage, with or without
+    // data, even for a chunk containing nothing but the backend's heartbeat
+    // comment. That tick alone proves the connection is delivering bytes, so it
+    // always counts as healthy, data or not. This unconditional wiring is what
+    // makes liveness tracking a structural guarantee instead of something a
+    // caller can opt out of by editing a map.
+    es.onmessage = (ev) => {
+      if (this.es !== es) return // stale instance — already replaced
+      this.markHealthy()
+      if (ev?.data !== undefined) this.options.onUnhandledMessage?.(ev.data)
+    }
+
+    // Wire every caller-named event (e.g. 'put', 'patch', 'error') — never
+    // 'message', which is reserved for the unconditional channel above. Unlike
+    // 'message', a named event only proves liveness if it actually carries data:
     //
-    //                 Event arrives
-    //                       │
-    //         ┌─────────────┴─────────────┐
-    //         │ is it 'message'?          │
-    //        yes                          no (a named event, e.g. 'put'/'error')
-    //         │                            │
-    //         ▼                     ┌──────┴──────┐
-    //   mark HEALTHY           does it have data?
-    //   (the built-in                │         │
-    //   transport's per-           yes         no
-    //   chunk tick has no            │         │
-    //   data but still               ▼         ▼
-    //   proves bytes are      mark HEALTHY  do NOT mark healthy
-    //   arriving)             + deliver     (e.g. a standards EventSource's
-    //                         the data      connection-error event — that's
-    //                                       a failure signal, not proof the
-    //                                       stream is working)
+    //   named event WITH data    → mark HEALTHY, deliver to the handler
+    //     (e.g. the backend sends `event: error` + a data payload — real bytes
+    //      arrived, so it counts, even though the payload itself reports a
+    //      failure)
+    //   named event with NO data → do NOT mark healthy
+    //     (e.g. a native EventSource's connection-error 'error' event carries no
+    //      data — that's a failure signal, not proof the stream is working;
+    //      counting it would let a repeatedly failing connection mask itself as
+    //      healthy forever)
     Object.entries(this.options.events).forEach(([name, handler]) => {
+      if (name === 'message') return // reserved for the channel above
       const wrapped = (ev: MessageEventLike) => {
         if (this.es !== es) return // stale instance — already replaced
-        if (name === 'message' || ev?.data !== undefined) this.markHealthy()
-        if (ev?.data !== undefined) handler(ev.data)
+        if (ev?.data !== undefined) {
+          this.markHealthy()
+          handler(ev.data)
+        }
       }
-      if (name === 'message') {
-        es.onmessage = wrapped
-      } else {
-        es.addEventListener(name, wrapped)
-      }
+      es.addEventListener(name, wrapped)
     })
 
     es.onerror = (ev) => {
@@ -166,7 +181,8 @@ export class StreamConnection {
     this.reconnectTimer = setTimeout(() => this.openConnection(), delay)
   }
 
-  // Any received event proves the stream is delivering data.
+  // A liveness signal: the message channel (any tick, data or not), or a
+  // named event that actually carried data.
   private markHealthy(): void {
     this.unhealthySince = 0
     this.resetWatchdog()

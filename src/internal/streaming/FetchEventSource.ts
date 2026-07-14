@@ -138,9 +138,9 @@ export class FetchEventSource implements EventSourceInstance {
         }
         // Liveness tick: fire a bare onmessage on every chunk so the caller's
         // watchdog resets on any received bytes, including SSE comment
-        // heartbeats (": ping"). The tick carries no data; StreamConnection
-        // ignores events whose data is undefined. NOTE: this rides on the
-        // 'message' handler being wired — StreamingTask always registers it.
+        // heartbeats (": ping"). The tick carries no data. NOTE: StreamConnection
+        // wires es.onmessage unconditionally (see its openConnection()), so this
+        // tick always reaches it regardless of what the caller registered.
         this.onmessage?.({ data: undefined })
         buffer += decoder.decode(value, { stream: true })
         // A trailing \r may be half of a \r\n split across chunks — hold it
@@ -168,6 +168,11 @@ export class FetchEventSource implements EventSourceInstance {
     const remainder = blocks.pop() ?? ''
     for (const block of blocks) {
       if (!block.trim()) continue
+      // 'message' is not a name the backend chooses — it's the SSE/EventSource
+      // web standard's reserved default event type for a block with no
+      // `event:` line (WHATWG HTML spec, "Server-sent events"). A native
+      // browser EventSource dispatches such blocks via `.onmessage` /
+      // `addEventListener('message', ...)`; this mirrors that rule.
       let eventName = 'message'
       const dataLines: string[] = []
       for (const line of block.split('\n')) {

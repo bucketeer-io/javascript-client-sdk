@@ -158,9 +158,9 @@ suite('internal/streaming/StreamConnection — health model', () => {
       eventSource: FakeEventSource as unknown as EventSourceLike,
       requestBuilder: () => ({ url: 'https://example.test/sse' }),
       events: {
-        message: messageHandler,
         evaluations: namedHandler,
       },
+      onUnhandledMessage: messageHandler,
       callbacks: { onOpen, onError },
     })
     conn.start()
@@ -212,6 +212,32 @@ suite('internal/streaming/StreamConnection — health model', () => {
     vi.advanceTimersByTime(1) // watchdog trips → scheduleReconnect()
     vi.advanceTimersByTime(1_000) // backoff delay → instance #2
     expect(FakeEventSource.instances).toHaveLength(2)
+  })
+
+  test('liveness tracking works even with no events map and no onUnhandledMessage', () => {
+    // Structural guarantee: the message/liveness channel is wired
+    // unconditionally in openConnection(), not gated behind the caller
+    // supplying events or onUnhandledMessage. Built independently of the
+    // shared startConnection() helper (which always supplies
+    // onUnhandledMessage) to prove the guarantee holds with neither present.
+    const conn = new StreamConnection({
+      eventSource: FakeEventSource as unknown as EventSourceLike,
+      requestBuilder: () => ({ url: 'https://example.test/sse' }),
+      events: {},
+      callbacks: { onOpen, onError },
+    })
+    conn.start()
+    latest().onopen?.({})
+
+    // Nothing but bare liveness ticks (data: undefined) for several watchdog
+    // intervals — no put/patch/error, no onUnhandledMessage wired at all.
+    for (let i = 0; i < 5; i++) {
+      vi.advanceTimersByTime(60_000)
+      latest().onmessage?.({ data: undefined })
+    }
+
+    expect(FakeEventSource.instances).toHaveLength(1)
+    expect(onError).not.toHaveBeenCalled()
   })
 
   test('transient error after open self-heals with backoff, onError NOT called', () => {

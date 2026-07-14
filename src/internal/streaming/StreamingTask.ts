@@ -76,23 +76,6 @@ export class StreamingTask implements ScheduledTask {
             console.error('StreamingTask: failed to handle patch event', e)
           })
         },
-        // Not a real backend event name — this backend never sends an unnamed
-        // SSE block. DO NOT REMOVE: StreamConnection only assigns es.onmessage
-        // when the events map contains a 'message' key (StreamConnection.ts,
-        // openConnection()), and FetchEventSource's per-chunk liveness tick
-        // (onmessage({ data: undefined }), fired on every chunk read —
-        // including heartbeat-only chunks) rides on es.onmessage being set.
-        // Deleting this entry silently breaks liveness detection during any
-        // period where only heartbeats arrive (no put/patch): the 70s watchdog
-        // would false-trip an otherwise-healthy connection. Also serves as a
-        // defensive fallback for a genuinely unnamed data event, should some
-        // other transport ever send one. Regression-guarded by the
-        // heartbeat-only-period test in StreamingTask.spec.ts.
-        message: (data) => {
-          this.handleData(data).catch((e) => {
-            console.error('StreamingTask: failed to handle message event', e)
-          })
-        },
         // The backend sends this right before closing the stream to report an
         // internal error. Handle it distinctly instead of letting it fall
         // through to handleData, which would JSON-parse it fine and then throw
@@ -100,6 +83,17 @@ export class StreamingTask implements ScheduledTask {
         error: (data) => {
           console.error('StreamingTask: server reported a stream error', data)
         },
+      },
+      // Defensive fallback for a message that matched none of the named
+      // handlers above — a genuinely unnamed SSE event (the SSE/EventSource
+      // standard's 'message' default — see EventSourceLike.ts). This backend
+      // always names its events (put/patch/error), so this normally never
+      // fires with data. StreamConnection tracks liveness on this channel
+      // unconditionally, whether or not this callback is provided.
+      onUnhandledMessage: (data) => {
+        this.handleData(data).catch((e) => {
+          console.error('StreamingTask: failed to handle message event', e)
+        })
       },
       callbacks: {
         onOpen: () => this.stopFallback(),
