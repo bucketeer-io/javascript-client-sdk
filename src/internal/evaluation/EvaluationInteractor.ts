@@ -88,6 +88,16 @@ export class EvaluationInteractor {
     return this.evaluationStorage.getByFeatureId(featureId)
   }
 
+  // Used by StreamingTask.buildRequest() to send the last-known state on
+  // every (re)connect, so the backend can reply with a diff instead of a
+  // full snapshot. Synchronous and safe to call before initialize().
+  getCurrentEvaluationsCondition(): {
+    currentEvaluationsId: string | null
+    evaluatedAt: string | null
+  } {
+    return this.evaluationStorage.getCurrentEvaluationsCondition()
+  }
+
   async setUserAttributesUpdated(): Promise<void> {
     return this.evaluationStorage.setUserAttributesUpdated()
   }

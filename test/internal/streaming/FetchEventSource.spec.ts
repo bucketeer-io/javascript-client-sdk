@@ -92,18 +92,18 @@ suite('internal/streaming/FetchEventSource', () => {
     expect(t.dataMessages()).toEqual([])
   })
 
-  test('event: heartbeat block calls the heartbeat listener', async () => {
+  test('event: patch block calls the patch listener', async () => {
     const es = new FetchEventSource(
       'https://example.test/sse',
       {},
-      fetchReturning(okResponse(streamOf('event: heartbeat\ndata: {}\n\n'))),
+      fetchReturning(okResponse(streamOf('event: patch\ndata: {}\n\n'))),
     )
     const t = instrument(es)
-    const heartbeats: MessageEventLike[] = []
-    es.addEventListener('heartbeat', (ev) => heartbeats.push(ev))
+    const patches: MessageEventLike[] = []
+    es.addEventListener('patch', (ev) => patches.push(ev))
 
     await until(t.ended)
-    expect(heartbeats).toEqual([{ data: '{}' }])
+    expect(patches).toEqual([{ data: '{}' }])
   })
 
   test('SSE comment fires a liveness tick but dispatches no data', async () => {

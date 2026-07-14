@@ -150,7 +150,27 @@ suite('internal/streaming/StreamingTask', () => {
       user: { id: user1.id, data: user1.data },
       sourceId: SourceId.JAVASCRIPT,
       sdkVersion: SDK_VERSION,
+      // No cached state yet (storage is never initialize()'d in these tests,
+      // mirroring the real pre-initialize first connect) — proto3 zero values.
+      userEvaluationsId: '',
+      evaluatedAt: '0',
     })
+  })
+
+  test('buildRequest includes the stored userEvaluationsId/evaluatedAt when available', () => {
+    const component = buildComponent()
+    vi.spyOn(
+      component.evaluationInteractor(),
+      'getCurrentEvaluationsCondition',
+    ).mockReturnValue({
+      currentEvaluationsId: 'stored_evaluations_id',
+      evaluatedAt: '1700000000',
+    })
+    startTask(component)
+
+    const body = JSON.parse(latest().init?.body ?? '')
+    expect(body.userEvaluationsId).toBe('stored_evaluations_id')
+    expect(body.evaluatedAt).toBe('1700000000')
   })
 
   test('without config.eventSource the built-in FetchEventSource is used', () => {
@@ -376,6 +396,30 @@ suite('internal/streaming/StreamingTask', () => {
     // No stale backoff/reconnect timer may open a third connection.
     vi.advanceTimersByTime(30_000)
     expect(FakeEventSource.instances).toHaveLength(2)
+  })
+
+  test('reconnect() rebuilds the body with the latest stored userEvaluationsId/evaluatedAt', () => {
+    const component = buildComponent()
+    const conditionSpy = vi.spyOn(
+      component.evaluationInteractor(),
+      'getCurrentEvaluationsCondition',
+    )
+    conditionSpy.mockReturnValue({ currentEvaluationsId: '', evaluatedAt: '0' })
+    const t = startTask(component)
+    latest().onopen?.({})
+
+    // Storage advanced between the first connect and the reconnect (e.g. a
+    // put/patch was applied) — buildRequest() is re-invoked on every
+    // (re)connect, so it must pick up the new values, not the stale ones.
+    conditionSpy.mockReturnValue({
+      currentEvaluationsId: 'updated_evaluations_id',
+      evaluatedAt: '1700000999',
+    })
+    t.reconnect()
+
+    const body = JSON.parse(latest().init?.body ?? '')
+    expect(body.userEvaluationsId).toBe('updated_evaluations_id')
+    expect(body.evaluatedAt).toBe('1700000999')
   })
 
   test('reconnect() while on polling fallback jumps straight back to streaming', () => {

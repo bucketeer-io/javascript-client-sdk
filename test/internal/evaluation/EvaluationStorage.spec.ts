@@ -270,6 +270,56 @@ suite('internal/evaluation/EvaluationStorage', () => {
     })
   })
 
+  suite('getCurrentEvaluationsCondition', () => {
+    test('returns nulls before initialize() — must not throw (StreamingTask starts before the interactor initializes)', () => {
+      expect(evaluationStorage.getCurrentEvaluationsCondition()).toStrictEqual({
+        currentEvaluationsId: null,
+        evaluatedAt: null,
+      })
+    })
+
+    test('returns nulls after initialize() when storage is empty', async () => {
+      await evaluationStorage.initialize()
+
+      expect(evaluationStorage.getCurrentEvaluationsCondition()).toStrictEqual({
+        currentEvaluationsId: null,
+        evaluatedAt: null,
+      })
+    })
+
+    test('returns the stored values after initialize()', async () => {
+      await storage.set({
+        userId: 'user_id_1',
+        currentEvaluationsId: 'evaluations_id_1',
+        evaluations: {},
+        currentFeatureTag: 'feature_tag_1',
+        evaluatedAt: '1234567890',
+        userAttributesUpdated: false,
+      })
+      await evaluationStorage.initialize()
+
+      expect(evaluationStorage.getCurrentEvaluationsCondition()).toStrictEqual({
+        currentEvaluationsId: 'evaluations_id_1',
+        evaluatedAt: '1234567890',
+      })
+    })
+
+    test('reflects the latest values after an update', async () => {
+      await evaluationStorage.initialize()
+
+      await evaluationStorage.deleteAllAndInsert(
+        'evaluations_id_2',
+        [evaluation1],
+        '9876543210',
+      )
+
+      expect(evaluationStorage.getCurrentEvaluationsCondition()).toStrictEqual({
+        currentEvaluationsId: 'evaluations_id_2',
+        evaluatedAt: '9876543210',
+      })
+    })
+  })
+
   suite('updateFeatureTag', () => {
     test('clear currentEvaluationId if featureTag is different', async () => {
       await storage.set({
