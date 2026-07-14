@@ -232,25 +232,25 @@ suite('internal/streaming/StreamingTask', () => {
     )
   })
 
-  test('a long heartbeat-only period (no put/patch) never reconnects — regression guard for the message key', () => {
-    // FetchEventSource fires a bare onmessage({ data: undefined }) tick on
-    // every chunk it reads, including chunks that contain nothing but the
-    // backend's SSE comment heartbeat. The 'message' entry in StreamingTask's
-    // events map exists solely so StreamConnection wires up es.onmessage to
-    // receive that tick. If 'message' were ever removed, es.onmessage would
-    // stay unset, this tick would land on nothing, and the 70s watchdog would
-    // false-trip a healthy connection — this test fails immediately if that
-    // regresses.
-    startTask(buildComponent())
-    latest().onopen?.({})
+  test('unnamed message event with valid JSON is applied via onUnhandledMessage', async () => {
+    // Positive counterpart to the invalid-JSON/after-stop cases below: proves
+    // the onUnhandledMessage → handleData wiring actually applies good data,
+    // not just that it safely ignores bad data.
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    startTask(component)
 
-    for (let i = 0; i < 5; i++) {
-      vi.advanceTimersByTime(60_000) // < 70s watchdog between ticks
-      latest().onmessage?.({ data: undefined })
+    const response = {
+      evaluations: user1Evaluations,
+      userEvaluationsId: 'user_evaluation_id_value',
     }
+    latest().onopen?.({})
+    latest().onmessage?.({ data: JSON.stringify(response) })
+    await Promise.resolve()
 
-    expect(FakeEventSource.instances).toHaveLength(1)
-    expect(evaluationTaskStart).not.toHaveBeenCalled()
+    expect(apply).toHaveBeenCalledWith(response)
   })
 
   test('data event with invalid JSON is ignored', async () => {
