@@ -79,6 +79,7 @@ suite('internal/streaming/StreamingTask', () => {
   let task: StreamingTask | undefined
   let evaluationTaskStart: ReturnType<typeof vi.spyOn>
   let evaluationTaskStop: ReturnType<typeof vi.spyOn>
+  let evaluationTaskFetch: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     FakeEventSource.instances = []
@@ -92,6 +93,12 @@ suite('internal/streaming/StreamingTask', () => {
     evaluationTaskStop = vi
       .spyOn(EvaluationTask.prototype, 'stop')
       .mockImplementation(() => {})
+    // Mocked too: the real implementation would hit the network via the
+    // injected `fetch` and call reschedule() on completion, which is
+    // EvaluationTask's own concern, not StreamingTask's.
+    evaluationTaskFetch = vi
+      .spyOn(EvaluationTask.prototype, 'fetchEvaluations')
+      .mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -296,7 +303,16 @@ suite('internal/streaming/StreamingTask', () => {
   test('applyEvaluationsResponse rejecting does not surface as an unhandled rejection', async () => {
     const component = buildComponent()
     const unhandled = vi.fn()
-    process.on('unhandledRejection', unhandled)
+    // `process` only exists under the Node test runner (`vitest-node.config.ts`);
+    // the browser runner (`vitest-browser.config.ts`) executes in a real Chrome via
+    // webdriverio, where unhandled rejections surface through the window event instead.
+    const isNode = typeof process !== 'undefined'
+    const browserListener = (ev: unknown) => unhandled(ev)
+    if (isNode) {
+      process.on('unhandledRejection', unhandled)
+    } else {
+      globalThis.addEventListener('unhandledrejection', browserListener)
+    }
     try {
       vi
         .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
@@ -314,7 +330,11 @@ suite('internal/streaming/StreamingTask', () => {
 
       expect(unhandled).not.toHaveBeenCalled()
     } finally {
-      process.off('unhandledRejection', unhandled)
+      if (isNode) {
+        process.off('unhandledRejection', unhandled)
+      } else {
+        globalThis.removeEventListener('unhandledrejection', browserListener)
+      }
     }
   })
 
@@ -341,6 +361,10 @@ suite('internal/streaming/StreamingTask', () => {
     latest().onerror?.({ status: 500 })
 
     expect(evaluationTaskStart).toHaveBeenCalledTimes(1)
+    // start() alone only arms a timer for the next poll (up to 10 min by
+    // default) — an immediate fetch must fire too, so a stream drop doesn't
+    // leave users on stale evaluations for that whole window.
+    expect(evaluationTaskFetch).toHaveBeenCalledTimes(1)
 
     // Recovery fires after 5 minutes: fallback stops, streaming reopens.
     vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
@@ -366,6 +390,7 @@ suite('internal/streaming/StreamingTask', () => {
     latest().onerror?.({ status: 401 })
 
     expect(evaluationTaskStart).toHaveBeenCalledTimes(1)
+    expect(evaluationTaskFetch).toHaveBeenCalledTimes(1)
     // No recovery timer pending — streaming is not retried for terminal errors.
     expect(vi.getTimerCount()).toBe(0)
     vi.advanceTimersByTime(30 * 60_000)
