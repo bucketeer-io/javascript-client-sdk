@@ -53,13 +53,22 @@ jobs:
             --access public \
             ${{ inputs.dry_run && '--dry-run' || '' }}
 
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        if: ${{ !inputs.dry_run && startsWith(github.ref, 'refs/tags/v') }}
+        id: app-token
+        with:
+          client-id: ${{ secrets.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          owner: bucketeer-io
+          repositories: openfeature-js-client-sdk
+          permission-actions: write
       - name: Dispatch dependency bump to openfeature-js-client-sdk
         # Only dispatch on real tag pushes (not dry-run workflow_dispatch).
         if: ${{ !inputs.dry_run && startsWith(github.ref, 'refs/tags/v') }}
         uses: benc-uk/workflow-dispatch@7a027648b88c2413826b6ddd6c76114894dc5ec4 # v1.3.1
         with:
           repo: bucketeer-io/openfeature-js-client-sdk
-          token: ${{ secrets.REPO_ACCESS_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
           workflow: bump-js-client-sdk.yml
           ref: main
           inputs: '{"version": "${{ github.ref_name }}"}'
