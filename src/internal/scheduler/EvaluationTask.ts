@@ -28,11 +28,14 @@ export class EvaluationTask implements ScheduledTask {
   async fetchEvaluations() {
     try {
       await BKTClientImpl.fetchEvaluationsInternal(this.component)
+      if (!this.running) return // guard: stop() may have run while this was in flight
 
       // success
       this.retryCount = 0
       this.reschedule(this.component.config().pollingInterval)
     } catch {
+      if (!this.running) return // guard: stop() may have run while this was in flight
+
       // error
       const pollingInterval = this.component.config().pollingInterval
       const isLongInterval = pollingInterval > this.retryPollingInterval
@@ -70,3 +73,4 @@ export class EvaluationTask implements ScheduledTask {
     this.running = false
   }
 }
+
