@@ -79,7 +79,6 @@ suite('internal/streaming/StreamingTask', () => {
   let task: StreamingTask | undefined
   let evaluationTaskStart: ReturnType<typeof vi.spyOn>
   let evaluationTaskStop: ReturnType<typeof vi.spyOn>
-  let evaluationTaskFetch: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     FakeEventSource.instances = []
@@ -93,12 +92,6 @@ suite('internal/streaming/StreamingTask', () => {
     evaluationTaskStop = vi
       .spyOn(EvaluationTask.prototype, 'stop')
       .mockImplementation(() => {})
-    // Mocked too: the real implementation would hit the network via the
-    // injected `fetch` and call reschedule() on completion, which is
-    // EvaluationTask's own concern, not StreamingTask's.
-    evaluationTaskFetch = vi
-      .spyOn(EvaluationTask.prototype, 'fetchEvaluations')
-      .mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -360,11 +353,10 @@ suite('internal/streaming/StreamingTask', () => {
     // Never-opened + recoverable status → StreamConnection gives up non-terminal.
     latest().onerror?.({ status: 500 })
 
-    expect(evaluationTaskStart).toHaveBeenCalledTimes(1)
-    // start() alone only arms a timer for the next poll (up to 10 min by
-    // default) — an immediate fetch must fire too, so a stream drop doesn't
-    // leave users on stale evaluations for that whole window.
-    expect(evaluationTaskFetch).toHaveBeenCalledTimes(1)
+    // start(true) fetches immediately instead of arming a timer for the next
+    // poll (up to 10 min by default) — otherwise a stream drop would leave
+    // users on stale evaluations for that whole window.
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
 
     // Recovery fires after 5 minutes: fallback stops, streaming reopens.
     vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
@@ -389,8 +381,7 @@ suite('internal/streaming/StreamingTask', () => {
 
     latest().onerror?.({ status: 401 })
 
-    expect(evaluationTaskStart).toHaveBeenCalledTimes(1)
-    expect(evaluationTaskFetch).toHaveBeenCalledTimes(1)
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
     // No recovery timer pending — streaming is not retried for terminal errors.
     expect(vi.getTimerCount()).toBe(0)
     vi.advanceTimersByTime(30 * 60_000)
@@ -457,7 +448,7 @@ suite('internal/streaming/StreamingTask', () => {
     const t = await startTask(buildComponent())
 
     latest().onerror?.({ status: 500 }) // → fallback + recovery
-    expect(evaluationTaskStart).toHaveBeenCalledTimes(1)
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
 
     t.reconnect()
 

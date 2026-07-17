@@ -184,13 +184,10 @@ export class StreamingTask implements ScheduledTask {
     if (!this.component.config().streamingFallbackToPolling) return
     if (!this.fallbackTask) {
       this.fallbackTask = new EvaluationTask(this.component)
-      this.fallbackTask.start()
-      // start() only arms a timer for the next poll (up to `pollingInterval`,
-      // 10 min by default) — fetch once immediately so a stream drop doesn't
-      // leave users on stale evaluations for that whole window. This call's
-      // own success/error path calls reschedule(), so the normal poll loop
-      // picks up from here with no double-scheduling.
-      this.fallbackTask.fetchEvaluations()
+      // Named instead of passed as a bare literal so the call site reads on
+      // its own, without needing to check start()'s signature.
+      const immediately = true
+      this.fallbackTask.start(immediately) // fetch immediately instead of waiting a full pollingInterval
     }
   }
 

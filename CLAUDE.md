@@ -80,16 +80,23 @@ Hand-rolled DI; everything hangs off `Component` (`src/internal/di/Component.ts`
      archivedFeatureIds, forceUpdate}`), `GetEvaluationsResponse` (`{evaluations,
      userEvaluationsId}`).
 
-4. **Scheduling** — `src/internal/scheduler/`. `TaskScheduler` builds
-   `[EvaluationTask, EventTask]` and `start()/stop()`s them. `ScheduledTask` interface =
-   `isRunning()/start()/stop()`. `EvaluationTask` polls via `setTimeout`
-   (`BKTClientImpl.fetchEvaluationsInternal`), with retry (max 5 @ 60s) only when
-   `pollingInterval > 60s`. `EventTask` flushes queued events.
+4. **Scheduling** — `src/internal/scheduler/`. `TaskScheduler`'s main task is
+   `StreamingTask` (`src/internal/streaming/`) when `enableStreaming` is on, else
+   `EvaluationTask`; either way it pairs that with `EventTask`, and `start()/stop()`s
+   both. `ScheduledTask` interface = `isRunning()/start()/stop()`. `EvaluationTask`
+   polls via `setTimeout` (`BKTClientImpl.fetchEvaluationsInternal`), with retry
+   (max 5 @ 60s) only when `pollingInterval > 60s`. `StreamingTask` opens an SSE
+   connection and internally falls back to polling (an `EvaluationTask` it owns) on
+   error when `streamingFallbackToPolling` is enabled. `EventTask` flushes queued
+   events.
 
 5. **Client lifecycle** — `src/BKTClient.ts`. `initializeBKTClientInternal` creates the
-   singleton (`internal/instance.ts`), `initializeInternal` → `scheduleTasks()`
-   (`new TaskScheduler().start()`) + interactor init + first fetch. `resetTasks()`
-   stops the scheduler; `destroyBKTClient()` calls it and clears the instance + page
-   lifecycle listeners. Browser build also wires `setupPageLifecycleListeners` for
-   flush-on-pagehide when `enableAutoPageLifecycleFlush`.
+   singleton (`internal/instance.ts`); `initializeInternal` then awaits
+   `evaluationInteractor().initialize()` **before** `scheduleTasks()` (`new
+   TaskScheduler().start()`) — `StreamingTask.start()` reads the evaluation cache
+   synchronously, so the cache must already be loaded — followed by the first fetch.
+   `resetTasks()` stops the scheduler; `destroyBKTClient()` calls it and clears the
+   instance + page lifecycle listeners. Browser build also wires
+   `setupPageLifecycleListeners` for flush-on-pagehide when
+   `enableAutoPageLifecycleFlush`.
 

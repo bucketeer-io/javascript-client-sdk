@@ -54,9 +54,16 @@ export class EvaluationTask implements ScheduledTask {
     return this.running
   }
 
-  start(): void {
+  // immediate = true fetches right away instead of waiting a full
+  // pollingInterval. A flag, not a second method — only one caller needs it
+  // (StreamingTask's polling fallback).
+  start(immediate = false): void {
     this.running = true
-    this.reschedule(this.component.config().pollingInterval)
+    if (immediate) {
+      this.fetchEvaluations()
+    } else {
+      this.reschedule(this.component.config().pollingInterval)
+    }
   }
   stop(): void {
     clearTimeout(this.timerId)
