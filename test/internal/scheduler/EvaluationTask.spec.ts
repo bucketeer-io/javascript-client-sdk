@@ -133,6 +133,29 @@ suite('internal/scheduler/EventTask', () => {
     expect(fetchInternal).toHaveBeenCalledTimes(2)
   })
 
+  test('stop() while a fetch is in flight does not reschedule afterward', async () => {
+    let resolveFetch: () => void = () => {}
+    vi.spyOn(BKTClientImpl, 'fetchEvaluationsInternal').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
+
+    task = new EvaluationTask(component)
+    task.start(true) // fetch begins synchronously and is now in flight
+
+    task.stop()
+    expect(task.isRunning()).toBe(false)
+
+    resolveFetch() // let the orphaned fetch resolve after stop()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // The now-orphaned completion handler must not arm a new timer.
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   test('stop should cancel timer', async () => {
     let requestCount = 0
     server.use(
