@@ -182,8 +182,8 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   } {
     const entity = this.getCachedEvaluationEntity()
     return {
-      currentEvaluationsId: entity?.currentEvaluationsId ?? null,
-      evaluatedAt: entity?.evaluatedAt ?? null,
+      currentEvaluationsId: entity.currentEvaluationsId,
+      evaluatedAt: entity.evaluatedAt,
     }
   }
 
