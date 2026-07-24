@@ -77,7 +77,12 @@ export class FetchEventSource implements EventSourceInstance {
       this.init.headers,
     )
 
-    this.fetchImpl(this.url, {
+    // Call the injected fetch receiver-free: `this.fetchImpl(...)` would pass
+    // this FetchEventSource instance as `this`, and the default unbound
+    // `globalThis.fetch` brand-checks its receiver in browsers ("Illegal
+    // invocation"). A bare call leaves `this` undefined → global fallback.
+    const doFetch = this.fetchImpl
+    doFetch(this.url, {
       method: this.init.method ?? 'POST',
       headers,
       body: this.init.body ?? '',
