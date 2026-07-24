@@ -12,6 +12,7 @@ import {
   vi,
 } from 'vitest'
 import {
+  BKTClientImpl,
   defaultStringToTypeConverter,
   destroyBKTClient,
   getBKTClient,
@@ -251,6 +252,35 @@ suite('BKTClient', () => {
       // synchronous cache read succeeded instead of throwing.
       expect(body.userEvaluationsId).toBe('')
       expect(body.evaluatedAt).toBe('0')
+    })
+
+    test('destroyBKTClient() while evaluationInteractor().initialize() is still pending never schedules tasks (regression: React 18 StrictMode mount/unmount leak)', async () => {
+      let resolveInitialize: () => void = () => {}
+      const initializePromise = new Promise<void>((resolve) => {
+        resolveInitialize = resolve
+      })
+      vi.spyOn(component.evaluationInteractor(), 'initialize').mockReturnValue(
+        initializePromise,
+      )
+      const fetchSpy = vi.spyOn(component.evaluationInteractor(), 'fetch')
+
+      // Don't await yet: setInstance() runs synchronously before the pending
+      // initialize() await, so getBKTClient() is already populated here.
+      const initPromise = initializeBKTClientInternal(component, 1000)
+      const client = getBKTClient() as unknown as BKTClientImpl
+      expect(client).not.toBeNull()
+
+      // destroyBKTClient() races the pending initialize(): with the old
+      // ordering this had nothing to stop yet (taskScheduler was still null)
+      // and the resumed continuation would schedule tasks anyway.
+      destroyBKTClient()
+      expect(getBKTClient()).toBeNull()
+
+      resolveInitialize()
+      await initPromise
+
+      expect(client.taskScheduler).toBeNull()
+      expect(fetchSpy).not.toHaveBeenCalled()
     })
   })
 

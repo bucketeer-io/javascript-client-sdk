@@ -74,6 +74,7 @@ export interface BKTClient {
 
 export class BKTClientImpl implements BKTClient {
   taskScheduler: TaskScheduler | null = null
+  private destroyed = false
 
   constructor(public component: Component) {}
 
@@ -89,6 +90,11 @@ export class BKTClientImpl implements BKTClient {
     // real first cache read is the explicit fetchEvaluations() call below,
     // which was already sequenced after this await.)
     await this.component.evaluationInteractor().initialize()
+    // destroyBKTClient() may have run while initialize() was pending (e.g.
+    // React 18 StrictMode mount/unmount). resetTasks() had nothing to stop
+    // back then, so stop here: scheduling now would leak an unstoppable
+    // stream and timers.
+    if (this.destroyed) return
     this.scheduleTasks()
     return this.fetchEvaluations(timeoutMillis)
   }
@@ -319,6 +325,11 @@ export class BKTClientImpl implements BKTClient {
   }
 
   resetTasks(): void {
+    // Set unconditionally, before the null check: when destroy runs while
+    // initializeInternal() is still awaiting initialize(), taskScheduler is
+    // null and there is nothing to stop yet — the flag is what stops the
+    // resumed continuation from scheduling tasks on a destroyed client.
+    this.destroyed = true
     if (this.taskScheduler) {
       this.taskScheduler.stop()
       this.taskScheduler = null
