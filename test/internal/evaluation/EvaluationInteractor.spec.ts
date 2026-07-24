@@ -592,6 +592,57 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       expect(mockListener).toBeCalledTimes(1)
     })
 
+    test('options.shouldNotify=() => false suppresses the listener but the storage write still lands', async () => {
+      // Regression for a destroy racing an in-flight apply (StreamingTask
+      // passes shouldNotify: () => this.running): the write must not be lost,
+      // only the listener callback — which could run app code against a
+      // torn-down client — is suppressed.
+      await seedStorage(false)
+      const mockListener = vi.fn()
+      interactor.addUpdateListener(mockListener)
+
+      const createdAt = clock.currentTimeMillis().toString()
+      await interactor.applyEvaluationsResponse(
+        {
+          evaluations: {
+            id: '17388826713971171773',
+            evaluations: [evaluation2],
+            createdAt,
+            forceUpdate: true,
+            archivedFeatureIds: [],
+          },
+          userEvaluationsId: 'new_user_evaluation_id',
+        },
+        { shouldNotify: () => false },
+      )
+
+      expect(mockListener).not.toHaveBeenCalled()
+      const stored = await evaluationStorage.storage.get()
+      expect(stored?.currentEvaluationsId).toBe('new_user_evaluation_id')
+    })
+
+    test('options.shouldNotify=() => true behaves the same as omitting options', async () => {
+      await seedStorage(false)
+      const mockListener = vi.fn()
+      interactor.addUpdateListener(mockListener)
+
+      await interactor.applyEvaluationsResponse(
+        {
+          evaluations: {
+            id: '17388826713971171773',
+            evaluations: [evaluation2],
+            createdAt: clock.currentTimeMillis().toString(),
+            forceUpdate: true,
+            archivedFeatureIds: [],
+          },
+          userEvaluationsId: 'new_user_evaluation_id',
+        },
+        { shouldNotify: () => true },
+      )
+
+      expect(mockListener).toHaveBeenCalledTimes(1)
+    })
+
     test('does NOT clear userAttributesUpdated (streamed data must not clear the flag)', async () => {
       // A streamed message can race a concurrent updateUserAttributes() — it may
       // have been produced before the new attributes existed, so it must never

@@ -175,9 +175,14 @@ export class StreamingTask implements ScheduledTask {
     } catch {
       return
     }
+    // shouldNotify is re-checked after the awaited storage write: a stop()/
+    // destroy racing that write must not fire update listeners into
+    // torn-down app code (the write itself may land — unused cached data).
     await this.component
       .evaluationInteractor()
-      .applyEvaluationsResponse(response)
+      .applyEvaluationsResponse(response, {
+        shouldNotify: () => this.running,
+      })
   }
 
   private startFallback(): void {

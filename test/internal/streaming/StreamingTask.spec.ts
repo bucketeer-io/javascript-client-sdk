@@ -218,7 +218,9 @@ suite('internal/streaming/StreamingTask', () => {
     latest().emit('put', { data: JSON.stringify(response) })
     await Promise.resolve()
 
-    expect(apply).toHaveBeenCalledWith(response)
+    expect(apply).toHaveBeenCalledWith(response, {
+      shouldNotify: expect.any(Function),
+    })
   })
 
   test('patch event with valid JSON is applied via applyEvaluationsResponse', async () => {
@@ -236,7 +238,9 @@ suite('internal/streaming/StreamingTask', () => {
     latest().emit('patch', { data: JSON.stringify(response) })
     await Promise.resolve()
 
-    expect(apply).toHaveBeenCalledWith(response)
+    expect(apply).toHaveBeenCalledWith(response, {
+      shouldNotify: expect.any(Function),
+    })
   })
 
   test('error event is logged distinctly and never applied', async () => {
@@ -276,7 +280,9 @@ suite('internal/streaming/StreamingTask', () => {
     latest().onmessage?.({ data: JSON.stringify(response) })
     await Promise.resolve()
 
-    expect(apply).toHaveBeenCalledWith(response)
+    expect(apply).toHaveBeenCalledWith(response, {
+      shouldNotify: expect.any(Function),
+    })
   })
 
   test('data event with invalid JSON is ignored', async () => {
@@ -345,6 +351,30 @@ suite('internal/streaming/StreamingTask', () => {
     await Promise.resolve()
 
     expect(apply).not.toHaveBeenCalled()
+  })
+
+  test('shouldNotify passed to applyEvaluationsResponse reflects running, flips false after stop() mid-apply', async () => {
+    // Covers the case 'data arriving after stop()' above does not: a destroy
+    // racing an ALREADY-STARTED applyEvaluationsResponse call (e.g. stop()
+    // runs while the storage write is in flight) must still be able to
+    // suppress the update listeners once that write resolves.
+    const component = buildComponent()
+    let capturedShouldNotify: (() => boolean) | undefined
+    vi.spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockImplementation(async (_response, options) => {
+        capturedShouldNotify = options?.shouldNotify
+      })
+    const t = await startTask(component)
+
+    latest().onopen?.({})
+    latest().emit('put', {
+      data: '{"evaluations":{"forceUpdate":false},"userEvaluationsId":"x"}',
+    })
+    await Promise.resolve()
+
+    expect(capturedShouldNotify?.()).toBe(true)
+    t.stop()
+    expect(capturedShouldNotify?.()).toBe(false)
   })
 
   test('non-terminal error with fallback enabled starts polling AND arms recovery', async () => {

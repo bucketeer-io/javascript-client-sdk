@@ -61,17 +61,22 @@ export class EvaluationInteractor {
 
   async applyEvaluationsResponse(
     response: GetEvaluationsResponse,
+    // shouldNotify is re-checked AFTER the storage write completes: the write
+    // is awaited, so a stop()/destroy racing it must be able to suppress the
+    // listener callbacks (which may run app code against a torn-down client).
+    // The write itself is allowed to land — it's just unused cached data.
+    options?: { shouldNotify?: () => boolean },
   ): Promise<void> {
-    let shouldNotify: boolean
+    let changed: boolean
     if (response.evaluations.forceUpdate) {
       await this.evaluationStorage.deleteAllAndInsert(
         response.userEvaluationsId,
         response.evaluations.evaluations ?? [],
         response.evaluations.createdAt,
       )
-      shouldNotify = true
+      changed = true
     } else {
-      shouldNotify = await this.evaluationStorage.update(
+      changed = await this.evaluationStorage.update(
         response.userEvaluationsId,
         response.evaluations.evaluations ?? [],
         response.evaluations.archivedFeatureIds ?? [],
@@ -79,7 +84,7 @@ export class EvaluationInteractor {
       )
     }
 
-    if (shouldNotify) {
+    if (changed && (options?.shouldNotify?.() ?? true)) {
       Object.values(this.updateListeners).forEach((listener) => listener())
     }
   }
