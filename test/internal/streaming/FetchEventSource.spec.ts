@@ -318,4 +318,30 @@ suite('internal/streaming/FetchEventSource', () => {
       Authorization: 'api-key-value',
     })
   })
+
+  test('the injected fetch is called receiver-free (regression: native fetch throws Illegal invocation if called as a method)', async () => {
+    // Per WebIDL, a bare `fetch(...)` call is legal (`this` is `undefined` in
+    // strict-mode ESM, or defaults to `globalThis` under non-strict/CJS
+    // transpilation — both are the accepted "no explicit receiver" cases). A
+    // *foreign* receiver — e.g. `this.fetchImpl(...)` passing the
+    // FetchEventSource instance itself — is what real browser fetch rejects
+    // with "Illegal invocation". Reproduce that brand check precisely so this
+    // fails loudly if connect() ever regresses to a method-style call.
+    let receiverCheckPassed = false
+    const fetchImpl: FetchLike = function (this: unknown) {
+      if (this !== undefined && this !== globalThis) {
+        throw new TypeError('Illegal invocation')
+      }
+      receiverCheckPassed = true
+      return Promise.resolve(okResponse(streamOf('data: {"a":1}\n\n')))
+    }
+    const es = new FetchEventSource('https://example.test/sse', {}, fetchImpl)
+    const t = instrument(es)
+
+    await until(t.ended)
+
+    expect(receiverCheckPassed).toBe(true)
+    expect(t.opened).toHaveBeenCalledTimes(1)
+    expect(t.dataMessages()).toEqual([{ data: '{"a":1}' }])
+  })
 })
