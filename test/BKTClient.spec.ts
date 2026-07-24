@@ -282,6 +282,78 @@ suite('BKTClient', () => {
       expect(client.taskScheduler).toBeNull()
       expect(fetchSpy).not.toHaveBeenCalled()
     })
+
+    test('evaluationInteractor().initialize() rejecting clears the singleton so a retry actually re-initializes (regression: silent no-op on retry)', async () => {
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+
+      const initSpy = vi
+        .spyOn(component.evaluationInteractor(), 'initialize')
+        .mockRejectedValueOnce(new Error('storage corrupted'))
+
+      await expect(
+        initializeBKTClientInternal(component, 1000),
+      ).rejects.toThrow('storage corrupted')
+      // Without the fix, the singleton stays registered here and the retry
+      // below silently no-ops via `if (getInstance()) return Promise.resolve()`.
+      expect(getBKTClient()).toBeNull()
+
+      await initializeBKTClientInternal(component, 1000)
+      expect(getBKTClient()).not.toBeNull()
+      expect(initSpy).toHaveBeenCalledTimes(2)
+    })
+
+    test('evaluationInteractor().initialize() rejecting after a destroy + re-init replaced the instance does not clear the new instance', async () => {
+      // First attempt: initialize() left pending so it can be orphaned.
+      let rejectFirstInit: (err: Error) => void = () => {}
+      const firstInitPromise = new Promise<void>((_resolve, reject) => {
+        rejectFirstInit = reject
+      })
+      vi.spyOn(component.evaluationInteractor(), 'initialize').mockReturnValue(
+        firstInitPromise,
+      )
+      const firstInitCall = initializeBKTClientInternal(component, 1000)
+
+      // Orphan the first attempt, then start a second one on a fresh component.
+      destroyBKTClient()
+      const secondComponent = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(user1, requiredInternalConfig(config)),
+        new InteractorModule(),
+      )
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+      await initializeBKTClientInternal(secondComponent, 1000)
+      const secondClient = getBKTClient()
+      expect(secondClient).not.toBeNull()
+
+      // The orphaned first attempt now rejects — it must not clear the
+      // second (current) client's singleton registration.
+      rejectFirstInit(new Error('stale storage error'))
+      await expect(firstInitCall).rejects.toThrow('stale storage error')
+
+      expect(getBKTClient()).toBe(secondClient)
+    })
   })
 
   suite('getBKTClient', () => {

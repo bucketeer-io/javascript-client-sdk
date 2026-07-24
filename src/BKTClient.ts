@@ -89,7 +89,23 @@ export class BKTClientImpl implements BKTClient {
     // never had this constraint: EvaluationTask.start() only arms a timer, its
     // real first cache read is the explicit fetchEvaluations() call below,
     // which was already sequenced after this await.)
-    await this.component.evaluationInteractor().initialize()
+    try {
+      await this.component.evaluationInteractor().initialize()
+    } catch (err) {
+      // Fatal: without a loaded evaluation cache the client can never work.
+      // Remove the singleton so a retry of initializeBKTClient() actually
+      // re-initializes instead of silently no-oping on the dead instance —
+      // but only if this client is still the registered one (a destroy +
+      // re-initialize may have replaced it while initialize() was pending,
+      // in which case this rejection belongs to an already-orphaned attempt
+      // and must not clear the new client). A first-fetch timeout below is a
+      // normal, documented rejection and must NOT tear the singleton down;
+      // only this phase may.
+      if (getInstance() === this) {
+        clearInstance()
+      }
+      throw err
+    }
     // destroyBKTClient() may have run while initialize() was pending (e.g.
     // React 18 StrictMode mount/unmount). resetTasks() had nothing to stop
     // back then, so stop here: scheduling now would leak an unstoppable
