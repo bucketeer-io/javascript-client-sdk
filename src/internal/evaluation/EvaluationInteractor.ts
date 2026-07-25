@@ -34,15 +34,17 @@ export class EvaluationInteractor {
     const currentEvaluationsId =
       await this.evaluationStorage.getCurrentEvaluationsId() ?? ''
     const evaluatedAt = await this.evaluationStorage.getEvaluatedAt() ?? '0'
-    const userAttributesUpdated = await
-            this.evaluationStorage.getUserAttributesUpdated()
+    // Captured before the request as one snapshot so a concurrent
+    // setUserAttributesUpdated() that lands while this request is in flight
+    // is detected below — see EvaluationStorage.clearUserAttributesUpdated().
+    const attributesStateAtStart = this.evaluationStorage.getUserAttributesState()
     const result = await this.apiClient.getEvaluations(
       {
         user,
         userEvaluationsId: currentEvaluationsId,
         userEvaluationCondition: {
           evaluatedAt: evaluatedAt,
-          userAttributesUpdated: userAttributesUpdated,
+          userAttributesUpdated: attributesStateAtStart.userAttributesUpdated,
         },
         tag: this.featureTag,
       },
@@ -58,7 +60,9 @@ export class EvaluationInteractor {
       // userAttributesUpdated:true and get back a redundant forceUpdate
       // snapshot. Streamed data must never clear it (race) — only this,
       // the polling/fetch path, does.
-      await this.evaluationStorage.clearUserAttributesUpdated()
+      await this.evaluationStorage.clearUserAttributesUpdated(
+        attributesStateAtStart,
+      )
       await this.applyEvaluationsResponse(result.value)
     }
 

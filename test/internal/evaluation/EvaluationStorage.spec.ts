@@ -41,7 +41,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
 
       expect(await evaluationStorage.getCurrentEvaluationsId()).toBe('evaluations_id_1')
       expect(evaluationStorage.getByFeatureId(evaluation1.featureId)).toStrictEqual(evaluation1)
-      expect(await evaluationStorage.getUserAttributesUpdated()).toBe(true)
+      expect(evaluationStorage.getUserAttributesState().userAttributesUpdated).toBe(true)
     })
 
     test('should initialize with default data when storage is empty', async () => {
@@ -49,7 +49,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
 
       expect(await evaluationStorage.getCurrentEvaluationsId()).toBeNull()
       expect(await evaluationStorage.getEvaluatedAt()).toBeNull()
-      expect(await evaluationStorage.getUserAttributesUpdated()).toBe(false)
+      expect(evaluationStorage.getUserAttributesState().userAttributesUpdated).toBe(false)
       expect(evaluationStorage.getByFeatureId('any_feature')).toBeNull()
     })
 
@@ -69,7 +69,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
 
       expect(await evaluationStorage.getCurrentEvaluationsId()).toBeNull()
       expect(await evaluationStorage.getEvaluatedAt()).toBeNull()
-      expect(await evaluationStorage.getUserAttributesUpdated()).toBe(false)
+      expect(evaluationStorage.getUserAttributesState().userAttributesUpdated).toBe(false)
       expect(evaluationStorage.getByFeatureId(evaluation1.featureId)).toBeNull()
     })
 
@@ -124,7 +124,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
       expect(() => evaluationStorage.getByFeatureId('any_feature')).toThrow(
         'Cache Evaluation entity is not loaded. Call initialize() first.'
       )
-      await expect(evaluationStorage.getUserAttributesUpdated()).rejects.toThrow(
+      expect(() => evaluationStorage.getUserAttributesState()).toThrow(
         'Cache Evaluation entity is not loaded. Call initialize() first.'
       )
       expect(() => evaluationStorage.getCurrentEvaluationsCondition()).toThrow(
@@ -379,7 +379,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
     expect((await storage.get())?.userAttributesUpdated).toBeTruthy()
   })
 
-  test('getUserAttributesUpdated', async () => {
+  test('getUserAttributesState', async () => {
     await storage.set({
       userId: 'user_id_1',
       currentEvaluationsId: 'evaluations_id_1',
@@ -392,13 +392,10 @@ suite('internal/evaluation/EvaluationStorage', () => {
       userAttributesUpdated: true,
     })
     await evaluationStorage.initialize()
-    expect(await evaluationStorage.getUserAttributesUpdated()).toBeTruthy()
+    expect(evaluationStorage.getUserAttributesState().userAttributesUpdated).toBeTruthy()
   })
 
-  test('setUserAttributesUpdated unawait, but getUserAttributesUpdated should get the updated data', async () => {
-    // This test ensures that the setUserAttributesUpdated method can be called without awaiting,
-    // and the getUserAttributesUpdated method will still return the updated value.
-    // This proves that our mutex is working correctly and the data is being updated asynchronously.
+  test('setUserAttributesUpdated must be awaited for getUserAttributesState to observe it (synchronous cache read, same contract as getCurrentEvaluationsCondition — unlike the old mutex-queued getUserAttributesUpdated getter, this no longer tolerates a caller forgetting to await)', async () => {
     await storage.set({
       userId: 'user_id_1',
       currentEvaluationsId: 'evaluations_id_1',
@@ -412,14 +409,13 @@ suite('internal/evaluation/EvaluationStorage', () => {
     })
     await evaluationStorage.initialize()
     // assert that userAttributesUpdated is false before setting it
-    expect(await evaluationStorage.getUserAttributesUpdated()).toBeFalsy()
-    // Important: should unawaited  
-    evaluationStorage.setUserAttributesUpdated() 
+    expect(evaluationStorage.getUserAttributesState().userAttributesUpdated).toBeFalsy()
+    await evaluationStorage.setUserAttributesUpdated()
 
-    expect(await evaluationStorage.getUserAttributesUpdated()).toBeTruthy()
+    expect(evaluationStorage.getUserAttributesState().userAttributesUpdated).toBeTruthy()
   })
 
-  test('clearUserAttributesUpdated', async () => {
+  test('clearUserAttributesUpdated with the current state clears the flag', async () => {
     await storage.set({
       userId: 'user_id_1',
       currentEvaluationsId: 'evaluations_id_1',
@@ -432,8 +428,41 @@ suite('internal/evaluation/EvaluationStorage', () => {
       userAttributesUpdated: true,
     })
     await evaluationStorage.initialize()
-    await evaluationStorage.clearUserAttributesUpdated()
+    const state = evaluationStorage.getUserAttributesState()
+    await evaluationStorage.clearUserAttributesUpdated(state)
 
     expect((await storage.get())?.userAttributesUpdated).toBeFalsy()
+  })
+
+  test('getUserAttributesState().updateSequence increments on every setUserAttributesUpdated call', async () => {
+    await evaluationStorage.initialize()
+    const initial = evaluationStorage.getUserAttributesState().updateSequence
+
+    await evaluationStorage.setUserAttributesUpdated()
+    expect(evaluationStorage.getUserAttributesState().updateSequence).toBe(initial + 1)
+
+    await evaluationStorage.setUserAttributesUpdated()
+    expect(evaluationStorage.getUserAttributesState().updateSequence).toBe(initial + 2)
+  })
+
+  test('clearUserAttributesUpdated no-ops when a newer setUserAttributesUpdated happened after the state was captured (regression: an in-flight stale fetch must not wipe a newer flag)', async () => {
+    await evaluationStorage.initialize()
+    await evaluationStorage.setUserAttributesUpdated()
+    // Simulates a fallback fetch that captured state before issuing its
+    // request, then a concurrent updateUserAttributes() call raced ahead of it.
+    const staleState = evaluationStorage.getUserAttributesState()
+    await evaluationStorage.setUserAttributesUpdated()
+
+    await evaluationStorage.clearUserAttributesUpdated(staleState)
+
+    expect(evaluationStorage.getUserAttributesState().userAttributesUpdated).toBe(true)
+  })
+
+  test('clearUserAttributesUpdated is a no-op (still requires initialize) before initialize()', async () => {
+    await expect(
+      evaluationStorage.clearUserAttributesUpdated({ userAttributesUpdated: false, updateSequence: 0 }),
+    ).rejects.toThrow(
+      'Cache Evaluation entity is not loaded. Call initialize() first.'
+    )
   })
 })
