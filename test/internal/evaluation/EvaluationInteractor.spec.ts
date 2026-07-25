@@ -260,6 +260,47 @@ suite('internal/evaluation/EvaluationInteractor', () => {
 
       expect(mockListener).toBeCalledTimes(2)
     })
+
+    test('a listener fired during fetch() observes userAttributesUpdated already cleared (ordering regression: clear must run before notify)', async () => {
+      // main's ordering: clear the flag, THEN apply/notify. If a listener
+      // (e.g. a refresh-on-change pattern) synchronously triggers a nested
+      // read of the flag, it must see it already cleared — otherwise the
+      // nested caller re-sends userAttributesUpdated:true and gets a
+      // redundant forceUpdate snapshot back.
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          return HttpResponse.json({
+            evaluations: {
+              ...user1Evaluations,
+              createdAt: clock.currentTimeMillis().toString(),
+            },
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+
+      await interactor.initialize()
+      await interactor.setUserAttributesUpdated()
+
+      let capturedFlag: Promise<boolean> | undefined
+      interactor.addUpdateListener(() => {
+        // getUserAttributesUpdated() is mutex-queued: capturing the promise
+        // here (synchronously, from inside the listener) means its resolved
+        // value reflects the flag's state as of this exact point in the
+        // clear/notify ordering, not just "eventually".
+        capturedFlag = evaluationStorage.getUserAttributesUpdated()
+      })
+
+      const result = await interactor.fetch(user1)
+      assert(result.type === 'success')
+
+      expect(capturedFlag).toBeDefined()
+      await expect(capturedFlag).resolves.toBe(false)
+    })
   })
 
   suite('getLatest', () => {
