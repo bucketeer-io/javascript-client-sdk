@@ -50,10 +50,16 @@ export class EvaluationInteractor {
     )
 
     if (result.type === 'success') {
-      await this.applyEvaluationsResponse(result.value)
-      // Only the polling/fetch path clears the flag: this request carried the
-      // current user attributes. Streamed data must never clear it (race).
+      // Clear BEFORE applying/notifying: applyEvaluationsResponse() fires
+      // update listeners synchronously, and a listener that triggers a
+      // nested fetch (refresh-on-change pattern) must observe the flag
+      // already cleared — this request already carried it. Clearing after
+      // notifying (as a naive refactor would) lets that nested call re-send
+      // userAttributesUpdated:true and get back a redundant forceUpdate
+      // snapshot. Streamed data must never clear it (race) — only this,
+      // the polling/fetch path, does.
       await this.evaluationStorage.clearUserAttributesUpdated()
+      await this.applyEvaluationsResponse(result.value)
     }
 
     return result
