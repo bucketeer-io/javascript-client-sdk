@@ -286,20 +286,18 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       await interactor.initialize()
       await interactor.setUserAttributesUpdated()
 
-      let capturedFlag: Promise<boolean> | undefined
+      let capturedFlag: boolean | undefined
       interactor.addUpdateListener(() => {
-        // getUserAttributesUpdated() is mutex-queued: capturing the promise
-        // here (synchronously, from inside the listener) means its resolved
-        // value reflects the flag's state as of this exact point in the
-        // clear/notify ordering, not just "eventually".
-        capturedFlag = evaluationStorage.getUserAttributesUpdated()
+        // getUserAttributesState() is a synchronous cache read: capturing it
+        // here, from inside the listener, reflects the flag's state as of
+        // this exact point in the clear/notify ordering, not just "eventually".
+        capturedFlag = evaluationStorage.getUserAttributesState().userAttributesUpdated
       })
 
       const result = await interactor.fetch(user1)
       assert(result.type === 'success')
 
-      expect(capturedFlag).toBeDefined()
-      await expect(capturedFlag).resolves.toBe(false)
+      expect(capturedFlag).toBe(false)
     })
   })
 

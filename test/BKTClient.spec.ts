@@ -910,17 +910,17 @@ suite('BKTClient', () => {
     )
 
     // 1. Update user attributes
-    // Important: should unawaited
-    client.updateUserAttributes({ key: 'value' })
+    await client.updateUserAttributes({ key: 'value' })
 
     expect(userHolder.get().data).toStrictEqual({ key: 'value' })
     expect(await storage.getCurrentEvaluationsId()).toBe(
       'user_evaluation_id_value',
     )
-    // 2. Even if we update user attributes without awaiting,
-    // the storage is still updated, so getUserAttributesUpdated should return true.
-    // because we are using mutex lock in setUserAttributesUpdated
-    expect(await storage.getUserAttributesUpdated()).toBeTruthy()
+    // 2. getUserAttributesState() is a synchronous cache read, so it only
+    // reflects the update once updateUserAttributes() has been awaited (as
+    // above) — updateUserAttributes() itself awaits setUserAttributesUpdated()
+    // internally, so callers never need to await anything beyond that.
+    expect(storage.getUserAttributesState().userAttributesUpdated).toBeTruthy()
   })
 
   suite('fetchEvaluations', async () => {
