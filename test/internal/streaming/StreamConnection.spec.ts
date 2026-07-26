@@ -368,13 +368,33 @@ suite('internal/streaming/StreamConnection — health model', () => {
     expect(FakeEventSource.instances).toHaveLength(1)
   })
 
-  test('error before first open with a recoverable status gives up non-terminal immediately', () => {
+  test('error before first open with a recoverable status retries with backoff instead of giving up immediately (regression: previously gave up on the very first failed connect attempt)', () => {
     startConnection()
     latest().onerror?.({ status: 500 })
-    expect(onError).toHaveBeenCalledWith({ terminal: false })
-
-    vi.advanceTimersByTime(300_000)
+    expect(onError).not.toHaveBeenCalled()
     expect(FakeEventSource.instances).toHaveLength(1)
+
+    vi.advanceTimersByTime(999)
+    expect(FakeEventSource.instances).toHaveLength(1)
+    vi.advanceTimersByTime(1)
+    expect(FakeEventSource.instances).toHaveLength(2)
+  })
+
+  test('repeated recoverable pre-open errors eventually give up once the unhealthy window elapses (same bound as the post-open case)', () => {
+    startConnection()
+    latest().onerror?.({ status: 500 }) // unhealthy clock starts
+
+    // Delays escalate 1,2,4,8,16,30,30,30 (jitter mocked to 0) — same schedule
+    // as the post-open 'unhealthy > 120s' case above.
+    for (const delaySeconds of [1, 2, 4, 8, 16, 30, 30]) {
+      vi.advanceTimersByTime(delaySeconds * 1_000)
+      expect(onError).not.toHaveBeenCalled()
+      latest().onerror?.({ status: 500 })
+    }
+    vi.advanceTimersByTime(30_000) // now 121s since the first failure
+    latest().onerror?.({ status: 500 })
+    expect(onError).toHaveBeenCalledWith({ terminal: false })
+    expect(onError).toHaveBeenCalledTimes(1)
   })
 
   test('events and errors from a stale (replaced) EventSource instance are ignored', () => {

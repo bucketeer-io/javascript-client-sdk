@@ -55,7 +55,6 @@ export class StreamConnection {
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined
   private backoffResetTimer: ReturnType<typeof setTimeout> | undefined
   private readonly backoff = new Backoff()
-  private openedOnce = false
   private unhealthySince = 0 // 0 = healthy
   private active = false
 
@@ -95,7 +94,6 @@ export class StreamConnection {
 
     es.onopen = () => {
       if (this.es !== es) return // stale instance — already replaced
-      this.openedOnce = true
       this.armBackoffReset()
       this.resetWatchdog()
       this.options.callbacks.onOpen()
@@ -150,12 +148,14 @@ export class StreamConnection {
         this.options.callbacks.onError({ terminal: true })
         return
       }
-      if (this.openedOnce && isRecoverableStatus(info.status)) {
-        // Transient drop → self-heal with backoff, bounded by the unhealthy window.
+      if (isRecoverableStatus(info.status)) {
+        // Self-heal with backoff, bounded by the unhealthy window — whether or
+        // not the stream ever opened (UNHEALTHY_FALLBACK_TIMEOUT_MILLIS's
+        // "applies whether or not the stream ever opened" comment above).
         this.scheduleReconnect()
         return
       }
-      // Never opened, or a non-recoverable status → give up; caller decides.
+      // A non-recoverable status → give up; caller decides.
       this.closeEventSource()
       this.options.callbacks.onError({ terminal: false })
     }
