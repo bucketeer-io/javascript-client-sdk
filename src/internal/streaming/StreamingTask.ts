@@ -21,6 +21,10 @@ export class StreamingTask implements ScheduledTask {
   // only a request that actually carried these attributes can clear the flag
   // they belong to. See EvaluationStorage.clearUserAttributesUpdated().
   private lastRequestAttributesState: UserAttributesState | undefined
+  // Set by handleError() on a terminal failure (bad API key, streaming
+  // unsupported) — reconnect() must not retry streaming in that case, only
+  // the polling fallback remains viable. See reconnect() and handleError().
+  private terminalFailure = false
 
   constructor(private readonly component: Component) {}
 
@@ -36,6 +40,11 @@ export class StreamingTask implements ScheduledTask {
   // Called by TaskScheduler.reconnectStreaming() on user attribute change.
   reconnect(): void {
     if (!this.running) return
+    // Stream is permanently dead (bad API key, streaming unsupported) — the
+    // polling fallback keeps running untouched, exact parity with pure
+    // polling mode where updateUserAttributes() doesn't force an immediate
+    // fetch either.
+    if (this.terminalFailure) return
     if (this.connection) {
       // Transport re-invokes requestBuilder → picks up fresh attributes.
       this.connection.reconnect()
@@ -195,7 +204,11 @@ export class StreamingTask implements ScheduledTask {
     this.connection?.stop()
     this.connection = null
     this.startFallback()
-    if (!info.terminal) {
+    if (info.terminal) {
+      // Remembered so reconnect() (e.g. a later updateUserAttributes() call)
+      // doesn't retry a permanently dead stream — see reconnect().
+      this.terminalFailure = true
+    } else {
       // Terminal failures (bad API key, streaming unsupported) are not retried;
       // everything else gets a streaming retry after the recovery interval.
       this.scheduleRecovery()
