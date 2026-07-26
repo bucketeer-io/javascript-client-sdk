@@ -4,7 +4,7 @@ import { User } from '../model/User'
 import { GetEvaluationsResponse } from '../model/response/GetEvaluationsResponse'
 import { ApiClient } from '../remote/ApiClient'
 import { GetEvaluationsResult } from '../remote/GetEvaluationsResult'
-import { EvaluationStorage } from './EvaluationStorage'
+import { EvaluationStorage, UserAttributesState } from './EvaluationStorage'
 
 export class EvaluationInteractor {
   constructor(
@@ -116,6 +116,17 @@ export class EvaluationInteractor {
 
   async setUserAttributesUpdated(): Promise<void> {
     return this.evaluationStorage.setUserAttributesUpdated()
+  }
+
+  // Used by StreamingTask.buildRequest()/onOpen to capture the flag's state
+  // at request-build time and clear it once the connection this request
+  // built actually opens — see EvaluationStorage.clearUserAttributesUpdated().
+  getUserAttributesState(): UserAttributesState {
+    return this.evaluationStorage.getUserAttributesState()
+  }
+
+  async clearUserAttributesUpdated(state: UserAttributesState): Promise<void> {
+    return this.evaluationStorage.clearUserAttributesUpdated(state)
   }
 
   addUpdateListener(listener: () => void): string {

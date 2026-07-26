@@ -432,6 +432,70 @@ suite('internal/streaming/StreamingTask', () => {
     expect(vi.getTimerCount()).toBe(2)
   })
 
+  test('onOpen clears the userAttributesUpdated flag using the state captured when the request was built', async () => {
+    const component = buildComponent()
+    await component.evaluationInteractor().initialize()
+    await component.evaluationInteractor().setUserAttributesUpdated()
+    expect(
+      component.evaluationInteractor().getUserAttributesState()
+        .userAttributesUpdated,
+    ).toBe(true)
+
+    task = new StreamingTask(component)
+    task.start() // buildRequest() runs synchronously here, capturing the flag=true snapshot
+
+    latest().onopen?.({})
+    // clearUserAttributesUpdated() is fire-and-forget from onOpen and goes
+    // through the storage mutex + a storage write, so it needs a few
+    // microtask ticks to actually land (fake timers are active in this
+    // suite, so this flushes microtasks directly rather than via a timer).
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve()
+    }
+
+    expect(
+      component.evaluationInteractor().getUserAttributesState()
+        .userAttributesUpdated,
+    ).toBe(false)
+  })
+
+  test('userAttributesUpdated set after buildRequest() but before onOpen survives the clear (regression: a race must not wipe a newer flag)', async () => {
+    const component = buildComponent()
+    await startTask(component) // buildRequest() captures updateSequence at flag=false
+
+    // Simulates updateUserAttributes() racing between connect and open.
+    await component.evaluationInteractor().setUserAttributesUpdated()
+    expect(
+      component.evaluationInteractor().getUserAttributesState()
+        .userAttributesUpdated,
+    ).toBe(true)
+
+    latest().onopen?.({})
+    await Promise.resolve()
+
+    expect(
+      component.evaluationInteractor().getUserAttributesState()
+        .userAttributesUpdated,
+    ).toBe(true)
+  })
+
+  test('connect failure never clears the userAttributesUpdated flag (must survive for the polling fallback)', async () => {
+    const component = buildComponent()
+    await component.evaluationInteractor().initialize()
+    await component.evaluationInteractor().setUserAttributesUpdated()
+
+    task = new StreamingTask(component)
+    task.start()
+
+    latest().onerror?.({ status: 500 }) // never opened — onOpen never fires
+    await Promise.resolve()
+
+    expect(
+      component.evaluationInteractor().getUserAttributesState()
+        .userAttributesUpdated,
+    ).toBe(true)
+  })
+
   test('reconnect() while streaming opens exactly one fresh connection with fresh attributes', async () => {
     const component = buildComponent()
     const t = await startTask(component)
