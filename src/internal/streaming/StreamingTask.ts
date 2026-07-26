@@ -24,6 +24,14 @@ export class StreamingTask implements ScheduledTask {
   // Set by handleError() on a terminal failure (bad API key, streaming
   // unsupported) — reconnect() must not retry streaming in that case, only
   // the polling fallback remains viable. See reconnect() and handleError().
+  //
+  // WARNING — never reset, by design: today every start() runs on a freshly
+  // constructed StreamingTask (TaskScheduler builds a new one on every
+  // scheduleTasks() call — see BKTClient.ts), so this field starting false
+  // per instance is enough. If a start()/stop() REUSE pattern is ever added
+  // to this class, start() MUST reset this to false there, or a restarted
+  // task will stay permanently stuck on the polling fallback because of a
+  // previous instance's terminal error.
   private terminalFailure = false
 
   constructor(private readonly component: Component) {}
