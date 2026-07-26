@@ -1,4 +1,5 @@
 import { Component } from '../di/Component'
+import { UserAttributesState } from '../evaluation/EvaluationStorage'
 import { requiredInternalConfig } from '../InternalConfig'
 import { StreamEvaluationsRequest } from '../model/request/StreamEvaluationsRequest'
 import { GetEvaluationsResponse } from '../model/response/GetEvaluationsResponse'
@@ -16,6 +17,10 @@ export class StreamingTask implements ScheduledTask {
   private fallbackTask: EvaluationTask | null = null
   private recoveryTimer: ReturnType<typeof setTimeout> | undefined
   private running = false
+  // Snapshot captured by buildRequest(); onOpen clears the flag with it, so
+  // only a request that actually carried these attributes can clear the flag
+  // they belong to. See EvaluationStorage.clearUserAttributesUpdated().
+  private lastRequestAttributesState: UserAttributesState | undefined
 
   constructor(private readonly component: Component) {}
 
@@ -96,7 +101,10 @@ export class StreamingTask implements ScheduledTask {
         })
       },
       callbacks: {
-        onOpen: () => this.stopFallback(),
+        onOpen: () => {
+          this.stopFallback()
+          this.clearUserAttributesUpdated()
+        },
         onError: (info) => this.handleError(info),
       },
     })
@@ -133,6 +141,13 @@ export class StreamingTask implements ScheduledTask {
     const condition = this.component
       .evaluationInteractor()
       .getCurrentEvaluationsCondition()
+    // Captured (not sent — the backend re-evaluates from user.data on every
+    // reconnect, no wire field needed) so onOpen can clear the flag only if
+    // it's still the latest snapshot. See EvaluationStorage.
+    // clearUserAttributesUpdated() and the onOpen callback below.
+    this.lastRequestAttributesState = this.component
+      .evaluationInteractor()
+      .getUserAttributesState()
     const body: StreamEvaluationsRequest = {
       tag: config.featureTag,
       user: { id: user.id, data: user.data },
@@ -153,6 +168,26 @@ export class StreamingTask implements ScheduledTask {
         body: JSON.stringify(body),
       },
     }
+  }
+
+  // Called from onOpen: this connection's request carried the attributes in
+  // lastRequestAttributesState, so it's safe to clear — but only if no newer
+  // setUserAttributesUpdated() call has landed since (guarded by
+  // EvaluationStorage.clearUserAttributesUpdated()'s sequence check). A
+  // failed connect never calls this, so the flag survives for the polling
+  // fallback to send.
+  private clearUserAttributesUpdated(): void {
+    const state = this.lastRequestAttributesState
+    if (!state) return
+    this.component
+      .evaluationInteractor()
+      .clearUserAttributesUpdated(state)
+      .catch((e) => {
+        console.error(
+          'StreamingTask: failed to clear userAttributesUpdated flag',
+          e,
+        )
+      })
   }
 
   private handleError(info: StreamConnectionErrorInfo): void {
