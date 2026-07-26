@@ -380,8 +380,10 @@ suite('internal/streaming/StreamingTask', () => {
   test('non-terminal error with fallback enabled starts polling AND arms recovery', async () => {
     await startTask(buildComponent())
 
-    // Never-opened + recoverable status → StreamConnection gives up non-terminal.
-    latest().onerror?.({ status: 500 })
+    // Never-opened + non-recoverable, non-terminal status (an unclassified
+    // 4xx — neither in httpStatus.ts's TERMINAL_STATUSES nor its recoverable
+    // set) → StreamConnection gives up immediately, no backoff retry.
+    latest().onerror?.({ status: 402 })
 
     // start(true) fetches immediately instead of arming a timer for the next
     // poll (up to 10 min by default) — otherwise a stream drop would leave
@@ -397,7 +399,7 @@ suite('internal/streaming/StreamingTask', () => {
   test('non-terminal error with fallback DISABLED still arms recovery', async () => {
     await startTask(buildComponent({ streamingFallbackToPolling: false }))
 
-    latest().onerror?.({ status: 500 })
+    latest().onerror?.({ status: 402 }) // unclassified 4xx — immediate give-up
 
     // No polling fallback...
     expect(evaluationTaskStart).not.toHaveBeenCalled()
@@ -421,7 +423,7 @@ suite('internal/streaming/StreamingTask', () => {
   test('onOpen after recovery cancels fallback and leaves no recovery pending', async () => {
     await startTask(buildComponent())
 
-    latest().onerror?.({ status: 500 }) // → fallback + recovery
+    latest().onerror?.({ status: 402 }) // unclassified 4xx → fallback + recovery
     vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS) // recovery reopens the stream
     expect(FakeEventSource.instances).toHaveLength(2)
 
@@ -541,7 +543,7 @@ suite('internal/streaming/StreamingTask', () => {
   test('reconnect() while on polling fallback jumps straight back to streaming', async () => {
     const t = await startTask(buildComponent())
 
-    latest().onerror?.({ status: 500 }) // → fallback + recovery
+    latest().onerror?.({ status: 402 }) // unclassified 4xx → fallback + recovery
     expect(evaluationTaskStart).toHaveBeenCalledWith(true)
 
     t.reconnect()
@@ -574,7 +576,7 @@ suite('internal/streaming/StreamingTask', () => {
   test('stop() stops connection, fallback, and recovery', async () => {
     const t = await startTask(buildComponent())
 
-    latest().onerror?.({ status: 500 }) // → fallback + recovery
+    latest().onerror?.({ status: 402 }) // unclassified 4xx → fallback + recovery
     t.stop()
 
     expect(t.isRunning()).toBe(false)
