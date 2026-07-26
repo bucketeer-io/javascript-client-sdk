@@ -554,6 +554,23 @@ suite('internal/streaming/StreamingTask', () => {
     expect(vi.getTimerCount()).toBe(1)
   })
 
+  test('reconnect() after a terminal error is a no-op (stream is permanently dead; fallback keeps polling untouched)', async () => {
+    const t = await startTask(buildComponent())
+
+    latest().onerror?.({ status: 401 }) // bad API key (terminal)
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+    expect(FakeEventSource.instances).toHaveLength(1)
+
+    t.reconnect()
+
+    // No new connection, and the fallback poller was never touched (it must
+    // keep running on its own schedule — same as pure polling mode, where
+    // updateUserAttributes() doesn't force an immediate fetch either).
+    expect(FakeEventSource.instances).toHaveLength(1)
+    expect(evaluationTaskStop).not.toHaveBeenCalled()
+  })
+
+
   test('stop() stops connection, fallback, and recovery', async () => {
     const t = await startTask(buildComponent())
 
