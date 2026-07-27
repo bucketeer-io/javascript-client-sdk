@@ -12,6 +12,22 @@ import { StreamConnection, StreamConnectionErrorInfo } from './StreamConnection'
 const STREAM_EVALUATIONS_PATH = '/stream_evaluations'
 const RECOVERY_INTERVAL_MILLIS = 5 * 60_000
 
+// Minimal structural check, not full validation: just enough to stop a
+// misrouted/malformed payload from being blind-cast and handed to
+// EvaluationStorage's writes. See handleData()'s defense-in-depth comment.
+function isGetEvaluationsResponseShape(
+  value: unknown,
+): value is GetEvaluationsResponse {
+  if (typeof value !== 'object' || value === null) return false
+  const response = value as Record<string, unknown>
+  if (typeof response.userEvaluationsId !== 'string') return false
+  const evaluations = response.evaluations
+  if (typeof evaluations !== 'object' || evaluations === null) return false
+  return (
+    typeof (evaluations as Record<string, unknown>).forceUpdate === 'boolean'
+  )
+}
+
 export class StreamingTask implements ScheduledTask {
   private connection: StreamConnection | null = null
   private fallbackTask: EvaluationTask | null = null
@@ -225,12 +241,18 @@ export class StreamingTask implements ScheduledTask {
 
   private async handleData(data: string): Promise<void> {
     if (!this.running) return // guard: data may arrive after stop()
-    let response: GetEvaluationsResponse
+    let parsed: unknown
     try {
-      response = JSON.parse(data) as GetEvaluationsResponse
+      parsed = JSON.parse(data)
     } catch {
       return
     }
+    // Defense in depth for finding #8: even with FetchEventSource routing
+    // named events with no listener away from onmessage, a shape check here
+    // stops any other misrouted/malformed payload (not just an unknown event
+    // name) from reaching deleteAllAndInsert()/update() with garbage.
+    if (!isGetEvaluationsResponseShape(parsed)) return
+    const response = parsed
     // shouldNotify is re-checked after the awaited storage write: a stop()/
     // destroy racing that write must not fire update listeners into
     // torn-down app code (the write itself may land — unused cached data).

@@ -299,6 +299,29 @@ suite('internal/streaming/StreamingTask', () => {
     expect(apply).not.toHaveBeenCalled()
   })
 
+  test('data event with valid JSON but the wrong shape (not a GetEvaluationsResponse) is ignored (defense in depth for finding #8: a misrouted/malformed payload must not reach storage)', async () => {
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    await startTask(component)
+
+    latest().onopen?.({})
+    for (const badPayload of [
+      '{}',
+      '{"userEvaluationsId":"x"}', // missing evaluations
+      '{"userEvaluationsId":"x","evaluations":{}}', // missing forceUpdate
+      '{"userEvaluationsId":42,"evaluations":{"forceUpdate":false}}', // wrong type
+      '[]',
+      'null',
+    ]) {
+      latest().onmessage?.({ data: badPayload })
+    }
+    await Promise.resolve()
+
+    expect(apply).not.toHaveBeenCalled()
+  })
+
   test('applyEvaluationsResponse rejecting does not surface as an unhandled rejection', async () => {
     const component = buildComponent()
     const unhandled = vi.fn()

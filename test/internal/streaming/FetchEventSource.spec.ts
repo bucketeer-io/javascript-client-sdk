@@ -92,6 +92,19 @@ suite('internal/streaming/FetchEventSource', () => {
     expect(t.dataMessages()).toEqual([])
   })
 
+  test('a named event with no registered listener is dropped, not delivered to onmessage (regression: unknown named events must not be treated as unnamed)', async () => {
+    const es = new FetchEventSource(
+      'https://example.test/sse',
+      {},
+      fetchReturning(okResponse(streamOf('event: ping\ndata: {"c":3}\n\n'))),
+    )
+    const t = instrument(es)
+    // No listener registered for 'ping'.
+
+    await until(t.ended)
+    expect(t.dataMessages()).toEqual([]) // must NOT reach onmessage
+  })
+
   test('event: patch block calls the patch listener', async () => {
     const es = new FetchEventSource(
       'https://example.test/sse',
