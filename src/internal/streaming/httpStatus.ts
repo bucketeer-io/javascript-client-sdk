@@ -3,7 +3,12 @@ export function isRecoverableStatus(status: number | undefined): boolean {
     return true
   }
   if (status >= 400 && status < 500) {
-    return status === 400 || status === 408 || status === 429
+    // 499 ("client closed request") is a deployment-related status post.ts
+    // already retries for the polling API (ClientClosedRequestException) — a
+    // backend rollout that polling survives must not kill the stream instead.
+    return (
+      status === 400 || status === 408 || status === 429 || status === 499
+    )
   }
   return true
 }

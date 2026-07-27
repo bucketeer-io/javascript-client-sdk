@@ -21,6 +21,14 @@ suite('internal/streaming/httpStatus', () => {
       },
     )
 
+    // 499 (deployment-related "client closed request") is a dedicated retry
+    // case for post.ts's polling requests (see ClientClosedRequestException in
+    // post.ts) — a backend rollout that polling survives must not kill the
+    // stream via the give-up branch either.
+    test('499 (deployment-related client closed request) is recoverable', () => {
+      expect(isRecoverableStatus(499)).toBe(true)
+    })
+
     test.each([401, 403, 404, 405])(
       'other 4xx (%i) is not recoverable',
       (status) => {
