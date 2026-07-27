@@ -79,12 +79,13 @@ export class EvaluationInteractor {
   ): Promise<void> {
     let changed: boolean
     if (response.evaluations.forceUpdate) {
-      await this.evaluationStorage.deleteAllAndInsert(
+      // A skipped stale forceUpdate (see EvaluationStorage.deleteAllAndInsert's
+      // staleness guard) must not notify — nothing changed.
+      changed = await this.evaluationStorage.deleteAllAndInsert(
         response.userEvaluationsId,
         response.evaluations.evaluations ?? [],
         response.evaluations.createdAt,
       )
-      changed = true
     } else {
       changed = await this.evaluationStorage.update(
         response.userEvaluationsId,

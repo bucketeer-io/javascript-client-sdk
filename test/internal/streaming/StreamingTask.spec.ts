@@ -299,7 +299,7 @@ suite('internal/streaming/StreamingTask', () => {
     expect(apply).not.toHaveBeenCalled()
   })
 
-  test('data event with valid JSON but the wrong shape (not a GetEvaluationsResponse) is ignored (defense in depth for finding #8: a misrouted/malformed payload must not reach storage)', async () => {
+  test('data event with valid JSON but the wrong shape (not a GetEvaluationsResponse) is ignored (defense in depth: a misrouted/malformed payload must not reach storage)', async () => {
     const component = buildComponent()
     const apply = vi
       .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
