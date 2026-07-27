@@ -179,12 +179,14 @@ export class FetchEventSource implements EventSourceInstance {
       // browser EventSource dispatches such blocks via `.onmessage` /
       // `addEventListener('message', ...)`; this mirrors that rule.
       let eventName = 'message'
+      let hasEventLine = false
       const dataLines: string[] = []
       for (const line of block.split('\n')) {
         if (line.startsWith('data:')) {
           dataLines.push(line.slice(5).trimStart())
         } else if (line.startsWith('event:')) {
           eventName = line.slice(6).trim()
+          hasEventLine = true
         }
         // Comment lines (':') count as liveness via the per-chunk tick above
       }
@@ -193,8 +195,13 @@ export class FetchEventSource implements EventSourceInstance {
       const handlers = this.listeners.get(eventName)
       if (handlers && handlers.length > 0) {
         handlers.forEach((h) => h(ev))
-      } else {
-        this.onmessage?.(ev) // unnamed events fall back to onmessage
+      } else if (!hasEventLine) {
+        // Genuinely unnamed (no `event:` line) falls back to onmessage, per
+        // the SSE/EventSource standard. A NAMED event with no registered
+        // listener is dropped silently instead — same native EventSource
+        // semantics — so an unknown event name can never be misrouted into
+        // onmessage and misinterpreted as evaluation data.
+        this.onmessage?.(ev)
       }
     }
     return remainder
