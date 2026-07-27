@@ -205,6 +205,143 @@ suite('internal/evaluation/EvaluationStorage', () => {
     })
   })
 
+  suite('staleness guard (concurrent writers must not rewind state)', () => {
+    const seed = async (evaluatedAt: string) => {
+      await storage.set({
+        userId: 'user_id_1',
+        currentEvaluationsId: 'evaluations_id_1',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+        },
+        currentFeatureTag: 'feature_tag_1',
+        evaluatedAt,
+        userAttributesUpdated: false,
+      })
+      await evaluationStorage.initialize()
+    }
+
+    suite('update', () => {
+      test('strictly-older evaluatedAt is a no-op: returns false, storage unchanged', async () => {
+        await seed('1700000000')
+
+        const result = await evaluationStorage.update(
+          'evaluations_id_2',
+          [evaluation2],
+          [],
+          '1699999999',
+        )
+
+        expect(result).toBe(false)
+        expect(await storage.get()).toStrictEqual<EvaluationEntity>({
+          userId: 'user_id_1',
+          currentEvaluationsId: 'evaluations_id_1',
+          evaluations: {
+            [evaluation1.featureId]: evaluation1,
+          },
+          currentFeatureTag: 'feature_tag_1',
+          evaluatedAt: '1700000000',
+          userAttributesUpdated: false,
+        })
+      })
+
+      test('equal evaluatedAt still applies (same-tick patches must not be dropped)', async () => {
+        await seed('1700000000')
+
+        const result = await evaluationStorage.update(
+          'evaluations_id_2',
+          [evaluation2],
+          [],
+          '1700000000',
+        )
+
+        expect(result).toBe(true)
+        expect((await storage.get())?.currentEvaluationsId).toBe(
+          'evaluations_id_2',
+        )
+      })
+
+      test('newer evaluatedAt applies normally', async () => {
+        await seed('1700000000')
+
+        const result = await evaluationStorage.update(
+          'evaluations_id_2',
+          [evaluation2],
+          [],
+          '1700000001',
+        )
+
+        expect(result).toBe(true)
+        expect((await storage.get())?.evaluatedAt).toBe('1700000001')
+      })
+
+      test('a fresh install (evaluatedAt null) is never treated as stale', async () => {
+        await evaluationStorage.initialize()
+
+        const result = await evaluationStorage.update(
+          'evaluations_id_1',
+          [evaluation1],
+          [],
+          '0',
+        )
+
+        expect(result).toBe(true)
+        expect((await storage.get())?.evaluatedAt).toBe('0')
+      })
+    })
+
+    suite('deleteAllAndInsert', () => {
+      test('strictly-older evaluatedAt is a no-op: returns false, storage unchanged', async () => {
+        await seed('1700000000')
+
+        const result = await evaluationStorage.deleteAllAndInsert(
+          'evaluations_id_2',
+          [evaluation2],
+          '1699999999',
+        )
+
+        expect(result).toBe(false)
+        expect(await storage.get()).toStrictEqual<EvaluationEntity>({
+          userId: 'user_id_1',
+          currentEvaluationsId: 'evaluations_id_1',
+          evaluations: {
+            [evaluation1.featureId]: evaluation1,
+          },
+          currentFeatureTag: 'feature_tag_1',
+          evaluatedAt: '1700000000',
+          userAttributesUpdated: false,
+        })
+      })
+
+      test('equal evaluatedAt still applies', async () => {
+        await seed('1700000000')
+
+        const result = await evaluationStorage.deleteAllAndInsert(
+          'evaluations_id_2',
+          [evaluation2],
+          '1700000000',
+        )
+
+        expect(result).toBe(true)
+        expect((await storage.get())?.currentEvaluationsId).toBe(
+          'evaluations_id_2',
+        )
+      })
+
+      test('newer evaluatedAt applies normally', async () => {
+        await seed('1700000000')
+
+        const result = await evaluationStorage.deleteAllAndInsert(
+          'evaluations_id_2',
+          [evaluation2],
+          '1700000001',
+        )
+
+        expect(result).toBe(true)
+        expect((await storage.get())?.evaluatedAt).toBe('1700000001')
+      })
+    })
+  })
+
   suite('getCurrentEvaluationsId', () => {
     test('return currentEvaluationsId if saved data is present', async () => {
       await storage.set({

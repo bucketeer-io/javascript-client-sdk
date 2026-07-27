@@ -247,10 +247,10 @@ export class StreamingTask implements ScheduledTask {
     } catch {
       return
     }
-    // Defense in depth for finding #8: even with FetchEventSource routing
-    // named events with no listener away from onmessage, a shape check here
-    // stops any other misrouted/malformed payload (not just an unknown event
-    // name) from reaching deleteAllAndInsert()/update() with garbage.
+    // Defense in depth: even with FetchEventSource routing named events with
+    // no listener away from onmessage, a shape check here stops any other
+    // misrouted/malformed payload (not just an unknown event name) from
+    // reaching deleteAllAndInsert()/update() with garbage.
     if (!isGetEvaluationsResponseShape(parsed)) return
     const response = parsed
     // shouldNotify is re-checked after the awaited storage write: a stop()/

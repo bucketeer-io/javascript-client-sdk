@@ -599,6 +599,45 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       expect(mockListener).toBeCalledTimes(1)
     })
 
+    test('stale forceUpdate (createdAt strictly older than the stored evaluatedAt) is skipped: no notify, no overwrite', async () => {
+      await evaluationStorage.storage.set({
+        userId: user1.id,
+        currentEvaluationsId: 'user_evaluation_id_value',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+        },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: '1700000000',
+        userAttributesUpdated: false,
+      })
+      await interactor.initialize()
+      const mockListener = vi.fn()
+      interactor.addUpdateListener(mockListener)
+
+      await interactor.applyEvaluationsResponse({
+        evaluations: {
+          id: '17388826713971171773',
+          evaluations: [evaluation2],
+          createdAt: '1699999999', // strictly older than the stored evaluatedAt
+          forceUpdate: true,
+          archivedFeatureIds: [],
+        },
+        userEvaluationsId: 'new_user_evaluation_id',
+      })
+
+      expect(mockListener).not.toHaveBeenCalled()
+      expect(await evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
+        userId: user1.id,
+        currentEvaluationsId: 'user_evaluation_id_value',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+        },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: '1700000000',
+        userAttributesUpdated: false,
+      })
+    })
+
     test('upsert notifies listeners only when something changed', async () => {
       await seedStorage(false)
       const mockListener = vi.fn()

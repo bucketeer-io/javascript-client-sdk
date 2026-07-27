@@ -12,6 +12,20 @@ export interface EvaluationEntity {
   userAttributesUpdated: boolean
 }
 
+// Guards against a stale concurrent writer (e.g. the initial REST fetch
+// racing the stream's first snapshot) rewinding state. Strictly older only —
+// an equal evaluatedAt still applies, since two patches computed in the same
+// clock tick are not stale relative to each other, and dropping an
+// equal-timestamp write would be a worse failure than the race this guards
+// against. `Number()` is safe for the observed decimal-millisecond-string
+// format, far below 2^53.
+function isStale(entity: EvaluationEntity, evaluatedAt: string): boolean {
+  return (
+    entity.evaluatedAt !== null &&
+    Number(evaluatedAt) < Number(entity.evaluatedAt)
+  )
+}
+
 /**
  * Snapshot of the userAttributesUpdated flag paired with the sequence number
  * it was read at. Mirrors the Android/iOS SDKs' UserAttributesState (same
@@ -35,11 +49,23 @@ export interface EvaluationStorage {
    */
   initialize(): Promise<void>
 
+  /**
+   * @returns false (a no-op) if evaluatedAt is strictly older than the
+   * currently stored value — a stale concurrent writer (e.g. the initial
+   * REST fetch racing the stream's first snapshot) must not rewind state. An
+   * equal timestamp still applies, since two patches computed in the same
+   * clock tick are not stale relative to each other.
+   */
   deleteAllAndInsert(
     evaluationsId: string,
     evaluations: Evaluation[],
     evaluatedAt: string,
-  ): Promise<void>
+  ): Promise<boolean>
+  /**
+   * @returns false if evaluatedAt is strictly older than the currently stored
+   * value (see deleteAllAndInsert()'s doc) — otherwise true iff something
+   * changed.
+   */
   update(
     evaluationsId: string,
     evaluations: Evaluation[],
@@ -156,9 +182,10 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     evaluationsId: string,
     evaluations: Evaluation[],
     evaluatedAt: string,
-  ): Promise<void> {
-    await runWithMutex(this.mutex, async () => {
+  ): Promise<boolean> {
+    return await runWithMutex(this.mutex, async () => {
       const entity = this.getCachedEvaluationEntity()
+      if (isStale(entity, evaluatedAt)) return false
       const updated: EvaluationEntity = {
         ...entity,
         userId: this.userId,
@@ -172,6 +199,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
         evaluatedAt,
       }
       await this.saveAsync(updated)
+      return true
     })
   }
 
@@ -183,6 +211,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   ): Promise<boolean> {
     return await runWithMutex(this.mutex, async () => {
       const entity = this.getCachedEvaluationEntity()
+      if (isStale(entity, evaluatedAt)) return false
 
       // remove archived evaluations
       const activeEvaluations = Object.fromEntries(
