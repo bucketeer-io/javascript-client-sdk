@@ -42,7 +42,10 @@ export interface EventSourceInstance {
   onmessage: ((ev: MessageEventLike) => void) | null
   onerror: ((ev: EventSourceErrorLike | unknown) => void) | null
   addEventListener(type: string, listener: (ev: MessageEventLike) => void): void
-  removeEventListener(type: string, listener: (ev: MessageEventLike) => void): void
+  removeEventListener(
+    type: string,
+    listener: (ev: MessageEventLike) => void,
+  ): void
   close(): void
 }
 

@@ -73,4 +73,3 @@ export class EvaluationTask implements ScheduledTask {
     this.running = false
   }
 }
-
