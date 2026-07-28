@@ -73,9 +73,11 @@ export class StreamingTask implements ScheduledTask {
       // Transport re-invokes requestBuilder → picks up fresh attributes.
       this.connection.reconnect()
     } else {
-      // Currently on polling fallback (or idle after a terminal error) —
-      // jump straight back to streaming.
-      this.stopFallback()
+      // Currently on polling fallback (or idle after a terminal error) — jump
+      // straight back to streaming. No stopFallback() here: the poller keeps
+      // running until onOpen proves the new stream actually works (onOpen
+      // calls stopFallback() itself) — otherwise there'd be a polling gap for
+      // however long this attempt takes to open or fail.
       this.openStream()
     }
   }
@@ -90,6 +92,16 @@ export class StreamingTask implements ScheduledTask {
   // private
 
   private openStream(): void {
+    // Defensive at entry: every caller today already guarantees no live
+    // connection/timer (previously via stopFallback(), which cleared both),
+    // but reconnect()'s fallback branch and the recovery timer no longer call
+    // stopFallback() first — see those call sites. Without this, a pending
+    // recovery timer could fire after this method already opened a fresh
+    // connection and create a second, leaked StreamConnection.
+    this.connection?.stop()
+    this.connection = null
+    clearTimeout(this.recoveryTimer)
+
     const config = requiredInternalConfig(this.component.config())
     // Prefer the user-injected EventSource; fall back to our FetchEventSource.
     const eventSource: EventSourceLike =
@@ -278,7 +290,11 @@ export class StreamingTask implements ScheduledTask {
     clearTimeout(this.recoveryTimer)
     this.recoveryTimer = setTimeout(() => {
       if (!this.running) return
-      this.stopFallback()
+      // No stopFallback() here: the poller keeps running until onOpen proves
+      // the reopened stream actually works — otherwise every 5-minute
+      // recovery attempt would open a polling gap for as long as it takes to
+      // open or fail (see openStream()'s onOpen callback and its own
+      // defensive clearTimeout(this.recoveryTimer) at entry).
       this.openStream()
     }, RECOVERY_INTERVAL_MILLIS)
   }
