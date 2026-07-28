@@ -179,6 +179,47 @@ suite('internal/streaming/FetchEventSource', () => {
     expect(t.dataMessages()).toEqual([{ data: 'a\nb' }])
   })
 
+  test('a payload delivered in many small chunks at arbitrary byte boundaries (including mid-CRLF) parses identically to one whole chunk (functional-equivalence guard for the quadratic-parsing fix)', async () => {
+    const payload =
+      'event: put\ndata: {"a":1}\n\n' +
+      'data: plain1\ndata: plain2\n\n' +
+      'event: patch\r\ndata: {"b":2}\r\n\r\n' + // CRLF framing mixed in
+      ': heartbeat\n\n' +
+      'event: evaluations\ndata: {"c":3}\n\n'
+
+    async function collect(chunks: (string | Uint8Array)[]) {
+      const es = new FetchEventSource(
+        'https://example.test/sse',
+        {},
+        fetchReturning(okResponse(streamOf(...chunks))),
+      )
+      const puts: MessageEventLike[] = []
+      const patches: MessageEventLike[] = []
+      const evaluations: MessageEventLike[] = []
+      es.addEventListener('put', (ev) => puts.push(ev))
+      es.addEventListener('patch', (ev) => patches.push(ev))
+      es.addEventListener('evaluations', (ev) => evaluations.push(ev))
+      const t = instrument(es)
+      await until(t.ended)
+      return { puts, patches, evaluations, dataMessages: t.dataMessages() }
+    }
+
+    const reference = await collect([payload])
+
+    // Split at arbitrary 3-byte boundaries — several of which land mid-CRLF
+    // (e.g. inside the '\r\n\r\n' block terminators above).
+    const chunks: string[] = []
+    for (let i = 0; i < payload.length; i += 3) {
+      chunks.push(payload.slice(i, i + 3))
+    }
+    const chunked = await collect(chunks)
+
+    expect(chunked).toEqual(reference)
+    // Sanity: the reference itself actually parsed something meaningful, so
+    // an accidentally-empty comparison couldn't slip through as "equal".
+    expect(reference.evaluations).toEqual([{ data: '{"c":3}' }])
+  })
+
   test('non-200 response reports onerror with the status', async () => {
     const es = new FetchEventSource(
       'https://example.test/sse',
