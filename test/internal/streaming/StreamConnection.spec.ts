@@ -433,4 +433,20 @@ suite('internal/streaming/StreamConnection — health model', () => {
     FakeEventSource.instances[0].onerror?.({})
     expect(onError).not.toHaveBeenCalled()
   })
+
+  test('a synchronously-throwing eventSource constructor is routed to onError instead of crashing', () => {
+    const ThrowingEventSource = function () {
+      throw new Error('constructor boom')
+    } as unknown as EventSourceLike
+
+    const conn = new StreamConnection({
+      eventSource: ThrowingEventSource,
+      requestBuilder: () => ({ url: 'https://example.test/sse' }),
+      events: {},
+      callbacks: { onOpen, onError },
+    })
+
+    expect(() => conn.start()).not.toThrow()
+    expect(onError).toHaveBeenCalledWith({ terminal: false })
+  })
 })
