@@ -88,8 +88,21 @@ export class StreamConnection {
     this.clearReconnectTimer()
     this.closeEventSource()
 
-    const { url, init } = this.options.requestBuilder()
-    const es = new this.options.eventSource(url, init)
+    let es: EventSourceInstance
+    try {
+      const { url, init } = this.options.requestBuilder()
+      es = new this.options.eventSource(url, init)
+    } catch {
+      // requestBuilder() or the eventSource constructor threw synchronously
+      // (e.g. a misbehaving injected EventSourceLike). openConnection() runs
+      // from a setTimeout callback (backoff/watchdog/recovery) as well as
+      // from start()/reconnect() — an uncaught throw there would crash a
+      // Node process. Same give-up path as a runtime onerror: caller decides
+      // (StreamingTask starts the polling fallback + schedules recovery).
+      this.closeEventSource()
+      this.options.callbacks.onError({ terminal: false })
+      return
+    }
     this.es = es
 
     es.onopen = () => {
