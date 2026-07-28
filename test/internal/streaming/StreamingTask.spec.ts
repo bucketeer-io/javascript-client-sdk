@@ -413,10 +413,12 @@ suite('internal/streaming/StreamingTask', () => {
     // users on stale evaluations for that whole window.
     expect(evaluationTaskStart).toHaveBeenCalledWith(true)
 
-    // Recovery fires after 5 minutes: fallback stops, streaming reopens.
+    // Recovery fires after 5 minutes: streaming reopens; fallback stops once
+    // onOpen proves the reopened stream actually works (no polling gap).
     vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
-    expect(evaluationTaskStop).toHaveBeenCalled()
     expect(FakeEventSource.instances).toHaveLength(2)
+    latest().onopen?.({})
+    expect(evaluationTaskStop).toHaveBeenCalled()
   })
 
   test('non-terminal error with fallback DISABLED still arms recovery', async () => {
@@ -455,6 +457,55 @@ suite('internal/streaming/StreamingTask', () => {
     // Only the connection's own timers remain (watchdog + backoff-reset) —
     // no 5-minute recovery timer is pending anymore.
     expect(vi.getTimerCount()).toBe(2)
+  })
+
+  test('recovery timer reopening the stream does not stop the fallback poller until onOpen succeeds (regression: no polling gap during the reconnect attempt)', async () => {
+    await startTask(buildComponent())
+
+    latest().onerror?.({ status: 402 }) // → fallback + recovery
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+
+    vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS) // recovery timer reopens the stream
+    expect(FakeEventSource.instances).toHaveLength(2)
+    // The new stream hasn't proven it opened yet — the poller must still be running.
+    expect(evaluationTaskStop).not.toHaveBeenCalled()
+
+    latest().onopen?.({})
+    expect(evaluationTaskStop).toHaveBeenCalled()
+  })
+
+  test('reconnect() from fallback mode does not stop the fallback poller until onOpen succeeds (regression: no polling gap during the reconnect attempt)', async () => {
+    const t = await startTask(buildComponent())
+
+    latest().onerror?.({ status: 402 }) // → fallback + recovery
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+
+    t.reconnect()
+    expect(FakeEventSource.instances).toHaveLength(2)
+    expect(evaluationTaskStop).not.toHaveBeenCalled()
+
+    latest().onopen?.({})
+    expect(evaluationTaskStop).toHaveBeenCalled()
+  })
+
+  test('reconnect()-opened stream plus a previously armed recovery timer produces only one live connection (openStream() must be defensive)', async () => {
+    const t = await startTask(buildComponent())
+
+    latest().onerror?.({ status: 402 }) // → fallback + recovery timer armed for +5min
+    t.reconnect() // opens a fresh stream while the recovery timer is still pending
+    expect(FakeEventSource.instances).toHaveLength(2)
+    latest().onopen?.({}) // new stream succeeds — resets its own watchdog
+
+    // Keep the new connection healthy so its OWN watchdog/backoff machinery
+    // never fires an extra connection — isolating whether the STALE recovery
+    // timer (armed before reconnect(), at the original failure) fires one.
+    for (let i = 0; i < 5; i++) {
+      vi.advanceTimersByTime(60_000)
+      latest().onmessage?.({ data: undefined })
+    }
+
+    // The stale recovery timer (armed ~5 min ago) must not have fired a third connection.
+    expect(FakeEventSource.instances).toHaveLength(2)
   })
 
   test('onOpen clears the userAttributesUpdated flag using the state captured when the request was built', async () => {
@@ -571,12 +622,16 @@ suite('internal/streaming/StreamingTask', () => {
 
     t.reconnect()
 
-    expect(evaluationTaskStop).toHaveBeenCalled()
     expect(FakeEventSource.instances).toHaveLength(2)
     // The old recovery timer was cancelled — the only pending timer is the new
     // connection's watchdog. (Advancing time instead would trip that watchdog
     // on the silent fake connection and self-heal reconnects would fire.)
     expect(vi.getTimerCount()).toBe(1)
+
+    // Fallback stops once onOpen proves the reopened stream actually works
+    // (no polling gap in between).
+    latest().onopen?.({})
+    expect(evaluationTaskStop).toHaveBeenCalled()
   })
 
   test('reconnect() after a terminal error is a no-op (stream is permanently dead; fallback keeps polling untouched)', async () => {
