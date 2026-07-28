@@ -34,9 +34,9 @@ export class TaskScheduler {
   // timer fires after stop() (reconnect() no-ops when not running), but
   // stop() clears it anyway so destroy doesn't leave a timer behind.
   reconnectStreaming(): void {
-    const task = this.schedulers.find(
-      (s) => s instanceof StreamingTask,
-    ) as StreamingTask | undefined
+    const task = this.schedulers.find((s) => s instanceof StreamingTask) as
+      | StreamingTask
+      | undefined
     if (!task) return
     clearTimeout(this.reconnectStreamingTimer)
     this.reconnectStreamingTimer = setTimeout(() => {

@@ -18,8 +18,9 @@ export class FetchEventSource implements EventSourceInstance {
   readyState: number = READY_STATE_CONNECTING
   onopen: ((ev: unknown) => void) | null = null
   onmessage: ((ev: MessageEventLike) => void) | null = null
-  onerror: ((ev: { status?: number; terminal?: boolean } | unknown) => void) | null =
-    null
+  onerror:
+    | ((ev: { status?: number; terminal?: boolean } | unknown) => void)
+    | null = null
 
   private readonly listeners = new Map<
     string,
@@ -197,7 +198,10 @@ export class FetchEventSource implements EventSourceInstance {
         // one char before the end next time, so a '\n\n' split across this
         // chunk and the next (one '\n' at the very end, the other at the
         // start of the next chunk) is still caught.
-        return { remainder: buffer, searchOffset: Math.max(0, buffer.length - 1) }
+        return {
+          remainder: buffer,
+          searchOffset: Math.max(0, buffer.length - 1),
+        }
       }
       this.dispatchBlock(buffer.slice(0, sepIndex))
       buffer = buffer.slice(sepIndex + 2)
