@@ -128,7 +128,19 @@ export class FetchEventSource implements EventSourceInstance {
   private async readStream(body: ReadableStream<Uint8Array>): Promise<void> {
     const reader = body.getReader()
     const decoder = new TextDecoder()
+    // Retained remainder, already normalized — never re-normalized (that was
+    // the quadratic cost: every chunk re-normalizing everything received so
+    // far). Only the newly-decoded chunk gets normalized before appending.
     let buffer = ''
+    // A trailing \r held back from the previous chunk may be half of a \r\n
+    // split across the chunk boundary — prepended to the next chunk's raw
+    // text before normalizing it (see the CRLF-split test).
+    let pendingCR = ''
+    // Resume point for the \n\n scan in parseBuffer(): the portion of buffer
+    // before this offset has already been searched and found clean, so it's
+    // never rescanned — avoids re-scanning a large, still-growing block on
+    // every chunk.
+    let searchOffset = 0
     try {
       while (this.readyState === READY_STATE_OPEN) {
         const { done, value } = await reader.read()
@@ -147,15 +159,16 @@ export class FetchEventSource implements EventSourceInstance {
         // wires es.onmessage unconditionally (see its openConnection()), so this
         // tick always reaches it regardless of what the caller registered.
         this.onmessage?.({ data: undefined })
-        buffer += decoder.decode(value, { stream: true })
-        // A trailing \r may be half of a \r\n split across chunks — hold it
-        // back so normalization can't turn one CRLF into two newlines.
-        let pendingCR = ''
-        if (buffer.endsWith('\r')) {
+        let chunkText = pendingCR + decoder.decode(value, { stream: true })
+        pendingCR = ''
+        if (chunkText.endsWith('\r')) {
           pendingCR = '\r'
-          buffer = buffer.slice(0, -1)
+          chunkText = chunkText.slice(0, -1)
         }
-        buffer = this.parseBuffer(normalizeLineEndings(buffer)) + pendingCR
+        buffer += normalizeLineEndings(chunkText)
+        const result = this.parseBuffer(buffer, searchOffset)
+        buffer = result.remainder
+        searchOffset = result.searchOffset
       }
     } finally {
       try {
@@ -166,44 +179,63 @@ export class FetchEventSource implements EventSourceInstance {
     }
   }
 
-  // Parses complete SSE events from the (LF-normalized) buffer.
-  // Returns the unconsumed remainder.
-  private parseBuffer(buffer: string): string {
-    const blocks = buffer.split(/\n\n/)
-    const remainder = blocks.pop() ?? ''
-    for (const block of blocks) {
-      if (!block.trim()) continue
-      // 'message' is not a name the backend chooses — it's the SSE/EventSource
-      // web standard's reserved default event type for a block with no
-      // `event:` line (WHATWG HTML spec, "Server-sent events"). A native
-      // browser EventSource dispatches such blocks via `.onmessage` /
-      // `addEventListener('message', ...)`; this mirrors that rule.
-      let eventName = 'message'
-      let hasEventLine = false
-      const dataLines: string[] = []
-      for (const line of block.split('\n')) {
-        if (line.startsWith('data:')) {
-          dataLines.push(line.slice(5).trimStart())
-        } else if (line.startsWith('event:')) {
-          eventName = line.slice(6).trim()
-          hasEventLine = true
-        }
-        // Comment lines (':') count as liveness via the per-chunk tick above
+  // Dispatches complete SSE events out of the (LF-normalized) buffer,
+  // scanning for the '\n\n' block separator with indexOf from searchFrom
+  // instead of splitting the whole buffer — the portion before searchFrom
+  // already went through a previous call and contained no separator, so it
+  // never needs rescanning. Returns the unconsumed remainder and the offset
+  // to resume scanning from next time.
+  private parseBuffer(
+    buffer: string,
+    searchFrom: number,
+  ): { remainder: string; searchOffset: number } {
+    let offset = searchFrom
+    while (true) {
+      const sepIndex = buffer.indexOf('\n\n', offset)
+      if (sepIndex === -1) {
+        // No complete block beyond what's already been scanned. Resume from
+        // one char before the end next time, so a '\n\n' split across this
+        // chunk and the next (one '\n' at the very end, the other at the
+        // start of the next chunk) is still caught.
+        return { remainder: buffer, searchOffset: Math.max(0, buffer.length - 1) }
       }
-      if (dataLines.length === 0) continue
-      const ev: MessageEventLike = { data: dataLines.join('\n') }
-      const handlers = this.listeners.get(eventName)
-      if (handlers && handlers.length > 0) {
-        handlers.forEach((h) => h(ev))
-      } else if (!hasEventLine) {
-        // Genuinely unnamed (no `event:` line) falls back to onmessage, per
-        // the SSE/EventSource standard. A NAMED event with no registered
-        // listener is dropped silently instead — same native EventSource
-        // semantics — so an unknown event name can never be misrouted into
-        // onmessage and misinterpreted as evaluation data.
-        this.onmessage?.(ev)
-      }
+      this.dispatchBlock(buffer.slice(0, sepIndex))
+      buffer = buffer.slice(sepIndex + 2)
+      offset = 0
     }
-    return remainder
+  }
+
+  private dispatchBlock(block: string): void {
+    if (!block.trim()) return
+    // 'message' is not a name the backend chooses — it's the SSE/EventSource
+    // web standard's reserved default event type for a block with no
+    // `event:` line (WHATWG HTML spec, "Server-sent events"). A native
+    // browser EventSource dispatches such blocks via `.onmessage` /
+    // `addEventListener('message', ...)`; this mirrors that rule.
+    let eventName = 'message'
+    let hasEventLine = false
+    const dataLines: string[] = []
+    for (const line of block.split('\n')) {
+      if (line.startsWith('data:')) {
+        dataLines.push(line.slice(5).trimStart())
+      } else if (line.startsWith('event:')) {
+        eventName = line.slice(6).trim()
+        hasEventLine = true
+      }
+      // Comment lines (':') count as liveness via the per-chunk tick above
+    }
+    if (dataLines.length === 0) return
+    const ev: MessageEventLike = { data: dataLines.join('\n') }
+    const handlers = this.listeners.get(eventName)
+    if (handlers && handlers.length > 0) {
+      handlers.forEach((h) => h(ev))
+    } else if (!hasEventLine) {
+      // Genuinely unnamed (no `event:` line) falls back to onmessage, per
+      // the SSE/EventSource standard. A NAMED event with no registered
+      // listener is dropped silently instead — same native EventSource
+      // semantics — so an unknown event name can never be misrouted into
+      // onmessage and misinterpreted as evaluation data.
+      this.onmessage?.(ev)
+    }
   }
 }
