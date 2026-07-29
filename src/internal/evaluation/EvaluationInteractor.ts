@@ -31,13 +31,19 @@ export class EvaluationInteractor {
     user: User,
     timeoutMillis?: number,
   ): Promise<GetEvaluationsResult> {
+    // Captured synchronously as the FIRST statement, before any await: the
+    // caller reads `user` in the same synchronous expression that invokes
+    // fetch(), so capturing here makes the user snapshot and this state
+    // snapshot atomic. Captured after an await instead, a
+    // setUserAttributesUpdated() landing in that gap would stamp this request
+    // with a sequence for attributes the request's user object doesn't carry —
+    // and the success-path clear below would then wipe a flag whose
+    // attributes were never sent. See EvaluationStorage.
+    // clearUserAttributesUpdated().
+    const attributesStateAtStart = this.evaluationStorage.getUserAttributesState()
     const currentEvaluationsId =
       await this.evaluationStorage.getCurrentEvaluationsId() ?? ''
     const evaluatedAt = await this.evaluationStorage.getEvaluatedAt() ?? '0'
-    // Captured before the request as one snapshot so a concurrent
-    // setUserAttributesUpdated() that lands while this request is in flight
-    // is detected below — see EvaluationStorage.clearUserAttributesUpdated().
-    const attributesStateAtStart = this.evaluationStorage.getUserAttributesState()
     const result = await this.apiClient.getEvaluations(
       {
         user,
