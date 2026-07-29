@@ -299,6 +299,61 @@ suite('internal/evaluation/EvaluationInteractor', () => {
 
       expect(capturedFlag).toBe(false)
     })
+
+    test('an updateUserAttributes() landing after fetch() starts must not have its flag cleared by that fetch', async () => {
+      // fetch()'s caller snapshots the user synchronously at the call site, so
+      // any attribute change that lands after fetch() begins was NOT carried
+      // by this request. The attributes-state snapshot must therefore be
+      // captured before fetch()'s first await — otherwise a set landing
+      // inside that window gets the request's sequence stamp and the
+      // success-path clear wipes a flag whose attributes were never sent.
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          return HttpResponse.json({
+            evaluations: {
+              ...user1Evaluations,
+              createdAt: clock.currentTimeMillis().toString(),
+            },
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+
+      await interactor.initialize()
+
+      // Hold fetch()'s first awaited storage read open so a
+      // setUserAttributesUpdated() call can land inside the pre-request window.
+      let releaseRead: () => void = () => {}
+      const realGetCurrentEvaluationsId =
+        evaluationStorage.getCurrentEvaluationsId.bind(evaluationStorage)
+      vi.spyOn(evaluationStorage, 'getCurrentEvaluationsId').mockImplementation(
+        async () => {
+          await new Promise<void>((resolve) => {
+            releaseRead = resolve
+          })
+          return realGetCurrentEvaluationsId()
+        },
+      )
+
+      const fetchPromise = interactor.fetch(user1)
+      // fetch() is parked inside its first await; this update lands after the
+      // request's user snapshot, so the request does not carry it.
+      await interactor.setUserAttributesUpdated()
+      releaseRead()
+
+      const result = await fetchPromise
+      assert(result.type === 'success')
+
+      // The flag belongs to attributes this request never sent — it must
+      // survive for the next request to pick up.
+      expect(
+        evaluationStorage.getUserAttributesState().userAttributesUpdated,
+      ).toBe(true)
+    })
   })
 
   suite('getLatest', () => {
