@@ -530,6 +530,28 @@ suite('internal/streaming/StreamingTask', () => {
     expect(FakeEventSource.instances).toHaveLength(2)
   })
 
+  test('a terminal error on a reconnect-opened stream leaves no stale recovery timer to reopen it (openStream() must clear the recovery timer armed by the earlier failure)', async () => {
+    // The onOpen path clears the recovery timer via stopFallback(), so the
+    // 'only one live connection' test above does not actually exercise
+    // openStream()'s own clearTimeout. This path does: the reconnect stream
+    // never opens — it fails terminally — so onOpen never runs, and
+    // handleError(terminal) does NOT re-arm recovery. Only openStream()'s
+    // entry clearTimeout can cancel the timer armed by the ORIGINAL failure,
+    // or it fires 5 min later and reopens a stream that was permanently dead.
+    const t = await startTask(buildComponent())
+
+    latest().onerror?.({ status: 402 }) // non-terminal → fallback + recovery armed
+    t.reconnect() // fallback mode → openStream() opens a fresh stream
+    expect(FakeEventSource.instances).toHaveLength(2)
+
+    latest().onerror?.({ status: 401 }) // reconnect stream fails terminally
+
+    // The original failure's recovery timer must have been cleared at reconnect;
+    // otherwise it fires here and opens a third connection on a dead stream.
+    vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
+    expect(FakeEventSource.instances).toHaveLength(2)
+  })
+
   test('onOpen clears the userAttributesUpdated flag using the state captured when the request was built', async () => {
     const component = buildComponent()
     await component.evaluationInteractor().initialize()
