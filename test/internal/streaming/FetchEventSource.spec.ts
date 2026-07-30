@@ -105,6 +105,36 @@ suite('internal/streaming/FetchEventSource', () => {
     expect(t.dataMessages()).toEqual([]) // must NOT reach onmessage
   })
 
+  test('an explicit "event: message" block reaches onmessage, matching native EventSource', async () => {
+    // A native EventSource dispatches any block whose type is 'message' —
+    // explicit or defaulted — through onmessage. StreamConnection never
+    // registers a 'message' listener, so an explicit event: message must fall
+    // back to onmessage, not be dropped like an unknown named event.
+    const es = new FetchEventSource(
+      'https://example.test/sse',
+      {},
+      fetchReturning(okResponse(streamOf('event: message\ndata: {"m":1}\n\n'))),
+    )
+    const t = instrument(es)
+
+    await until(t.ended)
+    expect(t.dataMessages()).toEqual([{ data: '{"m":1}' }])
+  })
+
+  test('an empty "event:" line falls back to the default message type and reaches onmessage', async () => {
+    // Per WHATWG, an empty event type buffer leaves the type as the default
+    // 'message' — so an empty event: line behaves like no event: line at all.
+    const es = new FetchEventSource(
+      'https://example.test/sse',
+      {},
+      fetchReturning(okResponse(streamOf('event:\ndata: {"m":2}\n\n'))),
+    )
+    const t = instrument(es)
+
+    await until(t.ended)
+    expect(t.dataMessages()).toEqual([{ data: '{"m":2}' }])
+  })
+
   test('event: patch block calls the patch listener', async () => {
     const es = new FetchEventSource(
       'https://example.test/sse',
