@@ -217,14 +217,15 @@ export class FetchEventSource implements EventSourceInstance {
     // browser EventSource dispatches such blocks via `.onmessage` /
     // `addEventListener('message', ...)`; this mirrors that rule.
     let eventName = 'message'
-    let hasEventLine = false
     const dataLines: string[] = []
     for (const line of block.split('\n')) {
       if (line.startsWith('data:')) {
         dataLines.push(line.slice(5).trimStart())
       } else if (line.startsWith('event:')) {
-        eventName = line.slice(6).trim()
-        hasEventLine = true
+        // An empty event type buffer leaves the type as the default
+        // 'message' (WHATWG), so an empty `event:` line behaves like none.
+        const name = line.slice(6).trim()
+        eventName = name === '' ? 'message' : name
       }
       // Comment lines (':') count as liveness via the per-chunk tick above
     }
@@ -233,12 +234,13 @@ export class FetchEventSource implements EventSourceInstance {
     const handlers = this.listeners.get(eventName)
     if (handlers && handlers.length > 0) {
       handlers.forEach((h) => h(ev))
-    } else if (!hasEventLine) {
-      // Genuinely unnamed (no `event:` line) falls back to onmessage, per
+    } else if (eventName === 'message') {
+      // The default 'message' type — whether from no `event:` line, an empty
+      // one, or an explicit `event: message` — falls back to onmessage, per
       // the SSE/EventSource standard. A NAMED event with no registered
-      // listener is dropped silently instead — same native EventSource
-      // semantics — so an unknown event name can never be misrouted into
-      // onmessage and misinterpreted as evaluation data.
+      // listener is dropped silently instead (its name is never 'message'),
+      // so an unknown event name can't be misrouted into onmessage and
+      // misinterpreted as evaluation data.
       this.onmessage?.(ev)
     }
   }
