@@ -58,18 +58,22 @@ export class EvaluationInteractor {
     )
 
     if (result.type === 'success') {
-      // Clear BEFORE applying/notifying: applyEvaluationsResponse() fires
-      // update listeners synchronously, and a listener that triggers a
-      // nested fetch (refresh-on-change pattern) must observe the flag
-      // already cleared — this request already carried it. Clearing after
-      // notifying (as a naive refactor would) lets that nested call re-send
-      // userAttributesUpdated:true and get back a redundant forceUpdate
-      // snapshot. Streamed data must never clear it (race) — only this,
-      // the polling/fetch path, does.
+      // Ordering carries two invariants. Write BEFORE clear: the response to
+      // a userAttributesUpdated:true request carries the re-evaluation the
+      // flag asked for, so a rejected write must skip the clear — the flag
+      // survives and the next poll retries. Clear BEFORE notify: a listener
+      // that triggers a nested fetch (refresh-on-change pattern) must
+      // observe the flag already cleared — this request already carried it —
+      // or the nested call re-sends userAttributesUpdated:true and gets back
+      // a redundant forceUpdate snapshot. Streamed data must never clear the
+      // flag (race) — only this, the polling/fetch path, does.
+      const changed = await this.writeEvaluations(result.value)
       await this.evaluationStorage.clearUserAttributesUpdated(
         attributesStateAtStart,
       )
-      await this.applyEvaluationsResponse(result.value)
+      if (changed) {
+        this.notifyListeners()
+      }
     }
 
     return result
@@ -81,29 +85,37 @@ export class EvaluationInteractor {
     // is awaited, so a stop()/destroy racing it must be able to suppress the
     // listener callbacks (which may run app code against a torn-down client).
     // The write itself is allowed to land — it's just unused cached data.
-    options?: { shouldNotify?: () => boolean },
+    shouldNotify: () => boolean = () => true,
   ): Promise<void> {
-    let changed: boolean
-    if (response.evaluations.forceUpdate) {
-      // A skipped stale forceUpdate (see EvaluationStorage.deleteAllAndInsert's
-      // staleness guard) must not notify — nothing changed.
-      changed = await this.evaluationStorage.deleteAllAndInsert(
-        response.userEvaluationsId,
-        response.evaluations.evaluations ?? [],
-        response.evaluations.createdAt,
-      )
-    } else {
-      changed = await this.evaluationStorage.update(
-        response.userEvaluationsId,
-        response.evaluations.evaluations ?? [],
-        response.evaluations.archivedFeatureIds ?? [],
-        response.evaluations.createdAt,
-      )
+    const changed = await this.writeEvaluations(response)
+    if (changed && shouldNotify()) {
+      this.notifyListeners()
     }
+  }
 
-    if (changed && (options?.shouldNotify?.() ?? true)) {
-      Object.values(this.updateListeners).forEach((listener) => listener())
+  // @returns whether anything changed. A skipped stale write (see
+  // EvaluationStorage's staleness guard) returns false — callers must not
+  // notify in that case.
+  private async writeEvaluations(
+    response: GetEvaluationsResponse,
+  ): Promise<boolean> {
+    if (response.evaluations.forceUpdate) {
+      return this.evaluationStorage.deleteAllAndInsert(
+        response.userEvaluationsId,
+        response.evaluations.evaluations ?? [],
+        response.evaluations.createdAt,
+      )
     }
+    return this.evaluationStorage.update(
+      response.userEvaluationsId,
+      response.evaluations.evaluations ?? [],
+      response.evaluations.archivedFeatureIds ?? [],
+      response.evaluations.createdAt,
+    )
+  }
+
+  private notifyListeners(): void {
+    Object.values(this.updateListeners).forEach((listener) => listener())
   }
 
   getLatest(featureId: string): Evaluation | null {

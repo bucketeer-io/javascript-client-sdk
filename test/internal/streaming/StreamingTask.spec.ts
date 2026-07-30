@@ -218,9 +218,7 @@ suite('internal/streaming/StreamingTask', () => {
     latest().emit('put', { data: JSON.stringify(response) })
     await Promise.resolve()
 
-    expect(apply).toHaveBeenCalledWith(response, {
-      shouldNotify: expect.any(Function),
-    })
+    expect(apply).toHaveBeenCalledWith(response, expect.any(Function))
   })
 
   test('patch event with valid JSON is applied via applyEvaluationsResponse', async () => {
@@ -238,9 +236,7 @@ suite('internal/streaming/StreamingTask', () => {
     latest().emit('patch', { data: JSON.stringify(response) })
     await Promise.resolve()
 
-    expect(apply).toHaveBeenCalledWith(response, {
-      shouldNotify: expect.any(Function),
-    })
+    expect(apply).toHaveBeenCalledWith(response, expect.any(Function))
   })
 
   test('error event is logged distinctly and never applied', async () => {
@@ -280,9 +276,7 @@ suite('internal/streaming/StreamingTask', () => {
     latest().onmessage?.({ data: JSON.stringify(response) })
     await Promise.resolve()
 
-    expect(apply).toHaveBeenCalledWith(response, {
-      shouldNotify: expect.any(Function),
-    })
+    expect(apply).toHaveBeenCalledWith(response, expect.any(Function))
   })
 
   test('data event with invalid JSON is ignored', async () => {
@@ -384,8 +378,8 @@ suite('internal/streaming/StreamingTask', () => {
     const component = buildComponent()
     let capturedShouldNotify: (() => boolean) | undefined
     vi.spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
-      .mockImplementation(async (_response, options) => {
-        capturedShouldNotify = options?.shouldNotify
+      .mockImplementation(async (_response, shouldNotify) => {
+        capturedShouldNotify = shouldNotify
       })
     const t = await startTask(component)
 
