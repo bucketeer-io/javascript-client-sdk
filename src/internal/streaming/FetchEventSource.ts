@@ -167,9 +167,11 @@ export class FetchEventSource implements EventSourceInstance {
           chunkText = chunkText.slice(0, -1)
         }
         buffer += normalizeLineEndings(chunkText)
-        const result = this.parseBuffer(buffer, searchOffset)
-        buffer = result.remainder
-        searchOffset = result.searchOffset
+        buffer = this.parseBuffer(buffer, searchOffset)
+        // Resume next scan from one char before the end, so a '\n\n' split
+        // across this chunk and the next (one '\n' at the very end, the other
+        // at the start of the next chunk) is still caught.
+        searchOffset = Math.max(0, buffer.length - 1)
       }
     } finally {
       try {
@@ -184,24 +186,15 @@ export class FetchEventSource implements EventSourceInstance {
   // scanning for the '\n\n' block separator with indexOf from searchFrom
   // instead of splitting the whole buffer — the portion before searchFrom
   // already went through a previous call and contained no separator, so it
-  // never needs rescanning. Returns the unconsumed remainder and the offset
-  // to resume scanning from next time.
-  private parseBuffer(
-    buffer: string,
-    searchFrom: number,
-  ): { remainder: string; searchOffset: number } {
+  // never needs rescanning. Returns the unconsumed remainder; the caller
+  // derives the next searchFrom from its length.
+  private parseBuffer(buffer: string, searchFrom: number): string {
     let offset = searchFrom
     while (true) {
       const sepIndex = buffer.indexOf('\n\n', offset)
       if (sepIndex === -1) {
-        // No complete block beyond what's already been scanned. Resume from
-        // one char before the end next time, so a '\n\n' split across this
-        // chunk and the next (one '\n' at the very end, the other at the
-        // start of the next chunk) is still caught.
-        return {
-          remainder: buffer,
-          searchOffset: Math.max(0, buffer.length - 1),
-        }
+        // No complete block beyond what's already been scanned.
+        return buffer
       }
       this.dispatchBlock(buffer.slice(0, sepIndex))
       buffer = buffer.slice(sepIndex + 2)

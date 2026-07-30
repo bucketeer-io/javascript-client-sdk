@@ -209,6 +209,22 @@ suite('internal/streaming/FetchEventSource', () => {
     expect(t.dataMessages()).toEqual([{ data: 'a\nb' }])
   })
 
+  test('a blank-line separator split across two chunks still produces two distinct events (the resume offset must back up one char so a split \\n\\n is caught)', async () => {
+    // Chunk 1 ends with the first '\n' of the '\n\n' block separator; chunk 2
+    // supplies the second '\n'. If the next scan resumed at the buffer end
+    // instead of one char before it, that separator is skipped and the two
+    // events wrongly merge into one { data: 'a\nb' }.
+    const es = new FetchEventSource(
+      'https://example.test/sse',
+      {},
+      fetchReturning(okResponse(streamOf('data: a\n', '\ndata: b\n\n'))),
+    )
+    const t = instrument(es)
+
+    await until(t.ended)
+    expect(t.dataMessages()).toEqual([{ data: 'a' }, { data: 'b' }])
+  })
+
   test('a payload delivered in many small chunks at arbitrary byte boundaries (including mid-CRLF) parses identically to one whole chunk (functional-equivalence guard for the quadratic-parsing fix)', async () => {
     const payload =
       'event: put\ndata: {"a":1}\n\n' +
