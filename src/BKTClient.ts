@@ -74,7 +74,6 @@ export interface BKTClient {
 
 export class BKTClientImpl implements BKTClient {
   taskScheduler: TaskScheduler | null = null
-  private destroyed = false
 
   constructor(public component: Component) {}
 
@@ -107,10 +106,12 @@ export class BKTClientImpl implements BKTClient {
       throw err
     }
     // destroyBKTClient() may have run while initialize() was pending (e.g.
-    // React 18 StrictMode mount/unmount). resetTasks() had nothing to stop
-    // back then, so stop here: scheduling now would leak an unstoppable
-    // stream and timers.
-    if (this.destroyed) return
+    // React 18 StrictMode mount/unmount). It synchronously clears the
+    // singleton, so if we are no longer the registered instance, a destroy
+    // (or a destroy + re-init) happened while we awaited — stop here, or
+    // scheduling now would leak an unstoppable stream and timers. Same
+    // identity check the catch block above uses.
+    if (getInstance() !== this) return
     this.scheduleTasks()
     return this.fetchEvaluations(timeoutMillis)
   }
@@ -341,11 +342,10 @@ export class BKTClientImpl implements BKTClient {
   }
 
   resetTasks(): void {
-    // Set unconditionally, before the null check: when destroy runs while
-    // initializeInternal() is still awaiting initialize(), taskScheduler is
-    // null and there is nothing to stop yet — the flag is what stops the
-    // resumed continuation from scheduling tasks on a destroyed client.
-    this.destroyed = true
+    // A destroy racing a pending initializeInternal() is handled there by an
+    // identity check after the await (getInstance() !== this), since
+    // destroyBKTClient() clears the singleton synchronously right after this
+    // call — so nothing extra is needed here when taskScheduler is still null.
     if (this.taskScheduler) {
       this.taskScheduler.stop()
       this.taskScheduler = null

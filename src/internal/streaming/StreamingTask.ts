@@ -94,14 +94,13 @@ export class StreamingTask implements ScheduledTask {
   // private
 
   private openStream(): void {
-    // Defensive at entry: every caller today already guarantees no live
-    // connection/timer (previously via stopFallback(), which cleared both),
-    // but reconnect()'s fallback branch and the recovery timer no longer call
-    // stopFallback() first — see those call sites. Without this, a pending
-    // recovery timer could fire after this method already opened a fresh
-    // connection and create a second, leaked StreamConnection.
-    this.connection?.stop()
-    this.connection = null
+    // Cancel any pending streaming-recovery timer at entry. reconnect()'s
+    // fallback branch and the recovery callback both open a stream without
+    // calling stopFallback() first, so a recovery timer armed earlier must be
+    // cleared here — otherwise it could fire after this opened a fresh
+    // connection and create a second, leaked one. (This clear is also what
+    // keeps every caller's precondition true: they all reach openStream()
+    // with this.connection === null, since no recovery timer can outlive it.)
     clearTimeout(this.recoveryTimer)
 
     const config = requiredInternalConfig(this.component.config())
