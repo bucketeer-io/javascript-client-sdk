@@ -1,14 +1,10 @@
 import { beforeEach, afterEach, expect, suite, test, vi } from 'vitest'
 
-import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
+import { BKTConfig } from '../../../src/BKTConfig'
 import { DefaultComponent } from '../../../src/internal/di/Component'
-import { DataModule } from '../../../src/internal/di/DataModule'
-import { InteractorModule } from '../../../src/internal/di/InteractorModule'
-import { requiredInternalConfig } from '../../../src/internal/InternalConfig'
 import { TaskScheduler } from '../../../src/internal/scheduler/TaskScheduler'
 import { StreamingTask } from '../../../src/internal/streaming/StreamingTask'
-import { TestPlatformModule } from '../../utils'
-import { user1 } from '../../mocks/users'
+import { buildTestComponent } from '../../utils'
 
 // Only reconnectStreaming()'s debounce is under test here — schedulers are
 // constructed but never start()ed, so their own network/timer side effects
@@ -18,26 +14,7 @@ suite('internal/scheduler/TaskScheduler', () => {
   let reconnectSpy: ReturnType<typeof vi.spyOn>
 
   function buildComponent(override: Partial<BKTConfig> = {}): DefaultComponent {
-    // Object.assign, not spread: the no-spread-after-defaults lint rule forbids
-    // spreading a source object over already-applied defaults.
-    const config = defineBKTConfig(
-      Object.assign(
-        {
-          apiKey: 'api_key_value',
-          apiEndpoint: 'https://api.bucketeer.io',
-          featureTag: 'feature_tag_value',
-          appVersion: '1.2.3',
-          enableStreaming: true,
-          fetch: () => new Promise(() => {}), // never used — schedulers aren't started
-        },
-        override,
-      ),
-    )
-    return new DefaultComponent(
-      new TestPlatformModule(),
-      new DataModule(user1, requiredInternalConfig(config)),
-      new InteractorModule(),
-    )
+    return buildTestComponent(override)
   }
 
   beforeEach(() => {

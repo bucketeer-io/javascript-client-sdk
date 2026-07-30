@@ -3,12 +3,17 @@ import { SetupServer, setupServer } from 'msw/node'
 import { Clock, DefaultClock } from '../src/internal/Clock'
 import { IdGenerator } from '../src/internal/IdGenerator'
 import { BKTClient, BKTClientImpl } from '../src/BKTClient'
+import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { Component, DefaultComponent } from '../src/internal/di/Component'
+import { DataModule } from '../src/internal/di/DataModule'
+import { InteractorModule } from '../src/internal/di/InteractorModule'
 import { EvaluationStorageImpl } from '../src/internal/evaluation/EvaluationStorage'
 import { EventStorageImpl } from '../src/internal/event/EventStorage'
 import { PlatformModule } from '../src/internal/di/PlatformModule'
+import { requiredInternalConfig } from '../src/internal/InternalConfig'
 import { NodeIdGenerator } from '../src/internal/IdGenerator.node'
 import { BrowserIdGenerator } from '../src/internal/IdGenerator.browser'
+import { user1 } from './mocks/users'
 
 export function setupServerAndListen(
   ...handlers: Array<RequestHandler>
@@ -80,6 +85,33 @@ export class TestPlatformModule implements PlatformModule {
     }
     return this._idGenerator
   }
+}
+
+// Shared component builder for the streaming/scheduler suites — same base
+// config on both; callers pass suite-specific overrides (e.g. StreamingTask
+// injects eventSource). Object.assign, not spread: the no-spread-after-defaults
+// lint rule forbids spreading a source object over already-applied defaults.
+export function buildTestComponent(
+  override: Partial<BKTConfig> = {},
+): DefaultComponent {
+  const config = defineBKTConfig(
+    Object.assign(
+      {
+        apiKey: 'api_key_value',
+        apiEndpoint: 'https://api.bucketeer.io',
+        featureTag: 'feature_tag_value',
+        appVersion: '1.2.3',
+        enableStreaming: true,
+        fetch: () => new Promise(() => {}), // never resolves; unused in these suites
+      },
+      override,
+    ),
+  )
+  return new DefaultComponent(
+    new TestPlatformModule(),
+    new DataModule(user1, requiredInternalConfig(config)),
+    new InteractorModule(),
+  )
 }
 
 export const getDefaultComponent = (client: BKTClient): DefaultComponent => {
