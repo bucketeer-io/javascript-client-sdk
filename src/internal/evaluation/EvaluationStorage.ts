@@ -50,11 +50,8 @@ export interface EvaluationStorage {
   initialize(): Promise<void>
 
   /**
-   * @returns false (a no-op) if evaluatedAt is strictly older than the
-   * currently stored value — a stale concurrent writer (e.g. the initial
-   * REST fetch racing the stream's first snapshot) must not rewind state. An
-   * equal timestamp still applies, since two patches computed in the same
-   * clock tick are not stale relative to each other.
+   * @returns false (a no-op) if the incoming write is stale — see isStale()
+   * for the full rule and rationale — otherwise true.
    */
   deleteAllAndInsert(
     evaluationsId: string,
@@ -62,9 +59,8 @@ export interface EvaluationStorage {
     evaluatedAt: string,
   ): Promise<boolean>
   /**
-   * @returns false if evaluatedAt is strictly older than the currently stored
-   * value (see deleteAllAndInsert()'s doc) — otherwise true iff something
-   * changed.
+   * @returns false if the incoming write is stale — see isStale() — otherwise
+   * true iff something changed.
    */
   update(
     evaluationsId: string,
