@@ -1,4 +1,4 @@
-import { expect, suite, test, beforeEach, afterEach } from 'vitest'
+import { expect, suite, test, beforeEach, afterEach, vi } from 'vitest'
 import {
   EvaluationEntity,
   EvaluationStorage,
@@ -569,6 +569,30 @@ suite('internal/evaluation/EvaluationStorage', () => {
     await evaluationStorage.clearUserAttributesUpdated(state)
 
     expect((await storage.get())?.userAttributesUpdated).toBeFalsy()
+  })
+
+  test('clearUserAttributesUpdated skips the storage write when the flag is already false (matching sequence, nothing to clear)', async () => {
+    // The common case: every stream (re)connect and every successful poll
+    // clears the flag, but it is usually already false — rewriting the whole
+    // evaluations map to storage to set false → false is pure waste.
+    await storage.set({
+      userId: 'user_id_1',
+      currentEvaluationsId: 'evaluations_id_1',
+      evaluations: {
+        [evaluation1.featureId]: evaluation1,
+      },
+      currentFeatureTag: 'feature_tag_1',
+      evaluatedAt: '1234567890',
+      userAttributesUpdated: false,
+    })
+    await evaluationStorage.initialize()
+    const setSpy = vi.spyOn(storage, 'set')
+
+    await evaluationStorage.clearUserAttributesUpdated(
+      evaluationStorage.getUserAttributesState(),
+    )
+
+    expect(setSpy).not.toHaveBeenCalled()
   })
 
   test('getUserAttributesState().updateSequence increments on every setUserAttributesUpdated call', async () => {

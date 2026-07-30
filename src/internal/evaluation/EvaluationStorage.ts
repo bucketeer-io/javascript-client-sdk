@@ -304,6 +304,12 @@ export class EvaluationStorageImpl implements EvaluationStorage {
         // latest attributes. Leave the flag set for the next request.
         return
       }
+      if (!entity.userAttributesUpdated) {
+        // Already false — the common case on every (re)connect/poll. Skip the
+        // write instead of re-serializing the whole evaluations map to set
+        // false → false.
+        return
+      }
       await this.saveAsync({
         ...entity,
         userAttributesUpdated: false,
