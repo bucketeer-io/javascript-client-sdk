@@ -279,6 +279,34 @@ suite('internal/streaming/StreamingTask', () => {
     expect(apply).toHaveBeenCalledWith(response, expect.any(Function))
   })
 
+  test('a payload that omits forceUpdate is applied (the backend may omit false booleans), routed through the update branch', async () => {
+    // A protobuf-JSON marshaler that drops zero-valued fields sends no
+    // forceUpdate key for a patch (forceUpdate=false). The shape check must
+    // accept the omission — the REST path already tolerates it — instead of
+    // silently dropping every streamed patch.
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    await startTask(component)
+
+    const payload = {
+      evaluations: {
+        id: 'evaluations_id',
+        evaluations: [],
+        archivedFeatureIds: [],
+        createdAt: '1700000000',
+        // no forceUpdate key
+      },
+      userEvaluationsId: 'user_evaluation_id_value',
+    }
+    latest().onopen?.({})
+    latest().emit('patch', { data: JSON.stringify(payload) })
+    await Promise.resolve()
+
+    expect(apply).toHaveBeenCalledWith(payload, expect.any(Function))
+  })
+
   test('data event with invalid JSON is ignored', async () => {
     const component = buildComponent()
     const apply = vi
@@ -304,8 +332,8 @@ suite('internal/streaming/StreamingTask', () => {
     for (const badPayload of [
       '{}',
       '{"userEvaluationsId":"x"}', // missing evaluations
-      '{"userEvaluationsId":"x","evaluations":{}}', // missing forceUpdate
       '{"userEvaluationsId":42,"evaluations":{"forceUpdate":false}}', // wrong type
+      '{"userEvaluationsId":"x","evaluations":null}', // evaluations not an object
       '[]',
       'null',
     ]) {
