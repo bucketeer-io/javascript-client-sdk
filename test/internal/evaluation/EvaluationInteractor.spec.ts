@@ -354,6 +354,47 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         evaluationStorage.getUserAttributesState().userAttributesUpdated,
       ).toBe(true)
     })
+
+    test('a failed storage write keeps userAttributesUpdated set, so the next poll retries the attribute-driven refresh', async () => {
+      // The server's response to a userAttributesUpdated:true request carries
+      // the re-evaluation the flag asked for. If persisting it fails (e.g.
+      // browser storage quota), the flag must NOT have been cleared yet —
+      // otherwise the next poll sends userAttributesUpdated:false and the
+      // re-evaluation is silently lost. Clear must come after the write.
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          return HttpResponse.json({
+            evaluations: {
+              id: '17388826713971171773',
+              evaluations: [evaluation2],
+              createdAt: clock.currentTimeMillis().toString(),
+              forceUpdate: true,
+              archivedFeatureIds: [],
+            },
+            userEvaluationsId: 'new_user_evaluation_id',
+          })
+        }),
+      )
+
+      await interactor.initialize()
+      await interactor.setUserAttributesUpdated()
+
+      vi.spyOn(evaluationStorage, 'deleteAllAndInsert').mockRejectedValue(
+        new Error('QuotaExceededError'),
+      )
+
+      await expect(interactor.fetch(user1)).rejects.toThrow(
+        'QuotaExceededError',
+      )
+
+      expect(
+        evaluationStorage.getUserAttributesState().userAttributesUpdated,
+      ).toBe(true)
+    })
   })
 
   suite('getLatest', () => {
@@ -725,7 +766,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       expect(mockListener).toBeCalledTimes(1)
     })
 
-    test('options.shouldNotify=() => false suppresses the listener but the storage write still lands', async () => {
+    test('shouldNotify=() => false suppresses the listener but the storage write still lands', async () => {
       // Regression for a destroy racing an in-flight apply (StreamingTask
       // passes shouldNotify: () => this.running): the write must not be lost,
       // only the listener callback — which could run app code against a
@@ -746,7 +787,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           },
           userEvaluationsId: 'new_user_evaluation_id',
         },
-        { shouldNotify: () => false },
+        () => false,
       )
 
       expect(mockListener).not.toHaveBeenCalled()
@@ -754,7 +795,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       expect(stored?.currentEvaluationsId).toBe('new_user_evaluation_id')
     })
 
-    test('options.shouldNotify=() => true behaves the same as omitting options', async () => {
+    test('shouldNotify=() => true behaves the same as omitting the argument', async () => {
       await seedStorage(false)
       const mockListener = vi.fn()
       interactor.addUpdateListener(mockListener)
@@ -770,7 +811,7 @@ suite('internal/evaluation/EvaluationInteractor', () => {
           },
           userEvaluationsId: 'new_user_evaluation_id',
         },
-        { shouldNotify: () => true },
+        () => true,
       )
 
       expect(mockListener).toHaveBeenCalledTimes(1)

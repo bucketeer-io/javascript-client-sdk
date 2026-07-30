@@ -270,9 +270,7 @@ export class StreamingTask implements ScheduledTask {
     // torn-down app code (the write itself may land — unused cached data).
     await this.component
       .evaluationInteractor()
-      .applyEvaluationsResponse(response, {
-        shouldNotify: () => this.running,
-      })
+      .applyEvaluationsResponse(response, () => this.running)
   }
 
   private startFallback(): void {
