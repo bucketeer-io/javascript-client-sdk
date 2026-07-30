@@ -66,10 +66,15 @@ export class StreamConnection {
   }
 
   // External reconnect (e.g. attribute change) — fresh request, reset backoff.
+  // Deliberately does NOT clear unhealthySince: an already-unhealthy connection
+  // must keep its UNHEALTHY_FALLBACK_TIMEOUT_MILLIS give-up deadline, or an app
+  // calling updateUserAttributes() more often than that window would postpone
+  // the polling fallback forever while the stream endpoint stays down. A
+  // healthy connection already has unhealthySince === 0, and markHealthy()
+  // keeps clearing it on real liveness, so this only affects the unhealthy case.
   reconnect(): void {
     if (!this.active) return
     this.backoff.reset()
-    this.unhealthySince = 0
     this.openConnection()
   }
 
