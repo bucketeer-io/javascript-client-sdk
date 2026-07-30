@@ -397,6 +397,72 @@ suite('internal/streaming/StreamConnection — health model', () => {
     expect(onError).toHaveBeenCalledTimes(1)
   })
 
+  test('external reconnect() must NOT reset the unhealthy give-up window — attribute-driven reconnects while the endpoint is down still fall back', () => {
+    // Simulates a down stream endpoint while the app calls
+    // updateUserAttributes() more often than the 120s give-up window. Each
+    // update triggers an external reconnect(); if reconnect() forgives the
+    // unhealthy window, onError (→ the polling fallback) is starved forever.
+    // The window must survive external reconnects. Each cycle is spaced 60s —
+    // under both the 120s give-up window and the 70s watchdog — so only
+    // reconnect() drives the connection churn, not auto-backoff/watchdog.
+    const conn = startConnection()
+
+    // t=0: first recoverable failure starts the unhealthy clock, then an
+    // attribute update reconnects immediately (cancelling the backoff retry).
+    latest().onerror?.({ status: 500 })
+    conn.reconnect()
+
+    vi.advanceTimersByTime(60_000) // t=60
+    latest().onerror?.({ status: 500 })
+    conn.reconnect()
+
+    vi.advanceTimersByTime(60_000) // t=120: 120s unhealthy is not yet > 120s
+    latest().onerror?.({ status: 500 })
+    expect(onError).not.toHaveBeenCalled()
+    conn.reconnect()
+
+    vi.advanceTimersByTime(60_000) // t=180: 180s of continuous unhealth
+    latest().onerror?.({ status: 500 })
+
+    // Give up: 180s > 120s since the first failure. The reconnects must not
+    // have reset the window — otherwise onError never fires and the polling
+    // fallback is starved for as long as the app keeps updating attributes.
+    expect(onError).toHaveBeenCalledWith({ terminal: false })
+  })
+
+  test('a reconnect whose connection recovers and delivers data clears the unhealthy window — a recovered stream does not fall back', () => {
+    // Companion to the give-up case above. Preserving the unhealthy clock
+    // across reconnect() must not prevent a genuine recovery: once real bytes
+    // arrive on a reopened connection (markHealthy), the give-up horizon is
+    // forgotten, so the stream keeps running instead of falling back — even
+    // though more than 120s have passed since the first failure.
+    const conn = startConnection()
+
+    // Down for two attribute-driven reconnect cycles (well into the window).
+    latest().onerror?.({ status: 500 }) // t=0: unhealthy clock starts
+    conn.reconnect()
+    vi.advanceTimersByTime(60_000) // t=60
+    latest().onerror?.({ status: 500 })
+    conn.reconnect()
+
+    // t=120: this reconnect's connection actually opens and delivers a byte.
+    vi.advanceTimersByTime(60_000)
+    latest().onopen?.({})
+    latest().onmessage?.({ data: undefined }) // liveness → clears the window
+    expect(onOpen).toHaveBeenCalled()
+
+    // Stay alive well past the original 120s horizon; a fed watchdog keeps it up.
+    for (let i = 0; i < 4; i++) {
+      vi.advanceTimersByTime(60_000)
+      latest().onmessage?.({ data: undefined })
+    }
+
+    // No fallback, and no connection churn: the recovered stream is stable.
+    expect(onError).not.toHaveBeenCalled()
+    expect(FakeEventSource.instances).toHaveLength(3)
+    expect(latest().closed).toBe(false)
+  })
+
   test('events and errors from a stale (replaced) EventSource instance are ignored', () => {
     startConnection()
     const stale = latest()
