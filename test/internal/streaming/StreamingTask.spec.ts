@@ -1,10 +1,7 @@
 import { expect, suite, test, vi, beforeEach, afterEach } from 'vitest'
 
-import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
+import { BKTConfig } from '../../../src/BKTConfig'
 import { DefaultComponent } from '../../../src/internal/di/Component'
-import { DataModule } from '../../../src/internal/di/DataModule'
-import { InteractorModule } from '../../../src/internal/di/InteractorModule'
-import { requiredInternalConfig } from '../../../src/internal/InternalConfig'
 import { SourceId } from '../../../src/internal/model/SourceId'
 import { EvaluationTask } from '../../../src/internal/scheduler/EvaluationTask'
 import {
@@ -17,7 +14,7 @@ import {
 import { StreamingTask } from '../../../src/internal/streaming/StreamingTask'
 import { SDK_VERSION } from '../../../src/internal/version'
 import { FetchLike } from '../../../src/internal/remote/fetch'
-import { TestPlatformModule } from '../../utils'
+import { buildTestComponent } from '../../utils'
 import { user1 } from '../../mocks/users'
 import { user1Evaluations } from '../../mocks/evaluations'
 
@@ -102,27 +99,14 @@ suite('internal/streaming/StreamingTask', () => {
   })
 
   function buildComponent(override: Partial<BKTConfig> = {}): DefaultComponent {
-    // Object.assign, not spread: the no-spread-after-defaults lint rule forbids
-    // spreading a source over already-applied defaults. Overriding with an
-    // explicit undefined (e.g. eventSource) is intentional here.
-    const config = defineBKTConfig(
+    // Injects the FakeEventSource by default; the shared builder applies the
+    // rest. Object.assign, not spread, so an override can still set eventSource
+    // (e.g. to undefined) without tripping the no-spread-after-defaults rule.
+    return buildTestComponent(
       Object.assign(
-        {
-          apiKey: 'api_key_value',
-          apiEndpoint: 'https://api.bucketeer.io',
-          featureTag: 'feature_tag_value',
-          appVersion: '1.2.3',
-          enableStreaming: true,
-          eventSource: FakeEventSource as unknown as EventSourceLike,
-          fetch: () => new Promise(() => {}), // never used with the injected fake
-        },
+        { eventSource: FakeEventSource as unknown as EventSourceLike },
         override,
       ),
-    )
-    return new DefaultComponent(
-      new TestPlatformModule(),
-      new DataModule(user1, requiredInternalConfig(config)),
-      new InteractorModule(),
     )
   }
 
