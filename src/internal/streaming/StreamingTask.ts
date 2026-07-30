@@ -15,6 +15,9 @@ const RECOVERY_INTERVAL_MILLIS = 5 * 60_000
 // Minimal structural check, not full validation: just enough to stop a
 // misrouted/malformed payload from being blind-cast and handed to
 // EvaluationStorage's writes. See handleData()'s defense-in-depth comment.
+// forceUpdate is allowed to be absent: a protobuf-JSON marshaler that omits
+// zero-valued fields sends no key for forceUpdate=false, and the write path
+// treats a missing forceUpdate as false — same tolerance as the REST path.
 function isGetEvaluationsResponseShape(
   value: unknown,
 ): value is GetEvaluationsResponse {
@@ -23,9 +26,8 @@ function isGetEvaluationsResponseShape(
   if (typeof response.userEvaluationsId !== 'string') return false
   const evaluations = response.evaluations
   if (typeof evaluations !== 'object' || evaluations === null) return false
-  return (
-    typeof (evaluations as Record<string, unknown>).forceUpdate === 'boolean'
-  )
+  const forceUpdate = (evaluations as Record<string, unknown>).forceUpdate
+  return forceUpdate === undefined || typeof forceUpdate === 'boolean'
 }
 
 export class StreamingTask implements ScheduledTask {
