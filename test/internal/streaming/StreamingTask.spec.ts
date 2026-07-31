@@ -110,7 +110,7 @@ suite('internal/streaming/StreamingTask', () => {
     )
   }
 
-  // Mirrors the real init order (BKTClient.ts's initializeInternal()):
+  // Mirrors the real init order (BKTClient.ts's initializeBKTClientInternal()):
   // evaluationInteractor().initialize() always resolves before any task's
   // start() can read the cache. StreamingTask.start() synchronously reads it
   // via buildRequest() → getCurrentEvaluationsCondition(), which throws if
