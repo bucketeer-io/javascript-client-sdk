@@ -193,7 +193,7 @@ suite('BKTClient', () => {
       // buildRequest() -> getCurrentEvaluationsCondition(), which throws if
       // called before evaluationInteractor().initialize() has resolved. A
       // StreamingTask-only unit test can't catch a regression here — the bug
-      // lives in BKTClientImpl.initializeInternal()'s ordering, external to
+      // lives in initializeBKTClientInternal()'s ordering, external to
       // StreamingTask itself — so this goes through the real
       // initializeBKTClientInternal() entry point instead.
       class FakeEventSourceForInit implements EventSourceInstance {

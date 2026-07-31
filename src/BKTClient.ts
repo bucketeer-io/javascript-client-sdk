@@ -77,41 +77,33 @@ export class BKTClientImpl implements BKTClient {
 
   constructor(public component: Component) {}
 
-  async initializeInternal(timeoutMillis: number): Promise<void> {
-    // Order matters: scheduleTasks() must run AFTER initialize(), not before.
-    // scheduleTasks() starts StreamingTask (when enableStreaming), whose start()
-    // synchronously opens the first connection and reads the evaluation cache
-    // via EvaluationStorage.getCurrentEvaluationsCondition() — which throws if
-    // the cache isn't loaded yet, same contract as getCurrentEvaluationsId() /
-    // getEvaluatedAt(). Swapping this back reintroduces a synchronous crash on
-    // every app startup with enableStreaming: true. (Polling's EvaluationTask
-    // never had this constraint: EvaluationTask.start() only arms a timer, its
-    // real first cache read is the explicit fetchEvaluations() call below,
-    // which was already sequenced after this await.)
-    try {
-      await this.component.evaluationInteractor().initialize()
-    } catch (err) {
-      // Fatal: without a loaded evaluation cache the client can never work.
-      // Remove the singleton so a retry of initializeBKTClient() actually
-      // re-initializes instead of silently no-oping on the dead instance —
-      // but only if this client is still the registered one (a destroy +
-      // re-initialize may have replaced it while initialize() was pending,
-      // in which case this rejection belongs to an already-orphaned attempt
-      // and must not clear the new client). A first-fetch timeout below is a
-      // normal, documented rejection and must NOT tear the singleton down;
-      // only this phase may.
-      if (getInstance() === this) {
-        clearInstance()
-      }
-      throw err
-    }
-    // destroyBKTClient() may have run while initialize() was pending (e.g.
-    // React 18 StrictMode mount/unmount). It synchronously clears the
-    // singleton, so if we are no longer the registered instance, a destroy
-    // (or a destroy + re-init) happened while we awaited — stop here, or
-    // scheduling now would leak an unstoppable stream and timers. Same
-    // identity check the catch block above uses.
-    if (getInstance() !== this) return
+  /**
+   * Fatal init phase: load the evaluation cache. This MUST resolve before
+   * scheduleAndFetch() runs. scheduleAndFetch() -> scheduleTasks() starts
+   * StreamingTask (when enableStreaming), whose start() synchronously opens
+   * the first connection and reads the evaluation cache via
+   * EvaluationStorage.getCurrentEvaluationsCondition() — which throws if the
+   * cache isn't loaded yet, same contract as getCurrentEvaluationsId() /
+   * getEvaluatedAt(). Scheduling before this resolves reintroduces a
+   * synchronous crash on every app startup with enableStreaming: true.
+   * (Polling's EvaluationTask never had this constraint: EvaluationTask.start()
+   * only arms a timer, its real first cache read is the explicit
+   * fetchEvaluations() call in scheduleAndFetch(), already sequenced after
+   * this.) initializeBKTClientInternal() owns that ordering — it awaits
+   * initializeCache() before calling scheduleAndFetch().
+   */
+  async initializeCache(): Promise<void> {
+    await this.component.evaluationInteractor().initialize()
+  }
+
+  /**
+   * Normal init phase: start the background tasks, then run the first fetch.
+   * Only call after initializeCache() has resolved (see its ordering note).
+   * A first-fetch timeout rejecting here is normal and must NOT tear the
+   * singleton down — that is why initializeBKTClientInternal() only clears the
+   * singleton on an initializeCache() failure, never on this.
+   */
+  scheduleAndFetch(timeoutMillis: number): Promise<void> {
     this.scheduleTasks()
     return this.fetchEvaluations(timeoutMillis)
   }
@@ -342,10 +334,11 @@ export class BKTClientImpl implements BKTClient {
   }
 
   resetTasks(): void {
-    // A destroy racing a pending initializeInternal() is handled there by an
-    // identity check after the await (getInstance() !== this), since
-    // destroyBKTClient() clears the singleton synchronously right after this
-    // call — so nothing extra is needed here when taskScheduler is still null.
+    // A destroy racing a pending initializeBKTClientInternal() is handled there
+    // by an identity check after the initializeCache() await (getInstance() !==
+    // client), since destroyBKTClient() clears the singleton synchronously right
+    // after this call — so nothing extra is needed here when taskScheduler is
+    // still null.
     if (this.taskScheduler) {
       this.taskScheduler.stop()
       this.taskScheduler = null
@@ -400,18 +393,41 @@ export const getBKTClient = (): BKTClient | null => {
   return getInstance()
 }
 
-export const initializeBKTClientInternal = (
+export const initializeBKTClientInternal = async (
   component: Component,
   timeoutMillis = 5_000,
 ): Promise<void> => {
   if (getInstance()) {
-    return Promise.resolve()
+    return
   }
 
   const client = new BKTClientImpl(component)
   setInstance(client)
 
-  return client.initializeInternal(timeoutMillis)
+  try {
+    await client.initializeCache()
+  } catch (err) {
+    // Fatal: without a loaded evaluation cache the client can never work.
+    // Remove the singleton so a retry of initializeBKTClient() actually
+    // re-initializes instead of silently no-oping on the dead instance — but
+    // only if this client is still the registered one (a destroy + re-init may
+    // have replaced it while initializeCache() was pending, in which case this
+    // rejection belongs to an already-orphaned attempt and must not clear the
+    // new client).
+    if (getInstance() === client) {
+      clearInstance()
+    }
+    throw err
+  }
+
+  // destroyBKTClient() may have run while initializeCache() was pending (e.g.
+  // React 18 StrictMode mount/unmount). It synchronously clears the singleton,
+  // so if we are no longer the registered instance, a destroy (or a destroy +
+  // re-init) happened while we awaited — stop here, or scheduling now would
+  // leak an unstoppable stream and timers. Same identity check the catch block
+  // above uses.
+  if (getInstance() !== client) return
+  return client.scheduleAndFetch(timeoutMillis)
 }
 
 export const destroyBKTClient = (): void => {

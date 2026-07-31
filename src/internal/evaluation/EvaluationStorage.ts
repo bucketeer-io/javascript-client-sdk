@@ -76,10 +76,11 @@ export interface EvaluationStorage {
   /**
    * Synchronous cache read for the streaming request builder. Throws before
    * initialize(), same contract as getCurrentEvaluationsId() / getEvaluatedAt()
-   * above — safe because BKTClientImpl.initializeInternal() guarantees
-   * initialize() always resolves before any task (including StreamingTask's
-   * first connect) can reach this storage. See the ordering comment on
-   * initializeInternal() in BKTClient.ts before changing that guarantee.
+   * above — safe because initializeBKTClientInternal() guarantees initialize()
+   * always resolves before any task (including StreamingTask's first connect)
+   * can reach this storage. See the ordering comment on
+   * BKTClientImpl.initializeCache() in BKTClient.ts before changing that
+   * guarantee.
    */
   getCurrentEvaluationsCondition(): {
     currentEvaluationsId: string | null

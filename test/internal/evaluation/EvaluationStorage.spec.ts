@@ -412,9 +412,10 @@ suite('internal/evaluation/EvaluationStorage', () => {
 
   suite('getCurrentEvaluationsCondition', () => {
     test('throws before initialize() — same contract as the other getters', () => {
-      // BKTClientImpl.initializeInternal() guarantees initialize() always
-      // resolves before any task (including StreamingTask's first connect)
-      // can reach this storage — see the ordering comment there.
+      // initializeBKTClientInternal() guarantees initialize() always resolves
+      // before any task (including StreamingTask's first connect) can reach
+      // this storage — see the ordering comment on
+      // BKTClientImpl.initializeCache().
       expect(() => evaluationStorage.getCurrentEvaluationsCondition()).toThrow(
         'Cache Evaluation entity is not loaded. Call initialize() first.',
       )
