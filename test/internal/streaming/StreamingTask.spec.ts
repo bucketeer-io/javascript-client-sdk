@@ -318,11 +318,43 @@ suite('internal/streaming/StreamingTask', () => {
       '{"userEvaluationsId":"x"}', // missing evaluations
       '{"userEvaluationsId":42,"evaluations":{"forceUpdate":false}}', // wrong type
       '{"userEvaluationsId":"x","evaluations":null}', // evaluations not an object
+      '{"userEvaluationsId":"x","evaluations":{"forceUpdate":false}}', // missing createdAt
+      '{"userEvaluationsId":"x","evaluations":{"createdAt":1700000000,"forceUpdate":false}}', // createdAt not a string
       '[]',
       'null',
     ]) {
       latest().onmessage?.({ data: badPayload })
     }
+    await Promise.resolve()
+
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  test('a payload missing createdAt is dropped instead of corrupting the staleness guard', async () => {
+    // createdAt becomes evaluatedAt in storage. A missing/non-string value would
+    // otherwise be accepted (Number(undefined) is NaN, and isStale()'s NaN
+    // comparison is always false), writing evaluatedAt: undefined into the cache —
+    // which then makes every SUBSEQUENT write pass the staleness guard too,
+    // permanently disabling it for this user. This test documents that specific
+    // failure mode, not just "wrong shape is ignored" (the test above).
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    await startTask(component)
+
+    const payload = {
+      evaluations: {
+        id: 'evaluations_id',
+        evaluations: [],
+        archivedFeatureIds: [],
+        // no createdAt
+        forceUpdate: false,
+      },
+      userEvaluationsId: 'user_evaluation_id_value',
+    }
+    latest().onopen?.({})
+    latest().emit('patch', { data: JSON.stringify(payload) })
     await Promise.resolve()
 
     expect(apply).not.toHaveBeenCalled()
@@ -397,7 +429,7 @@ suite('internal/streaming/StreamingTask', () => {
 
     latest().onopen?.({})
     latest().emit('put', {
-      data: '{"evaluations":{"forceUpdate":false},"userEvaluationsId":"x"}',
+      data: '{"evaluations":{"createdAt":"1700000000","forceUpdate":false},"userEvaluationsId":"x"}',
     })
     await Promise.resolve()
 
