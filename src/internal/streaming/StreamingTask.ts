@@ -18,6 +18,12 @@ const RECOVERY_INTERVAL_MILLIS = 5 * 60_000
 // forceUpdate is allowed to be absent: a protobuf-JSON marshaler that omits
 // zero-valued fields sends no key for forceUpdate=false, and the write path
 // treats a missing forceUpdate as false — same tolerance as the REST path.
+// createdAt, unlike forceUpdate, is REQUIRED: it becomes evaluatedAt in storage,
+// and EvaluationStorage.isStale() compares it via Number(...) — a missing/non-string
+// value coerces to NaN, and any NaN comparison is false, so the staleness guard
+// would silently accept the write instead of rejecting it. Worse, once evaluatedAt
+// is corrupted to undefined, every SUBSEQUENT write also passes that same NaN
+// comparison, permanently disabling the guard for that user's cache.
 function isGetEvaluationsResponseShape(
   value: unknown,
 ): value is GetEvaluationsResponse {
@@ -26,8 +32,9 @@ function isGetEvaluationsResponseShape(
   if (typeof response.userEvaluationsId !== 'string') return false
   const evaluations = response.evaluations
   if (typeof evaluations !== 'object' || evaluations === null) return false
-  const forceUpdate = (evaluations as Record<string, unknown>).forceUpdate
-  return forceUpdate === undefined || typeof forceUpdate === 'boolean'
+  const e = evaluations as Record<string, unknown>
+  if (typeof e.createdAt !== 'string') return false
+  return e.forceUpdate === undefined || typeof e.forceUpdate === 'boolean'
 }
 
 export class StreamingTask implements ScheduledTask {
