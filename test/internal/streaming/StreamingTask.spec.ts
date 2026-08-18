@@ -115,7 +115,9 @@ suite('internal/streaming/StreamingTask', () => {
   // start() can read the cache. StreamingTask.start() synchronously reads it
   // via buildRequest() → getCurrentEvaluationsCondition(), which throws if
   // called too early — so tests must initialize() first, same as real usage.
-  async function startTask(component: DefaultComponent): Promise<StreamingTask> {
+  async function startTask(
+    component: DefaultComponent,
+  ): Promise<StreamingTask> {
     await component.evaluationInteractor().initialize()
     task = new StreamingTask(component)
     task.start()
@@ -164,9 +166,7 @@ suite('internal/streaming/StreamingTask', () => {
   })
 
   test('without config.eventSource the built-in FetchEventSource is used', async () => {
-    const fetchImpl = vi.fn(
-      () => new Promise(() => {}),
-    ) as unknown as FetchLike
+    const fetchImpl = vi.fn(() => new Promise(() => {})) as unknown as FetchLike
     const component = buildComponent({
       eventSource: undefined,
       fetch: fetchImpl,
@@ -374,9 +374,10 @@ suite('internal/streaming/StreamingTask', () => {
       globalThis.addEventListener('unhandledrejection', browserListener)
     }
     try {
-      vi
-        .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
-        .mockRejectedValue(new Error('storage failure'))
+      vi.spyOn(
+        component.evaluationInteractor(),
+        'applyEvaluationsResponse',
+      ).mockRejectedValue(new Error('storage failure'))
       await startTask(component)
 
       const response = {
@@ -421,10 +422,12 @@ suite('internal/streaming/StreamingTask', () => {
     // suppress the update listeners once that write resolves.
     const component = buildComponent()
     let capturedShouldNotify: (() => boolean) | undefined
-    vi.spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
-      .mockImplementation(async (_response, shouldNotify) => {
-        capturedShouldNotify = shouldNotify
-      })
+    vi.spyOn(
+      component.evaluationInteractor(),
+      'applyEvaluationsResponse',
+    ).mockImplementation(async (_response, shouldNotify) => {
+      capturedShouldNotify = shouldNotify
+    })
     const t = await startTask(component)
 
     latest().onopen?.({})
@@ -709,7 +712,6 @@ suite('internal/streaming/StreamingTask', () => {
     expect(FakeEventSource.instances).toHaveLength(1)
     expect(evaluationTaskStop).not.toHaveBeenCalled()
   })
-
 
   test('stop() stops connection, fallback, and recovery', async () => {
     const t = await startTask(buildComponent())
