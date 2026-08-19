@@ -57,4 +57,25 @@ describe('instance - page lifecycle cleanup', () => {
     // Verify first cleanup wasn't called again
     expect(mockCleanup1).toHaveBeenCalledTimes(1)
   })
+
+  it('should invoke the previous cleanup before it gets overwritten by a new one', () => {
+    const mockCleanup1 = vi.fn()
+    const mockCleanup2 = vi.fn()
+
+    setPageLifecycleCleanup(mockCleanup1)
+    setPageLifecycleCleanup(mockCleanup2)
+
+    // Setting a new cleanup while one is already stored should invoke the
+    // old one immediately, since overwriting it silently would orphan its
+    // listeners with no remaining reference to remove them.
+    expect(mockCleanup1).toHaveBeenCalledTimes(1)
+    expect(mockCleanup2).not.toHaveBeenCalled()
+    expect(getPageLifecycleCleanup()).toBe(mockCleanup2)
+
+    clearPageLifecycleCleanup()
+
+    expect(mockCleanup2).toHaveBeenCalledTimes(1)
+    // The old cleanup should not be invoked a second time.
+    expect(mockCleanup1).toHaveBeenCalledTimes(1)
+  })
 })

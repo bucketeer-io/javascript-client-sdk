@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { SetupServer } from 'msw/node'
-import { initializeBKTClient, onPageLifecycleFlush } from '../src/main.browser'
+import {
+  initializeBKTClient,
+  onPageLifecycleFlush,
+  destroyBKTClient,
+} from '../src/main.browser'
 import { defineBKTConfig } from '../src/BKTConfig'
 import { defineBKTUser } from '../src/BKTUser'
 import { setupServerAndListen } from './utils'
@@ -18,6 +22,10 @@ describe('main.browser - initializeBKTClient integration', () => {
     if (typeof window === 'undefined') {
       global.window = {} as typeof window
     }
+    // The singleton in src/internal/instance.ts is module-level state that
+    // outlives a single test (vitest isolates per file, not per test), so
+    // reset it before every test rather than only on failure paths.
+    destroyBKTClient()
   })
 
   afterEach(() => {
@@ -110,6 +118,57 @@ describe('main.browser - initializeBKTClient integration', () => {
     expect(setupListenersSpy).not.toHaveBeenCalled()
 
     // Verify setPageLifecycleCleanup was NOT called
+    expect(setCleanupSpy).not.toHaveBeenCalled()
+  })
+
+  it('should NOT wire page lifecycle listeners when the client is destroyed while init is still pending', async () => {
+    // Gate the response so the fetch stays in flight until we manually release it.
+    let releaseResponse: () => void
+    const responseGate = new Promise<void>((resolve) => {
+      releaseResponse = resolve
+    })
+
+    server.use(
+      http.post<Record<string, never>, never, GetEvaluationsResponse>(
+        `https://api.bucketeer.io/get_evaluations`,
+        async () => {
+          await responseGate
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        },
+      ),
+    )
+
+    const config = defineBKTConfig({
+      apiKey: 'api_key_value',
+      apiEndpoint: 'https://api.bucketeer.io',
+      featureTag: 'feature_tag_value',
+      appVersion: '1.2.3',
+      enableAutoPageLifecycleFlush: true,
+    })
+
+    const user = defineBKTUser({ id: 'user_id_1' })
+
+    const instanceModule = await import('../src/internal/instance')
+    const setCleanupSpy = vi.spyOn(instanceModule, 'setPageLifecycleCleanup')
+
+    const pageLifecycleModule = await import('../src/utils/pageLifecycle')
+    const setupListenersSpy = vi
+      .spyOn(pageLifecycleModule, 'setupPageLifecycleListeners')
+      .mockReturnValue(vi.fn())
+
+    // Start init but don't await it yet, then destroy while it's still pending.
+    const initPromise = initializeBKTClient(config, user)
+    destroyBKTClient()
+
+    releaseResponse!()
+    await initPromise
+
+    // The client was destroyed before init resolved, so the listeners it
+    // would have wired should never be attached.
+    expect(setupListenersSpy).not.toHaveBeenCalled()
     expect(setCleanupSpy).not.toHaveBeenCalled()
   })
 })

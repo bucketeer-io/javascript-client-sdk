@@ -64,8 +64,18 @@ export const initializeBKTClient = async (
   const component = createBrowserComponent(config, toUser(user))
   await initializeBKTClientInternal(component, timeoutMillis)
 
-  // Auto-setup page lifecycle listeners if enabled
-  if (config.enableAutoPageLifecycleFlush && typeof window !== 'undefined') {
+  // Auto-setup page lifecycle listeners if enabled, and only if a client is
+  // still registered after the await (it may have been destroyed while init
+  // was pending). Note this checks that *some* client is registered, not
+  // that it's specifically this call's client; that's fine because
+  // onPageLifecycleFlush always reads the current client rather than a
+  // captured one, and setPageLifecycleCleanup tears down any prior listener
+  // set before storing a new one.
+  if (
+    config.enableAutoPageLifecycleFlush &&
+    typeof window !== 'undefined' &&
+    getBKTClient() !== null
+  ) {
     const cleanup = setupPageLifecycleListeners({
       onFlush: onPageLifecycleFlush,
     })
