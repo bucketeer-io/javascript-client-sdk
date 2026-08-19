@@ -9,7 +9,6 @@ import {
   vi,
   beforeAll,
   afterAll,
-  describe,
 } from 'vitest'
 
 import { destroyBKTClient } from '../../../src/BKTClient'
@@ -24,6 +23,7 @@ import { InteractorModule } from '../../../src/internal/di/InteractorModule'
 import { user1 } from '../../mocks/users'
 import { requiredInternalConfig } from '../../../src/internal/InternalConfig'
 import { ApiId } from '../../../src/internal/model/MetricsEventData'
+import { SendEventsResult } from '../../../src/internal/event/SendEventResult'
 
 suite('internal/scheduler/EventTask', () => {
   let server: SetupServer
@@ -134,40 +134,99 @@ suite('internal/scheduler/EventTask', () => {
   })
 
   test('stop should cancel timer', async () => {
-    describe('start', async () => {
-      let requestCount = 0
-      server.use(
-        http.post<
-          Record<string, never>,
-          RegisterEventsRequest,
-          RegisterEventsResponse
+    let requestCount = 0
+    server.use(
+      http.post<
+        Record<string, never>,
+        RegisterEventsRequest,
+        RegisterEventsResponse
         >(`${config.apiEndpoint}/register_events`, () => {
-          requestCount++
+        requestCount++
         return HttpResponse.json({})
-        }),
+      }),
+    )
+
+    task = new EventTask(component)
+
+    task.start()
+
+    component
+      .eventInteractor()
+      .trackDefaultEvaluationEvent(
+        'feature_tag_value',
+        user1,
+        'variation_id_value',
+        'ERROR_FLAG_NOT_FOUND',
       )
 
-      task = new EventTask(component)
+    task.stop()
 
-      task.start()
+    expect(requestCount).toBe(0)
 
-      component
-        .eventInteractor()
-        .trackDefaultEvaluationEvent(
-          'feature_tag_value',
-          user1,
-          'variation_id_value',
-          'ERROR_FLAG_NOT_FOUND',
-        )
+    await vi.runOnlyPendingTimersAsync()
 
-      task.stop()
+    expect(requestCount).toBe(0)
+    expect(task.isRunning()).toBe(false)
+  })
 
-      expect(requestCount).toBe(0)
+  test('stop() while a force-flush is in flight does not reschedule afterward', async () => {
+    let resolveSend: (result: SendEventsResult) => void = () => {}
+    vi.spyOn(component.eventInteractor(), 'sendEvents').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSend = resolve
+        }),
+    )
 
-      await vi.runOnlyPendingTimersAsync()
+    task = new EventTask(component)
+    task.start()
 
-      expect(requestCount).toBe(0)
-      expect(task.isRunning()).toBe(false)
-    })
+    // advance to the flush-interval timer so it fires and calls the
+    // now-mocked sendEvents(true), which is now in flight
+    await vi.advanceTimersByTimeAsync(config.eventsFlushInterval)
+
+    task.stop()
+    expect(task.isRunning()).toBe(false)
+
+    // let the orphaned flush resolve after stop()
+    resolveSend({ type: 'success', sent: true })
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // the now-orphaned completion handler must not arm a new timer
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  test('stop() while an eventUpdateListener flush is in flight does not reschedule afterward', async () => {
+    let resolveSend: (result: SendEventsResult) => void = () => {}
+    vi.spyOn(component.eventInteractor(), 'sendEvents').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSend = resolve
+        }),
+    )
+
+    task = new EventTask(component)
+    task.start()
+
+    // invoke the private listener directly rather than relying on the
+    // real queue-size threshold to trigger it
+    const listener = task['eventUpdateListener'] as unknown as (
+      events: unknown[],
+    ) => Promise<void>
+    const pending = listener([])
+
+    task.stop()
+    expect(task.isRunning()).toBe(false)
+    // start() armed the flush-interval timer; stop() must have cleared it
+    expect(vi.getTimerCount()).toBe(0)
+
+    // let the orphaned flush resolve after stop(), reporting it was sent
+    resolveSend({ type: 'success', sent: true })
+    await pending
+    await Promise.resolve()
+
+    // the "sent" branch must not arm a new timer after stop()
+    expect(vi.getTimerCount()).toBe(0)
   })
 })
