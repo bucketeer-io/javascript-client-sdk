@@ -171,12 +171,14 @@ suite('internal/scheduler/EventTask', () => {
 
   test('stop() while a force-flush is in flight does not reschedule afterward', async () => {
     let resolveSend: (result: SendEventsResult) => void = () => {}
-    vi.spyOn(component.eventInteractor(), 'sendEvents').mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveSend = resolve
-        }),
-    )
+    const sendEventsSpy = vi
+      .spyOn(component.eventInteractor(), 'sendEvents')
+      .mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSend = resolve
+          }),
+      )
 
     task = new EventTask(component)
     task.start()
@@ -184,6 +186,7 @@ suite('internal/scheduler/EventTask', () => {
     // advance to the flush-interval timer so it fires and calls the
     // now-mocked sendEvents(true), which is now in flight
     await vi.advanceTimersByTimeAsync(config.eventsFlushInterval)
+    expect(sendEventsSpy).toHaveBeenCalledWith(true)
 
     task.stop()
     expect(task.isRunning()).toBe(false)
@@ -199,12 +202,14 @@ suite('internal/scheduler/EventTask', () => {
 
   test('stop() while an eventUpdateListener flush is in flight does not reschedule afterward', async () => {
     let resolveSend: (result: SendEventsResult) => void = () => {}
-    vi.spyOn(component.eventInteractor(), 'sendEvents').mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveSend = resolve
-        }),
-    )
+    const sendEventsSpy = vi
+      .spyOn(component.eventInteractor(), 'sendEvents')
+      .mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSend = resolve
+          }),
+      )
 
     task = new EventTask(component)
     task.start()
@@ -215,6 +220,7 @@ suite('internal/scheduler/EventTask', () => {
       events: unknown[],
     ) => Promise<void>
     const pending = listener([])
+    expect(sendEventsSpy).toHaveBeenCalledWith(false)
 
     task.stop()
     expect(task.isRunning()).toBe(false)
