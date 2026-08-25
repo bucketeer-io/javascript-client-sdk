@@ -15,6 +15,7 @@ export class EventTask implements ScheduledTask {
   private eventUpdateListener: EventUpdateListener = async (_) => {
     // send events if the cache exceeded the limit
     const result = await this.component.eventInteractor().sendEvents(false)
+    if (!this.running) return // guard: stop() may have run while this was in flight
     if (result.type === 'success' && result.sent) {
       // reschedule the background task if event is actually sent.
       this.reschedule()
@@ -29,6 +30,7 @@ export class EventTask implements ScheduledTask {
         .eventInteractor()
         .sendEvents(true)
         .then(() => {
+          if (!this.running) return // guard: stop() may have run while this was in flight
           this.reschedule()
         })
     }, this.component.config().eventsFlushInterval)
