@@ -41,13 +41,16 @@ describe('main.browser - initializeBKTClient integration', () => {
     if (typeof window === 'undefined') {
       global.window = {} as typeof window
     }
-    // The singleton in src/internal/instance.ts is module-level state that
-    // outlives a single test (vitest isolates per file, not per test), so
-    // reset it before every test rather than only on failure paths.
-    destroyBKTClient()
   })
 
   afterEach(() => {
+    // The singleton in src/internal/instance.ts is module-level state that
+    // outlives a single test (vitest isolates per file, not per test). A
+    // test that initializes a client also starts its real TaskScheduler
+    // timers, so it must be destroyed here rather than only in beforeEach:
+    // beforeEach never runs after the last test in the block, which would
+    // leave that client's timers running past afterAll's server.close().
+    destroyBKTClient()
     server.resetHandlers()
     vi.restoreAllMocks()
   })
