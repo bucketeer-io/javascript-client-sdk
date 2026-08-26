@@ -1,4 +1,13 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeAll,
+  beforeEach,
+  afterEach,
+  afterAll,
+} from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { SetupServer } from 'msw/node'
 import {
@@ -10,14 +19,24 @@ import { defineBKTConfig } from '../src/BKTConfig'
 import { defineBKTUser } from '../src/BKTUser'
 import { setupServerAndListen } from './utils'
 import { GetEvaluationsResponse } from '../src/internal/model/response/GetEvaluationsResponse'
+import { GetEvaluationsRequest } from '../src/internal/model/request/GetEvaluationsRequest'
 import { user1Evaluations } from './mocks/evaluations'
 import { BKTClient } from '../src/BKTClient'
 
 describe('main.browser - initializeBKTClient integration', () => {
   let server: SetupServer
 
-  beforeEach(() => {
+  // Every other spec file in this repo creates the MSW server once in
+  // beforeAll and resets/closes it in afterEach/afterAll. This file used to
+  // create (and never close) a brand-new server per test instead: with
+  // several never-closed servers left listening at once, a request could
+  // end up intercepted by an earlier test's leftover handler instead of the
+  // current test's, which made response-timing-sensitive tests unreliable.
+  beforeAll(() => {
     server = setupServerAndListen()
+  })
+
+  beforeEach(() => {
     // Mock window for browser tests
     if (typeof window === 'undefined') {
       global.window = {} as typeof window
@@ -29,7 +48,12 @@ describe('main.browser - initializeBKTClient integration', () => {
   })
 
   afterEach(() => {
+    server.resetHandlers()
     vi.restoreAllMocks()
+  })
+
+  afterAll(() => {
+    server.close()
   })
 
   it('should call setPageLifecycleCleanup when enableAutoPageLifecycleFlush is true', async () => {
@@ -168,6 +192,95 @@ describe('main.browser - initializeBKTClient integration', () => {
 
     // The client was destroyed before init resolved, so the listeners it
     // would have wired should never be attached.
+    expect(setupListenersSpy).not.toHaveBeenCalled()
+    expect(setCleanupSpy).not.toHaveBeenCalled()
+  })
+
+  it('should NOT wire page lifecycle listeners when a stale init resolves after a different client has already finished initializing', async () => {
+    const configA = defineBKTConfig({
+      apiKey: 'api_key_value',
+      apiEndpoint: 'https://api.bucketeer.io',
+      featureTag: 'feature_tag_value_a',
+      appVersion: '1.2.3',
+      enableAutoPageLifecycleFlush: true,
+    })
+    const configB = defineBKTConfig({
+      apiKey: 'api_key_value',
+      apiEndpoint: 'https://api.bucketeer.io',
+      featureTag: 'feature_tag_value_b',
+      appVersion: '1.2.3',
+      enableAutoPageLifecycleFlush: false,
+    })
+
+    const user = defineBKTUser({ id: 'user_id_1' })
+
+    // Gate both A's and B's requests independently (identified by their
+    // featureTag in the request body, sent as GetEvaluationsRequest.tag),
+    // so the test controls exactly when each resolves instead of relying
+    // on which one happens to reach the real fetch() first.
+    let releaseAResponse: () => void
+    const aResponseGate = new Promise<void>((resolve) => {
+      releaseAResponse = resolve
+    })
+    let releaseBResponse: () => void
+    const bResponseGate = new Promise<void>((resolve) => {
+      releaseBResponse = resolve
+    })
+
+    server.use(
+      http.post<Record<string, never>, GetEvaluationsRequest, GetEvaluationsResponse>(
+        `https://api.bucketeer.io/get_evaluations`,
+        async ({ request }) => {
+          const body = (await request.json()) as GetEvaluationsRequest
+          if (body.tag === configA.featureTag) {
+            await aResponseGate
+          } else if (body.tag === configB.featureTag) {
+            await bResponseGate
+          }
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        },
+      ),
+    )
+
+    const instanceModule = await import('../src/internal/instance')
+    const setCleanupSpy = vi.spyOn(instanceModule, 'setPageLifecycleCleanup')
+
+    const pageLifecycleModule = await import('../src/utils/pageLifecycle')
+    const setupListenersSpy = vi
+      .spyOn(pageLifecycleModule, 'setupPageLifecycleListeners')
+      .mockReturnValue(vi.fn())
+
+    // 1. Start init for client A. Its request is gated and stays pending.
+    const initPromiseA = initializeBKTClient(configA, user)
+
+    // 2. Destroy while A's init is still pending: clears the singleton and
+    //    stops A's scheduler, but does NOT cancel A's in-flight promise.
+    destroyBKTClient()
+
+    // 3. Re-init as client B. Its request is gated too, so this call stays
+    //    pending until we explicitly release it below.
+    const initPromiseB = initializeBKTClient(configB, user)
+
+    // 4. Let B finish completely before touching A's stale response, so the
+    //    ordering of "B finished" vs "A finally resolves" is deterministic.
+    releaseBResponse!()
+    await initPromiseB
+
+    // Sanity check: B's own init correctly skipped listener wiring.
+    expect(setupListenersSpy).not.toHaveBeenCalled()
+    expect(setCleanupSpy).not.toHaveBeenCalled()
+
+    // 5. Only now release A's stale gated response.
+    // initializeBKTClient(configA, ...) resumes with clientB (not clientA,
+    // and not null) as the current singleton.
+    releaseAResponse!()
+    await initPromiseA
+
+    // A's stale resolution must NOT wire listeners on B's behalf, even
+    // though getBKTClient() is non-null (it's B's client, not A's).
     expect(setupListenersSpy).not.toHaveBeenCalled()
     expect(setCleanupSpy).not.toHaveBeenCalled()
   })
