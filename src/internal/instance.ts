@@ -18,6 +18,12 @@ export const clearInstance = () => {
 }
 
 export const setPageLifecycleCleanup = (cleanup: () => void) => {
+  // Invoke any cleanup already stored before replacing it, otherwise its
+  // listeners become permanently unremovable once this map entry is gone.
+  const existing = _cleanup.get(CLEANUP_KEY)
+  if (existing) {
+    existing()
+  }
   _cleanup.set(CLEANUP_KEY, cleanup)
 }
 

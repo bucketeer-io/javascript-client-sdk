@@ -62,10 +62,31 @@ export const initializeBKTClient = async (
   timeoutMillis = 5_000,
 ): Promise<void> => {
   const component = createBrowserComponent(config, toUser(user))
-  await initializeBKTClientInternal(component, timeoutMillis)
 
-  // Auto-setup page lifecycle listeners if enabled
-  if (config.enableAutoPageLifecycleFlush && typeof window !== 'undefined') {
+  // Capture the client this call is responsible for *before* awaiting.
+  // initializeBKTClientInternal runs synchronously up to setInstance() (or
+  // short-circuits because a client already exists) before it ever returns
+  // a promise, so getBKTClient() here already reflects the right instance
+  // for this call.
+  const initPromise = initializeBKTClientInternal(component, timeoutMillis)
+  const client = getBKTClient()
+  await initPromise
+
+  // Auto-setup page lifecycle listeners if enabled, and only if the client
+  // this call registered is still the current one after the await. A plain
+  // non-null check on getBKTClient() is not enough: while this call was
+  // pending, the client could have been destroyed and a different
+  // initializeBKTClient() call could have created and finished initializing
+  // its own client in the meantime. getBKTClient() would then be non-null
+  // (that other call's client) even though this call's client is gone, and
+  // we must not wire listeners -- or override what that other call decided
+  // -- on its behalf.
+  if (
+    config.enableAutoPageLifecycleFlush &&
+    typeof window !== 'undefined' &&
+    client &&
+    getBKTClient() === client
+  ) {
     const cleanup = setupPageLifecycleListeners({
       onFlush: onPageLifecycleFlush,
     })
