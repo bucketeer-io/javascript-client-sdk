@@ -12,6 +12,34 @@ export interface EvaluationEntity {
   userAttributesUpdated: boolean
 }
 
+// Guards against a stale concurrent writer (e.g. the initial REST fetch
+// racing the stream's first snapshot) rewinding state. Strictly older only —
+// an equal evaluatedAt still applies, since two patches computed in the same
+// clock tick are not stale relative to each other, and dropping an
+// equal-timestamp write would be a worse failure than the race this guards
+// against. `Number()` is safe for the observed decimal-millisecond-string
+// format, far below 2^53.
+function isStale(entity: EvaluationEntity, evaluatedAt: string): boolean {
+  return (
+    entity.evaluatedAt !== null &&
+    Number(evaluatedAt) < Number(entity.evaluatedAt)
+  )
+}
+
+/**
+ * Snapshot of the userAttributesUpdated flag paired with the sequence number
+ * it was read at. Mirrors the Android/iOS SDKs' UserAttributesState (same
+ * field names, incl. updateSequence) — bundled into one value so callers
+ * can't accidentally read the flag and sequence at inconsistent points. Pass
+ * the whole snapshot back to clearUserAttributesUpdated() so a request built
+ * from a stale snapshot can't clear a flag set by a later
+ * setUserAttributesUpdated() call.
+ */
+export interface UserAttributesState {
+  userAttributesUpdated: boolean
+  updateSequence: number
+}
+
 export interface EvaluationStorage {
   getByFeatureId(featureId: string): Evaluation | null
 
@@ -21,11 +49,19 @@ export interface EvaluationStorage {
    */
   initialize(): Promise<void>
 
+  /**
+   * @returns false (a no-op) if the incoming write is stale — see isStale()
+   * for the full rule and rationale — otherwise true.
+   */
   deleteAllAndInsert(
     evaluationsId: string,
     evaluations: Evaluation[],
     evaluatedAt: string,
-  ): Promise<void>
+  ): Promise<boolean>
+  /**
+   * @returns false if the incoming write is stale — see isStale() — otherwise
+   * true iff something changed.
+   */
   update(
     evaluationsId: string,
     evaluations: Evaluation[],
@@ -38,13 +74,50 @@ export interface EvaluationStorage {
   getEvaluatedAt(): Promise<string | null>
 
   /**
+   * Synchronous cache read for the streaming request builder. Throws before
+   * initialize(), same contract as getCurrentEvaluationsId() / getEvaluatedAt()
+   * above — safe because initializeBKTClientInternal() guarantees initialize()
+   * always resolves before any task (including StreamingTask's first connect)
+   * can reach this storage. See the ordering comment on
+   * BKTClientImpl.initializeCache() in BKTClient.ts before changing that
+   * guarantee.
+   */
+  getCurrentEvaluationsCondition(): {
+    currentEvaluationsId: string | null
+    evaluatedAt: string | null
+  }
+
+  /**
    * @returns true if featureTag has been updated
    */
   updateFeatureTag(featureTag: string): Promise<boolean>
 
   setUserAttributesUpdated(): Promise<void>
-  getUserAttributesUpdated(): Promise<boolean>
-  clearUserAttributesUpdated(): Promise<void>
+
+  /**
+   * Synchronous cache read, same contract as getCurrentEvaluationsCondition()
+   * above — deliberately not mutex-guarded. Two reasons: (1)
+   * StreamingTask.buildRequest() must call this synchronously, with no
+   * `await` anywhere in that call chain, so this can't become async; (2) a
+   * synchronous read with no `await` inside it can't be interrupted by a
+   * concurrent write in a single-threaded runtime, so no mutex is needed for
+   * the read itself to be internally consistent. The tradeoff: it only
+   * reflects a setUserAttributesUpdated() call once that call has been
+   * awaited by its caller (not the instant it's called) — true today, since
+   * the only real caller, BKTClient.updateUserAttributes(), always awaits it.
+   * Capture the returned snapshot before starting a request and pass it back
+   * to clearUserAttributesUpdated() so a stale in-flight request can't clear
+   * a flag set by a later setUserAttributesUpdated() call.
+   */
+  getUserAttributesState(): UserAttributesState
+
+  /**
+   * No-ops if state.updateSequence no longer matches the current sequence,
+   * i.e. a setUserAttributesUpdated() call happened after state was captured
+   * — that means the caller's request didn't carry the latest attributes, so
+   * the flag must survive for the next request to pick up.
+   */
+  clearUserAttributesUpdated(state: UserAttributesState): Promise<void>
 
   clear(): Promise<void>
 }
@@ -63,6 +136,12 @@ export class EvaluationStorageImpl implements EvaluationStorage {
    * It is set to null when the storage is cleared.
    */
   public cacheEvaluationEntity: EvaluationEntity | null = null
+
+  /**
+   * In-memory only (no persistence/migration needed) — bumped by every
+   * setUserAttributesUpdated() call. See clearUserAttributesUpdated().
+   */
+  private updateSequence = 0
 
   async initialize(): Promise<void> {
     if (this.cacheEvaluationEntity) {
@@ -100,9 +179,10 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     evaluationsId: string,
     evaluations: Evaluation[],
     evaluatedAt: string,
-  ): Promise<void> {
-    await runWithMutex(this.mutex, async () => {
+  ): Promise<boolean> {
+    return await runWithMutex(this.mutex, async () => {
       const entity = this.getCachedEvaluationEntity()
+      if (isStale(entity, evaluatedAt)) return false
       const updated: EvaluationEntity = {
         ...entity,
         userId: this.userId,
@@ -116,6 +196,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
         evaluatedAt,
       }
       await this.saveAsync(updated)
+      return true
     })
   }
 
@@ -127,6 +208,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   ): Promise<boolean> {
     return await runWithMutex(this.mutex, async () => {
       const entity = this.getCachedEvaluationEntity()
+      if (isStale(entity, evaluatedAt)) return false
 
       // remove archived evaluations
       const activeEvaluations = Object.fromEntries(
@@ -163,6 +245,17 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     return this.getCachedEvaluationEntity().evaluatedAt
   }
 
+  getCurrentEvaluationsCondition(): {
+    currentEvaluationsId: string | null
+    evaluatedAt: string | null
+  } {
+    const entity = this.getCachedEvaluationEntity()
+    return {
+      currentEvaluationsId: entity.currentEvaluationsId,
+      evaluatedAt: entity.evaluatedAt,
+    }
+  }
+
   async updateFeatureTag(featureTag: string): Promise<boolean> {
     return await runWithMutex(this.mutex, async () => {
       const entity = this.getCachedEvaluationEntity()
@@ -183,6 +276,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   async setUserAttributesUpdated(): Promise<void> {
     await runWithMutex(this.mutex, async () => {
       const entity = this.getCachedEvaluationEntity()
+      this.updateSequence++
       await this.saveAsync({
         ...entity,
         userAttributesUpdated: true,
@@ -190,16 +284,29 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     })
   }
 
-  async getUserAttributesUpdated(): Promise<boolean> {
-    return await runWithMutex(this.mutex, async () => {
-      const entity = this.getCachedEvaluationEntity()
-      return entity.userAttributesUpdated
-    })
+  getUserAttributesState(): UserAttributesState {
+    const entity = this.getCachedEvaluationEntity()
+    return {
+      userAttributesUpdated: entity.userAttributesUpdated,
+      updateSequence: this.updateSequence,
+    }
   }
 
-  async clearUserAttributesUpdated(): Promise<void> {
+  async clearUserAttributesUpdated(state: UserAttributesState): Promise<void> {
     await runWithMutex(this.mutex, async () => {
       const entity = this.getCachedEvaluationEntity()
+      if (this.updateSequence !== state.updateSequence) {
+        // A setUserAttributesUpdated() call landed after state was captured
+        // — this clear belongs to a now-stale request that didn't carry the
+        // latest attributes. Leave the flag set for the next request.
+        return
+      }
+      if (!entity.userAttributesUpdated) {
+        // Already false — the common case on every (re)connect/poll. Skip the
+        // write instead of re-serializing the whole evaluations map to set
+        // false → false.
+        return
+      }
       await this.saveAsync({
         ...entity,
         userAttributesUpdated: false,

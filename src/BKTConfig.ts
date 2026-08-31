@@ -7,6 +7,7 @@ import {
 } from './internal/InternalConfig'
 import { IdGenerator } from './internal/IdGenerator'
 import { FetchLike } from './internal/remote/fetch'
+import { EventSourceLike } from './internal/streaming/EventSourceLike'
 import { SDK_VERSION } from './internal/version'
 
 const MINIMUM_FLUSH_INTERVAL_MILLIS = 10_000 // 10 seconds
@@ -58,6 +59,18 @@ export interface RawBKTConfig {
   // The sourceID is used to identify the origin of the request.
   wrapperSdkSourceId?: number
   idGenerator?: IdGenerator
+
+  // Optional custom EventSource implementation for SSE streaming.
+  // If omitted, the SDK uses its built-in FetchEventSource (fetch + ReadableStream).
+  // Provide this only if you have a POST-capable SSE library you prefer to use.
+  eventSource?: EventSourceLike
+
+  // Enable SSE streaming as the evaluation update mechanism (default: false).
+  // When true, StreamingTask replaces EvaluationTask as the main scheduler.
+  enableStreaming?: boolean
+
+  // When streaming fails or is unavailable, fall back to polling (default: true).
+  streamingFallbackToPolling?: boolean
 }
 
 export interface BKTConfig extends RawBKTConfig {
@@ -69,6 +82,8 @@ export interface BKTConfig extends RawBKTConfig {
   fetch: FetchLike
   storageFactory: <T>(key: string) => BKTStorage<T>
   enableAutoPageLifecycleFlush: boolean
+  enableStreaming: boolean
+  streamingFallbackToPolling: boolean
 }
 
 const defaultUserAgent = () => {
@@ -100,6 +115,8 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     fetch: config.fetch ?? globalThis.fetch,
     storageFactory: config.storageFactory ?? createBKTStorage,
     enableAutoPageLifecycleFlush: config.enableAutoPageLifecycleFlush ?? true,
+    enableStreaming: config.enableStreaming ?? false,
+    streamingFallbackToPolling: config.streamingFallbackToPolling ?? true,
   }
 
   // Advanced properties: only included when explicitly set (not undefined)
@@ -112,6 +129,9 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
   }
   if (config.idGenerator !== undefined) {
     result.idGenerator = config.idGenerator
+  }
+  if (config.eventSource !== undefined) {
+    result.eventSource = config.eventSource
   }
 
   // Validate required properties

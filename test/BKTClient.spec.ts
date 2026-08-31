@@ -12,6 +12,7 @@ import {
   vi,
 } from 'vitest'
 import {
+  BKTClientImpl,
   defaultStringToTypeConverter,
   destroyBKTClient,
   getBKTClient,
@@ -50,6 +51,13 @@ import { InteractorModule } from '../src/internal/di/InteractorModule'
 import { BKTEvaluationDetails } from '../src/BKTEvaluationDetails'
 import { requiredInternalConfig } from '../src/internal/InternalConfig'
 import { SourceId } from '../src/internal/model/SourceId'
+import {
+  EventSourceErrorLike,
+  EventSourceInstance,
+  EventSourceLike,
+  EventSourceLikeInit,
+  MessageEventLike,
+} from '../src/internal/streaming/EventSourceLike'
 
 suite('BKTClient', () => {
   let server: SetupServer
@@ -178,6 +186,173 @@ suite('BKTClient', () => {
       await initializeBKTClientInternal(component, 1000)
 
       await initializeBKTClientInternal(component, 1000)
+    })
+
+    test('streaming: first connect does not throw even though StreamingTask starts before the fetchEvaluations() call (regression guard for the init-ordering bug)', async () => {
+      // StreamingTask.start() synchronously reads the evaluation cache via
+      // buildRequest() -> getCurrentEvaluationsCondition(), which throws if
+      // called before evaluationInteractor().initialize() has resolved. A
+      // StreamingTask-only unit test can't catch a regression here — the bug
+      // lives in initializeBKTClientInternal()'s ordering, external to
+      // StreamingTask itself — so this goes through the real
+      // initializeBKTClientInternal() entry point instead.
+      class FakeEventSourceForInit implements EventSourceInstance {
+        static instances: FakeEventSourceForInit[] = []
+        readyState = 0
+        onopen: ((ev: unknown) => void) | null = null
+        onmessage: ((ev: MessageEventLike) => void) | null = null
+        onerror: ((ev: EventSourceErrorLike | unknown) => void) | null = null
+        constructor(
+          public readonly url: string,
+          public readonly init?: EventSourceLikeInit,
+        ) {
+          FakeEventSourceForInit.instances.push(this)
+        }
+        addEventListener(): void {}
+        removeEventListener(): void {}
+        close(): void {}
+      }
+
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+
+      const streamingConfig = defineBKTConfig({
+        apiKey: 'api_key_value',
+        apiEndpoint: 'https://api.bucketeer.io',
+        featureTag: 'feature_tag_value',
+        appVersion: '1.2.3',
+        enableStreaming: true,
+        eventSource: FakeEventSourceForInit as unknown as EventSourceLike,
+        fetch,
+      })
+      const streamingComponent = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(user1, requiredInternalConfig(streamingConfig)),
+        new InteractorModule(),
+      )
+
+      await initializeBKTClientInternal(streamingComponent, 1000)
+
+      expect(FakeEventSourceForInit.instances).toHaveLength(1)
+      const body = JSON.parse(
+        FakeEventSourceForInit.instances[0].init?.body ?? '',
+      )
+      // Fresh in-memory storage, no evaluations cached yet — proto3 zero
+      // values. The point isn't the exact values, it's that buildRequest()'s
+      // synchronous cache read succeeded instead of throwing.
+      expect(body.userEvaluationsId).toBe('')
+      expect(body.evaluatedAt).toBe('0')
+    })
+
+    test('destroyBKTClient() while evaluationInteractor().initialize() is still pending never schedules tasks (regression: React 18 StrictMode mount/unmount leak)', async () => {
+      let resolveInitialize: () => void = () => {}
+      const initializePromise = new Promise<void>((resolve) => {
+        resolveInitialize = resolve
+      })
+      vi.spyOn(component.evaluationInteractor(), 'initialize').mockReturnValue(
+        initializePromise,
+      )
+      const fetchSpy = vi.spyOn(component.evaluationInteractor(), 'fetch')
+
+      // Don't await yet: setInstance() runs synchronously before the pending
+      // initialize() await, so getBKTClient() is already populated here.
+      const initPromise = initializeBKTClientInternal(component, 1000)
+      const client = getBKTClient() as unknown as BKTClientImpl
+      expect(client).not.toBeNull()
+
+      // destroyBKTClient() races the pending initialize(): with the old
+      // ordering this had nothing to stop yet (taskScheduler was still null)
+      // and the resumed continuation would schedule tasks anyway.
+      destroyBKTClient()
+      expect(getBKTClient()).toBeNull()
+
+      resolveInitialize()
+      await initPromise
+
+      expect(client.taskScheduler).toBeNull()
+      expect(fetchSpy).not.toHaveBeenCalled()
+    })
+
+    test('evaluationInteractor().initialize() rejecting clears the singleton so a retry actually re-initializes (regression: silent no-op on retry)', async () => {
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+
+      const initSpy = vi
+        .spyOn(component.evaluationInteractor(), 'initialize')
+        .mockRejectedValueOnce(new Error('storage corrupted'))
+
+      await expect(
+        initializeBKTClientInternal(component, 1000),
+      ).rejects.toThrow('storage corrupted')
+      // Without the fix, the singleton stays registered here and the retry
+      // below silently no-ops via `if (getInstance()) return Promise.resolve()`.
+      expect(getBKTClient()).toBeNull()
+
+      await initializeBKTClientInternal(component, 1000)
+      expect(getBKTClient()).not.toBeNull()
+      expect(initSpy).toHaveBeenCalledTimes(2)
+    })
+
+    test('evaluationInteractor().initialize() rejecting after a destroy + re-init replaced the instance does not clear the new instance', async () => {
+      // First attempt: initialize() left pending so it can be orphaned.
+      let rejectFirstInit: (err: Error) => void = () => {}
+      const firstInitPromise = new Promise<void>((_resolve, reject) => {
+        rejectFirstInit = reject
+      })
+      vi.spyOn(component.evaluationInteractor(), 'initialize').mockReturnValue(
+        firstInitPromise,
+      )
+      const firstInitCall = initializeBKTClientInternal(component, 1000)
+
+      // Orphan the first attempt, then start a second one on a fresh component.
+      destroyBKTClient()
+      const secondComponent = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(user1, requiredInternalConfig(config)),
+        new InteractorModule(),
+      )
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+      await initializeBKTClientInternal(secondComponent, 1000)
+      const secondClient = getBKTClient()
+      expect(secondClient).not.toBeNull()
+
+      // The orphaned first attempt now rejects — it must not clear the
+      // second (current) client's singleton registration.
+      rejectFirstInit(new Error('stale storage error'))
+      await expect(firstInitCall).rejects.toThrow('stale storage error')
+
+      expect(getBKTClient()).toBe(secondClient)
     })
   })
 
@@ -735,17 +910,17 @@ suite('BKTClient', () => {
     )
 
     // 1. Update user attributes
-    // Important: should unawaited
-    client.updateUserAttributes({ key: 'value' })
+    await client.updateUserAttributes({ key: 'value' })
 
     expect(userHolder.get().data).toStrictEqual({ key: 'value' })
     expect(await storage.getCurrentEvaluationsId()).toBe(
       'user_evaluation_id_value',
     )
-    // 2. Even if we update user attributes without awaiting,
-    // the storage is still updated, so getUserAttributesUpdated should return true.
-    // because we are using mutex lock in setUserAttributesUpdated
-    expect(await storage.getUserAttributesUpdated()).toBeTruthy()
+    // 2. getUserAttributesState() is a synchronous cache read, so it only
+    // reflects the update once updateUserAttributes() has been awaited (as
+    // above) — updateUserAttributes() itself awaits setUserAttributesUpdated()
+    // internally, so callers never need to await anything beyond that.
+    expect(storage.getUserAttributesState().userAttributesUpdated).toBeTruthy()
   })
 
   suite('fetchEvaluations', async () => {

@@ -1,0 +1,728 @@
+import { expect, suite, test, vi, beforeEach, afterEach } from 'vitest'
+
+import { BKTConfig } from '../../../src/BKTConfig'
+import { DefaultComponent } from '../../../src/internal/di/Component'
+import { SourceId } from '../../../src/internal/model/SourceId'
+import { EvaluationTask } from '../../../src/internal/scheduler/EvaluationTask'
+import {
+  EventSourceErrorLike,
+  EventSourceInstance,
+  EventSourceLike,
+  EventSourceLikeInit,
+  MessageEventLike,
+} from '../../../src/internal/streaming/EventSourceLike'
+import { StreamingTask } from '../../../src/internal/streaming/StreamingTask'
+import { SDK_VERSION } from '../../../src/internal/version'
+import { FetchLike } from '../../../src/internal/remote/fetch'
+import { buildTestComponent } from '../../utils'
+import { user1 } from '../../mocks/users'
+import { user1Evaluations } from '../../mocks/evaluations'
+
+const RECOVERY_INTERVAL_MILLIS = 5 * 60_000
+
+class FakeEventSource implements EventSourceInstance {
+  static instances: FakeEventSource[] = []
+
+  readyState = 0
+  onopen: ((ev: unknown) => void) | null = null
+  onmessage: ((ev: MessageEventLike) => void) | null = null
+  onerror: ((ev: EventSourceErrorLike | unknown) => void) | null = null
+  closed = false
+
+  private readonly listeners = new Map<
+    string,
+    Array<(ev: MessageEventLike) => void>
+  >()
+
+  constructor(
+    public readonly url: string,
+    public readonly init?: EventSourceLikeInit,
+  ) {
+    FakeEventSource.instances.push(this)
+  }
+
+  addEventListener(
+    type: string,
+    listener: (ev: MessageEventLike) => void,
+  ): void {
+    if (!this.listeners.has(type)) this.listeners.set(type, [])
+    this.listeners.get(type)!.push(listener)
+  }
+
+  removeEventListener(
+    type: string,
+    listener: (ev: MessageEventLike) => void,
+  ): void {
+    const arr = this.listeners.get(type)
+    if (!arr) return
+    const i = arr.indexOf(listener)
+    if (i !== -1) arr.splice(i, 1)
+  }
+
+  emit(type: string, ev: MessageEventLike): void {
+    this.listeners.get(type)?.forEach((listener) => listener(ev))
+  }
+
+  close(): void {
+    this.closed = true
+  }
+}
+
+function latest(): FakeEventSource {
+  return FakeEventSource.instances[FakeEventSource.instances.length - 1]
+}
+
+suite('internal/streaming/StreamingTask', () => {
+  let task: StreamingTask | undefined
+  let evaluationTaskStart: ReturnType<typeof vi.spyOn>
+  let evaluationTaskStop: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    FakeEventSource.instances = []
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    // The polling fallback is EvaluationTask's own concern — observe it via spies
+    // so these tests exercise only StreamingTask's policy.
+    evaluationTaskStart = vi
+      .spyOn(EvaluationTask.prototype, 'start')
+      .mockImplementation(() => {})
+    evaluationTaskStop = vi
+      .spyOn(EvaluationTask.prototype, 'stop')
+      .mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    task?.stop()
+    task = undefined
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  function buildComponent(override: Partial<BKTConfig> = {}): DefaultComponent {
+    // Injects the FakeEventSource by default; the shared builder applies the
+    // rest. Object.assign, not spread, so an override can still set eventSource
+    // (e.g. to undefined) without tripping the no-spread-after-defaults rule.
+    return buildTestComponent(
+      Object.assign(
+        { eventSource: FakeEventSource as unknown as EventSourceLike },
+        override,
+      ),
+    )
+  }
+
+  // Mirrors the real init order (BKTClient.ts's initializeBKTClientInternal()):
+  // evaluationInteractor().initialize() always resolves before any task's
+  // start() can read the cache. StreamingTask.start() synchronously reads it
+  // via buildRequest() → getCurrentEvaluationsCondition(), which throws if
+  // called too early — so tests must initialize() first, same as real usage.
+  async function startTask(
+    component: DefaultComponent,
+  ): Promise<StreamingTask> {
+    await component.evaluationInteractor().initialize()
+    task = new StreamingTask(component)
+    task.start()
+    return task
+  }
+
+  test('buildRequest: POST to /stream_evaluations with the full header profile and body', async () => {
+    await startTask(buildComponent())
+
+    expect(FakeEventSource.instances).toHaveLength(1)
+    const es = latest()
+    expect(es.url).toBe('https://api.bucketeer.io/stream_evaluations')
+    expect(es.init?.method).toBe('POST')
+    // The FULL profile must be here — injected transports receive it as-is.
+    expect(es.init?.headers).toEqual({
+      Authorization: 'api_key_value',
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    })
+    expect(JSON.parse(es.init?.body ?? '')).toEqual({
+      tag: 'feature_tag_value',
+      user: { id: user1.id, data: user1.data },
+      sourceId: SourceId.JAVASCRIPT,
+      sdkVersion: SDK_VERSION,
+      // Storage is initialized but empty (fresh install, nothing cached yet)
+      // — proto3 zero values.
+      userEvaluationsId: '',
+      evaluatedAt: '0',
+    })
+  })
+
+  test('buildRequest includes the stored userEvaluationsId/evaluatedAt when available', async () => {
+    const component = buildComponent()
+    vi.spyOn(
+      component.evaluationInteractor(),
+      'getCurrentEvaluationsCondition',
+    ).mockReturnValue({
+      currentEvaluationsId: 'stored_evaluations_id',
+      evaluatedAt: '1700000000',
+    })
+    await startTask(component)
+
+    const body = JSON.parse(latest().init?.body ?? '')
+    expect(body.userEvaluationsId).toBe('stored_evaluations_id')
+    expect(body.evaluatedAt).toBe('1700000000')
+  })
+
+  test('without config.eventSource the built-in FetchEventSource is used', async () => {
+    const fetchImpl = vi.fn(() => new Promise(() => {})) as unknown as FetchLike
+    const component = buildComponent({
+      eventSource: undefined,
+      fetch: fetchImpl,
+    })
+    await startTask(component)
+
+    // No injected fake constructed; the built-in transport went through fetch.
+    expect(FakeEventSource.instances).toHaveLength(0)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    const [url, request] = vi.mocked(fetchImpl).mock.calls[0]
+    expect(url).toBe('https://api.bucketeer.io/stream_evaluations')
+    expect(request.headers.Accept).toBe('text/event-stream')
+    expect(request.headers.Authorization).toBe('api_key_value')
+  })
+
+  test('config.eventSource injected: the injected constructor is used', async () => {
+    await startTask(buildComponent())
+    expect(FakeEventSource.instances).toHaveLength(1)
+  })
+
+  test('put event with valid JSON is applied via applyEvaluationsResponse', async () => {
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    await startTask(component)
+
+    const response = {
+      evaluations: user1Evaluations,
+      userEvaluationsId: 'user_evaluation_id_value',
+    }
+    latest().onopen?.({})
+    latest().emit('put', { data: JSON.stringify(response) })
+    await Promise.resolve()
+
+    expect(apply).toHaveBeenCalledWith(response, expect.any(Function))
+  })
+
+  test('patch event with valid JSON is applied via applyEvaluationsResponse', async () => {
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    await startTask(component)
+
+    const response = {
+      evaluations: user1Evaluations,
+      userEvaluationsId: 'user_evaluation_id_value',
+    }
+    latest().onopen?.({})
+    latest().emit('patch', { data: JSON.stringify(response) })
+    await Promise.resolve()
+
+    expect(apply).toHaveBeenCalledWith(response, expect.any(Function))
+  })
+
+  test('error event is logged distinctly and never applied', async () => {
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await startTask(component)
+
+    latest().onopen?.({})
+    latest().emit('error', { data: '{"code":13,"message":"internal"}' })
+    await Promise.resolve()
+
+    expect(apply).not.toHaveBeenCalled()
+    expect(consoleError).toHaveBeenCalledWith(
+      'StreamingTask: server reported a stream error',
+      '{"code":13,"message":"internal"}',
+    )
+  })
+
+  test('unnamed message event with valid JSON is applied via onUnhandledMessage', async () => {
+    // Positive counterpart to the invalid-JSON/after-stop cases below: proves
+    // the onUnhandledMessage → handleData wiring actually applies good data,
+    // not just that it safely ignores bad data.
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    await startTask(component)
+
+    const response = {
+      evaluations: user1Evaluations,
+      userEvaluationsId: 'user_evaluation_id_value',
+    }
+    latest().onopen?.({})
+    latest().onmessage?.({ data: JSON.stringify(response) })
+    await Promise.resolve()
+
+    expect(apply).toHaveBeenCalledWith(response, expect.any(Function))
+  })
+
+  test('a payload that omits forceUpdate is applied (the backend may omit false booleans), routed through the update branch', async () => {
+    // A protobuf-JSON marshaler that drops zero-valued fields sends no
+    // forceUpdate key for a patch (forceUpdate=false). The shape check must
+    // accept the omission — the REST path already tolerates it — instead of
+    // silently dropping every streamed patch.
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    await startTask(component)
+
+    const payload = {
+      evaluations: {
+        id: 'evaluations_id',
+        evaluations: [],
+        archivedFeatureIds: [],
+        createdAt: '1700000000',
+        // no forceUpdate key
+      },
+      userEvaluationsId: 'user_evaluation_id_value',
+    }
+    latest().onopen?.({})
+    latest().emit('patch', { data: JSON.stringify(payload) })
+    await Promise.resolve()
+
+    expect(apply).toHaveBeenCalledWith(payload, expect.any(Function))
+  })
+
+  test('data event with invalid JSON is ignored', async () => {
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    await startTask(component)
+
+    latest().onopen?.({})
+    latest().onmessage?.({ data: 'not-json' })
+    await Promise.resolve()
+
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  test('data event with valid JSON but the wrong shape (not a GetEvaluationsResponse) is ignored (defense in depth: a misrouted/malformed payload must not reach storage)', async () => {
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    await startTask(component)
+
+    latest().onopen?.({})
+    for (const badPayload of [
+      '{}',
+      '{"userEvaluationsId":"x"}', // missing evaluations
+      '{"userEvaluationsId":42,"evaluations":{"forceUpdate":false}}', // wrong type
+      '{"userEvaluationsId":"x","evaluations":null}', // evaluations not an object
+      '{"userEvaluationsId":"x","evaluations":{"forceUpdate":false}}', // missing createdAt
+      '{"userEvaluationsId":"x","evaluations":{"createdAt":1700000000,"forceUpdate":false}}', // createdAt not a string
+      '[]',
+      'null',
+    ]) {
+      latest().onmessage?.({ data: badPayload })
+    }
+    await Promise.resolve()
+
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  test('a payload missing createdAt is dropped instead of corrupting the staleness guard', async () => {
+    // createdAt becomes evaluatedAt in storage. A missing/non-string value would
+    // otherwise be accepted (Number(undefined) is NaN, and isStale()'s NaN
+    // comparison is always false), writing evaluatedAt: undefined into the cache —
+    // which then makes every SUBSEQUENT write pass the staleness guard too,
+    // permanently disabling it for this user. This test documents that specific
+    // failure mode, not just "wrong shape is ignored" (the test above).
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    await startTask(component)
+
+    const payload = {
+      evaluations: {
+        id: 'evaluations_id',
+        evaluations: [],
+        archivedFeatureIds: [],
+        // no createdAt
+        forceUpdate: false,
+      },
+      userEvaluationsId: 'user_evaluation_id_value',
+    }
+    latest().onopen?.({})
+    latest().emit('patch', { data: JSON.stringify(payload) })
+    await Promise.resolve()
+
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  test('applyEvaluationsResponse rejecting does not surface as an unhandled rejection', async () => {
+    const component = buildComponent()
+    const unhandled = vi.fn()
+    // `process` only exists under the Node test runner (`vitest-node.config.ts`);
+    // the browser runner (`vitest-browser.config.ts`) executes in a real Chrome via
+    // webdriverio, where unhandled rejections surface through the window event instead.
+    const isNode = typeof process !== 'undefined'
+    const browserListener = (ev: unknown) => unhandled(ev)
+    if (isNode) {
+      process.on('unhandledRejection', unhandled)
+    } else {
+      globalThis.addEventListener('unhandledrejection', browserListener)
+    }
+    try {
+      vi.spyOn(
+        component.evaluationInteractor(),
+        'applyEvaluationsResponse',
+      ).mockRejectedValue(new Error('storage failure'))
+      await startTask(component)
+
+      const response = {
+        evaluations: user1Evaluations,
+        userEvaluationsId: 'user_evaluation_id_value',
+      }
+      latest().onopen?.({})
+      latest().emit('put', { data: JSON.stringify(response) })
+      await Promise.resolve()
+      await Promise.resolve()
+
+      expect(unhandled).not.toHaveBeenCalled()
+    } finally {
+      if (isNode) {
+        process.off('unhandledRejection', unhandled)
+      } else {
+        globalThis.removeEventListener('unhandledrejection', browserListener)
+      }
+    }
+  })
+
+  test('data arriving after stop() is not applied', async () => {
+    const component = buildComponent()
+    const apply = vi
+      .spyOn(component.evaluationInteractor(), 'applyEvaluationsResponse')
+      .mockResolvedValue(undefined)
+    const t = await startTask(component)
+
+    const es = latest()
+    es.onopen?.({})
+    t.stop()
+    es.onmessage?.({ data: '{"evaluations":{},"userEvaluationsId":"x"}' })
+    await Promise.resolve()
+
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  test('shouldNotify passed to applyEvaluationsResponse reflects running, flips false after stop() mid-apply', async () => {
+    // Covers the case 'data arriving after stop()' above does not: a destroy
+    // racing an ALREADY-STARTED applyEvaluationsResponse call (e.g. stop()
+    // runs while the storage write is in flight) must still be able to
+    // suppress the update listeners once that write resolves.
+    const component = buildComponent()
+    let capturedShouldNotify: (() => boolean) | undefined
+    vi.spyOn(
+      component.evaluationInteractor(),
+      'applyEvaluationsResponse',
+    ).mockImplementation(async (_response, shouldNotify) => {
+      capturedShouldNotify = shouldNotify
+    })
+    const t = await startTask(component)
+
+    latest().onopen?.({})
+    latest().emit('put', {
+      data: '{"evaluations":{"createdAt":"1700000000","forceUpdate":false},"userEvaluationsId":"x"}',
+    })
+    await Promise.resolve()
+
+    expect(capturedShouldNotify?.()).toBe(true)
+    t.stop()
+    expect(capturedShouldNotify?.()).toBe(false)
+  })
+
+  test('non-terminal error with fallback enabled starts polling AND arms recovery', async () => {
+    await startTask(buildComponent())
+
+    // Never-opened + non-recoverable, non-terminal status (an unclassified
+    // 4xx — neither in httpStatus.ts's TERMINAL_STATUSES nor its recoverable
+    // set) → StreamConnection gives up immediately, no backoff retry.
+    latest().onerror?.({ status: 402 })
+
+    // start(true) fetches immediately instead of arming a timer for the next
+    // poll (up to 10 min by default) — otherwise a stream drop would leave
+    // users on stale evaluations for that whole window.
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+
+    // Recovery fires after 5 minutes: streaming reopens; fallback stops once
+    // onOpen proves the reopened stream actually works (no polling gap).
+    vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
+    expect(FakeEventSource.instances).toHaveLength(2)
+    latest().onopen?.({})
+    expect(evaluationTaskStop).toHaveBeenCalled()
+  })
+
+  test('non-terminal error with fallback DISABLED still arms recovery', async () => {
+    await startTask(buildComponent({ streamingFallbackToPolling: false }))
+
+    latest().onerror?.({ status: 402 }) // unclassified 4xx — immediate give-up
+
+    // No polling fallback...
+    expect(evaluationTaskStart).not.toHaveBeenCalled()
+    // ...but streaming must not be permanently dead: recovery still reopens it.
+    vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
+    expect(FakeEventSource.instances).toHaveLength(2)
+  })
+
+  test('terminal error starts fallback but never schedules recovery', async () => {
+    await startTask(buildComponent())
+
+    latest().onerror?.({ status: 401 })
+
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+    // No recovery timer pending — streaming is not retried for terminal errors.
+    expect(vi.getTimerCount()).toBe(0)
+    vi.advanceTimersByTime(30 * 60_000)
+    expect(FakeEventSource.instances).toHaveLength(1)
+  })
+
+  test('onOpen after recovery cancels fallback and leaves no recovery pending', async () => {
+    await startTask(buildComponent())
+
+    latest().onerror?.({ status: 402 }) // unclassified 4xx → fallback + recovery
+    vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS) // recovery reopens the stream
+    expect(FakeEventSource.instances).toHaveLength(2)
+
+    latest().onopen?.({})
+    expect(evaluationTaskStop).toHaveBeenCalled()
+    // Only the connection's own timers remain (watchdog + backoff-reset) —
+    // no 5-minute recovery timer is pending anymore.
+    expect(vi.getTimerCount()).toBe(2)
+  })
+
+  test('recovery timer reopening the stream does not stop the fallback poller until onOpen succeeds (regression: no polling gap during the reconnect attempt)', async () => {
+    await startTask(buildComponent())
+
+    latest().onerror?.({ status: 402 }) // → fallback + recovery
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+
+    vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS) // recovery timer reopens the stream
+    expect(FakeEventSource.instances).toHaveLength(2)
+    // The new stream hasn't proven it opened yet — the poller must still be running.
+    expect(evaluationTaskStop).not.toHaveBeenCalled()
+
+    latest().onopen?.({})
+    expect(evaluationTaskStop).toHaveBeenCalled()
+  })
+
+  test('reconnect() from fallback mode does not stop the fallback poller until onOpen succeeds (regression: no polling gap during the reconnect attempt)', async () => {
+    const t = await startTask(buildComponent())
+
+    latest().onerror?.({ status: 402 }) // → fallback + recovery
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+
+    t.reconnect()
+    expect(FakeEventSource.instances).toHaveLength(2)
+    expect(evaluationTaskStop).not.toHaveBeenCalled()
+
+    latest().onopen?.({})
+    expect(evaluationTaskStop).toHaveBeenCalled()
+  })
+
+  test('reconnect()-opened stream plus a previously armed recovery timer produces only one live connection (openStream() must be defensive)', async () => {
+    const t = await startTask(buildComponent())
+
+    latest().onerror?.({ status: 402 }) // → fallback + recovery timer armed for +5min
+    t.reconnect() // opens a fresh stream while the recovery timer is still pending
+    expect(FakeEventSource.instances).toHaveLength(2)
+    latest().onopen?.({}) // new stream succeeds — resets its own watchdog
+
+    // Keep the new connection healthy so its OWN watchdog/backoff machinery
+    // never fires an extra connection — isolating whether the STALE recovery
+    // timer (armed before reconnect(), at the original failure) fires one.
+    for (let i = 0; i < 5; i++) {
+      vi.advanceTimersByTime(60_000)
+      latest().onmessage?.({ data: undefined })
+    }
+
+    // The stale recovery timer (armed ~5 min ago) must not have fired a third connection.
+    expect(FakeEventSource.instances).toHaveLength(2)
+  })
+
+  test('a terminal error on a reconnect-opened stream leaves no stale recovery timer to reopen it (openStream() must clear the recovery timer armed by the earlier failure)', async () => {
+    // The onOpen path clears the recovery timer via stopFallback(), so the
+    // 'only one live connection' test above does not actually exercise
+    // openStream()'s own clearTimeout. This path does: the reconnect stream
+    // never opens — it fails terminally — so onOpen never runs, and
+    // handleError(terminal) does NOT re-arm recovery. Only openStream()'s
+    // entry clearTimeout can cancel the timer armed by the ORIGINAL failure,
+    // or it fires 5 min later and reopens a stream that was permanently dead.
+    const t = await startTask(buildComponent())
+
+    latest().onerror?.({ status: 402 }) // non-terminal → fallback + recovery armed
+    t.reconnect() // fallback mode → openStream() opens a fresh stream
+    expect(FakeEventSource.instances).toHaveLength(2)
+
+    latest().onerror?.({ status: 401 }) // reconnect stream fails terminally
+
+    // The original failure's recovery timer must have been cleared at reconnect;
+    // otherwise it fires here and opens a third connection on a dead stream.
+    vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
+    expect(FakeEventSource.instances).toHaveLength(2)
+  })
+
+  test('onOpen clears the userAttributesUpdated flag using the state captured when the request was built', async () => {
+    const component = buildComponent()
+    await component.evaluationInteractor().initialize()
+    await component.evaluationInteractor().setUserAttributesUpdated()
+    expect(
+      component.evaluationInteractor().getUserAttributesState()
+        .userAttributesUpdated,
+    ).toBe(true)
+
+    task = new StreamingTask(component)
+    task.start() // buildRequest() runs synchronously here, capturing the flag=true snapshot
+
+    latest().onopen?.({})
+    // clearUserAttributesUpdated() is fire-and-forget from onOpen and goes
+    // through the storage mutex + a storage write, so it needs a few
+    // microtask ticks to actually land (fake timers are active in this
+    // suite, so this flushes microtasks directly rather than via a timer).
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve()
+    }
+
+    expect(
+      component.evaluationInteractor().getUserAttributesState()
+        .userAttributesUpdated,
+    ).toBe(false)
+  })
+
+  test('userAttributesUpdated set after buildRequest() but before onOpen survives the clear (regression: a race must not wipe a newer flag)', async () => {
+    const component = buildComponent()
+    await startTask(component) // buildRequest() captures updateSequence at flag=false
+
+    // Simulates updateUserAttributes() racing between connect and open.
+    await component.evaluationInteractor().setUserAttributesUpdated()
+    expect(
+      component.evaluationInteractor().getUserAttributesState()
+        .userAttributesUpdated,
+    ).toBe(true)
+
+    latest().onopen?.({})
+    await Promise.resolve()
+
+    expect(
+      component.evaluationInteractor().getUserAttributesState()
+        .userAttributesUpdated,
+    ).toBe(true)
+  })
+
+  test('connect failure never clears the userAttributesUpdated flag (must survive for the polling fallback)', async () => {
+    const component = buildComponent()
+    await component.evaluationInteractor().initialize()
+    await component.evaluationInteractor().setUserAttributesUpdated()
+
+    task = new StreamingTask(component)
+    task.start()
+
+    latest().onerror?.({ status: 500 }) // never opened — onOpen never fires
+    await Promise.resolve()
+
+    expect(
+      component.evaluationInteractor().getUserAttributesState()
+        .userAttributesUpdated,
+    ).toBe(true)
+  })
+
+  test('reconnect() while streaming opens exactly one fresh connection with fresh attributes', async () => {
+    const component = buildComponent()
+    const t = await startTask(component)
+    latest().onopen?.({})
+
+    component.userHolder().updateAttributes(() => ({ plan: 'premium' }))
+    t.reconnect()
+
+    expect(FakeEventSource.instances).toHaveLength(2)
+    expect(FakeEventSource.instances[0].closed).toBe(true)
+    const body = JSON.parse(latest().init?.body ?? '')
+    expect(body.user.data).toEqual({ plan: 'premium' })
+
+    // No stale backoff/reconnect timer may open a third connection.
+    vi.advanceTimersByTime(30_000)
+    expect(FakeEventSource.instances).toHaveLength(2)
+  })
+
+  test('reconnect() rebuilds the body with the latest stored userEvaluationsId/evaluatedAt', async () => {
+    const component = buildComponent()
+    const conditionSpy = vi.spyOn(
+      component.evaluationInteractor(),
+      'getCurrentEvaluationsCondition',
+    )
+    conditionSpy.mockReturnValue({ currentEvaluationsId: '', evaluatedAt: '0' })
+    const t = await startTask(component)
+    latest().onopen?.({})
+
+    // Storage advanced between the first connect and the reconnect (e.g. a
+    // put/patch was applied) — buildRequest() is re-invoked on every
+    // (re)connect, so it must pick up the new values, not the stale ones.
+    conditionSpy.mockReturnValue({
+      currentEvaluationsId: 'updated_evaluations_id',
+      evaluatedAt: '1700000999',
+    })
+    t.reconnect()
+
+    const body = JSON.parse(latest().init?.body ?? '')
+    expect(body.userEvaluationsId).toBe('updated_evaluations_id')
+    expect(body.evaluatedAt).toBe('1700000999')
+  })
+
+  test('reconnect() while on polling fallback jumps straight back to streaming', async () => {
+    const t = await startTask(buildComponent())
+
+    latest().onerror?.({ status: 402 }) // unclassified 4xx → fallback + recovery
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+
+    t.reconnect()
+
+    expect(FakeEventSource.instances).toHaveLength(2)
+    // The old recovery timer was cancelled — the only pending timer is the new
+    // connection's watchdog. (Advancing time instead would trip that watchdog
+    // on the silent fake connection and self-heal reconnects would fire.)
+    expect(vi.getTimerCount()).toBe(1)
+
+    // Fallback stops once onOpen proves the reopened stream actually works
+    // (no polling gap in between).
+    latest().onopen?.({})
+    expect(evaluationTaskStop).toHaveBeenCalled()
+  })
+
+  test('reconnect() after a terminal error is a no-op (stream is permanently dead; fallback keeps polling untouched)', async () => {
+    const t = await startTask(buildComponent())
+
+    latest().onerror?.({ status: 401 }) // bad API key (terminal)
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+    expect(FakeEventSource.instances).toHaveLength(1)
+
+    t.reconnect()
+
+    // No new connection, and the fallback poller was never touched (it must
+    // keep running on its own schedule — same as pure polling mode, where
+    // updateUserAttributes() doesn't force an immediate fetch either).
+    expect(FakeEventSource.instances).toHaveLength(1)
+    expect(evaluationTaskStop).not.toHaveBeenCalled()
+  })
+
+  test('stop() stops connection, fallback, and recovery', async () => {
+    const t = await startTask(buildComponent())
+
+    latest().onerror?.({ status: 402 }) // unclassified 4xx → fallback + recovery
+    t.stop()
+
+    expect(t.isRunning()).toBe(false)
+    expect(evaluationTaskStop).toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+    vi.advanceTimersByTime(30 * 60_000)
+    expect(FakeEventSource.instances).toHaveLength(1)
+  })
+})

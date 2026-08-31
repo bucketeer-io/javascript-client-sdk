@@ -260,6 +260,141 @@ suite('internal/evaluation/EvaluationInteractor', () => {
 
       expect(mockListener).toBeCalledTimes(2)
     })
+
+    test('a listener fired during fetch() observes userAttributesUpdated already cleared (ordering regression: clear must run before notify)', async () => {
+      // main's ordering: clear the flag, THEN apply/notify. If a listener
+      // (e.g. a refresh-on-change pattern) synchronously triggers a nested
+      // read of the flag, it must see it already cleared — otherwise the
+      // nested caller re-sends userAttributesUpdated:true and gets a
+      // redundant forceUpdate snapshot back.
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          return HttpResponse.json({
+            evaluations: {
+              ...user1Evaluations,
+              createdAt: clock.currentTimeMillis().toString(),
+            },
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+
+      await interactor.initialize()
+      await interactor.setUserAttributesUpdated()
+
+      let capturedFlag: boolean | undefined
+      interactor.addUpdateListener(() => {
+        // getUserAttributesState() is a synchronous cache read: capturing it
+        // here, from inside the listener, reflects the flag's state as of
+        // this exact point in the clear/notify ordering, not just "eventually".
+        capturedFlag = evaluationStorage.getUserAttributesState().userAttributesUpdated
+      })
+
+      const result = await interactor.fetch(user1)
+      assert(result.type === 'success')
+
+      expect(capturedFlag).toBe(false)
+    })
+
+    test('an updateUserAttributes() landing after fetch() starts must not have its flag cleared by that fetch', async () => {
+      // fetch()'s caller snapshots the user synchronously at the call site, so
+      // any attribute change that lands after fetch() begins was NOT carried
+      // by this request. The attributes-state snapshot must therefore be
+      // captured before fetch()'s first await — otherwise a set landing
+      // inside that window gets the request's sequence stamp and the
+      // success-path clear wipes a flag whose attributes were never sent.
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          return HttpResponse.json({
+            evaluations: {
+              ...user1Evaluations,
+              createdAt: clock.currentTimeMillis().toString(),
+            },
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+
+      await interactor.initialize()
+
+      // Hold fetch()'s first awaited storage read open so a
+      // setUserAttributesUpdated() call can land inside the pre-request window.
+      let releaseRead: () => void = () => {}
+      const realGetCurrentEvaluationsId =
+        evaluationStorage.getCurrentEvaluationsId.bind(evaluationStorage)
+      vi.spyOn(evaluationStorage, 'getCurrentEvaluationsId').mockImplementation(
+        async () => {
+          await new Promise<void>((resolve) => {
+            releaseRead = resolve
+          })
+          return realGetCurrentEvaluationsId()
+        },
+      )
+
+      const fetchPromise = interactor.fetch(user1)
+      // fetch() is parked inside its first await; this update lands after the
+      // request's user snapshot, so the request does not carry it.
+      await interactor.setUserAttributesUpdated()
+      releaseRead()
+
+      const result = await fetchPromise
+      assert(result.type === 'success')
+
+      // The flag belongs to attributes this request never sent — it must
+      // survive for the next request to pick up.
+      expect(
+        evaluationStorage.getUserAttributesState().userAttributesUpdated,
+      ).toBe(true)
+    })
+
+    test('a failed storage write keeps userAttributesUpdated set, so the next poll retries the attribute-driven refresh', async () => {
+      // The server's response to a userAttributesUpdated:true request carries
+      // the re-evaluation the flag asked for. If persisting it fails (e.g.
+      // browser storage quota), the flag must NOT have been cleared yet —
+      // otherwise the next poll sends userAttributesUpdated:false and the
+      // re-evaluation is silently lost. Clear must come after the write.
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          return HttpResponse.json({
+            evaluations: {
+              id: '17388826713971171773',
+              evaluations: [evaluation2],
+              createdAt: clock.currentTimeMillis().toString(),
+              forceUpdate: true,
+              archivedFeatureIds: [],
+            },
+            userEvaluationsId: 'new_user_evaluation_id',
+          })
+        }),
+      )
+
+      await interactor.initialize()
+      await interactor.setUserAttributesUpdated()
+
+      vi.spyOn(evaluationStorage, 'deleteAllAndInsert').mockRejectedValue(
+        new Error('QuotaExceededError'),
+      )
+
+      await expect(interactor.fetch(user1)).rejects.toThrow(
+        'QuotaExceededError',
+      )
+
+      expect(
+        evaluationStorage.getUserAttributesState().userAttributesUpdated,
+      ).toBe(true)
+    })
   })
 
   suite('getLatest', () => {
@@ -511,6 +646,226 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       })
 
       expect(mockListener).toBeCalledTimes(1)
+    })
+  })
+
+  suite('applyEvaluationsResponse', () => {
+    const seedStorage = async (userAttributesUpdated: boolean) => {
+      await evaluationStorage.storage.set({
+        userId: user1.id,
+        currentEvaluationsId: 'user_evaluation_id_value',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+        },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: clock.currentTimeMillis().toString(),
+        userAttributesUpdated,
+      })
+      await interactor.initialize()
+    }
+
+    test('forceUpdate=true deletes all and inserts, then notifies listeners', async () => {
+      await seedStorage(false)
+      const mockListener = vi.fn()
+      interactor.addUpdateListener(mockListener)
+
+      const createdAt = clock.currentTimeMillis().toString()
+      await interactor.applyEvaluationsResponse({
+        evaluations: {
+          id: '17388826713971171773',
+          evaluations: [evaluation2],
+          createdAt,
+          forceUpdate: true,
+          archivedFeatureIds: [],
+        },
+        userEvaluationsId: 'new_user_evaluation_id',
+      })
+
+      // evaluation1 is gone — the response replaced the whole cache
+      expect(await evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
+        userId: user1.id,
+        currentEvaluationsId: 'new_user_evaluation_id',
+        evaluations: {
+          [evaluation2.featureId]: evaluation2,
+        },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: createdAt,
+        userAttributesUpdated: false,
+      })
+      expect(mockListener).toBeCalledTimes(1)
+    })
+
+    test('stale forceUpdate (createdAt strictly older than the stored evaluatedAt) is skipped: no notify, no overwrite', async () => {
+      await evaluationStorage.storage.set({
+        userId: user1.id,
+        currentEvaluationsId: 'user_evaluation_id_value',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+        },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: '1700000000',
+        userAttributesUpdated: false,
+      })
+      await interactor.initialize()
+      const mockListener = vi.fn()
+      interactor.addUpdateListener(mockListener)
+
+      await interactor.applyEvaluationsResponse({
+        evaluations: {
+          id: '17388826713971171773',
+          evaluations: [evaluation2],
+          createdAt: '1699999999', // strictly older than the stored evaluatedAt
+          forceUpdate: true,
+          archivedFeatureIds: [],
+        },
+        userEvaluationsId: 'new_user_evaluation_id',
+      })
+
+      expect(mockListener).not.toHaveBeenCalled()
+      expect(await evaluationStorage.storage.get()).toStrictEqual<EvaluationEntity>({
+        userId: user1.id,
+        currentEvaluationsId: 'user_evaluation_id_value',
+        evaluations: {
+          [evaluation1.featureId]: evaluation1,
+        },
+        currentFeatureTag: 'feature_tag_value',
+        evaluatedAt: '1700000000',
+        userAttributesUpdated: false,
+      })
+    })
+
+    test('upsert notifies listeners only when something changed', async () => {
+      await seedStorage(false)
+      const mockListener = vi.fn()
+      interactor.addUpdateListener(mockListener)
+
+      // Same evaluationsId, no evaluations, no archived ids → no change.
+      await interactor.applyEvaluationsResponse({
+        evaluations: {
+          id: '17388826713971171773',
+          evaluations: [],
+          createdAt: clock.currentTimeMillis().toString(),
+          forceUpdate: false,
+          archivedFeatureIds: [],
+        },
+        userEvaluationsId: 'user_evaluation_id_value',
+      })
+      expect(mockListener).toBeCalledTimes(0)
+
+      // An upserted evaluation is a change → notify.
+      await interactor.applyEvaluationsResponse({
+        evaluations: {
+          id: '17388826713971171773',
+          evaluations: [evaluation2],
+          createdAt: clock.currentTimeMillis().toString(),
+          forceUpdate: false,
+          archivedFeatureIds: [],
+        },
+        userEvaluationsId: 'user_evaluation_id_value',
+      })
+      expect(mockListener).toBeCalledTimes(1)
+    })
+
+    test('shouldNotify=() => false suppresses the listener but the storage write still lands', async () => {
+      // Regression for a destroy racing an in-flight apply (StreamingTask
+      // passes shouldNotify: () => this.running): the write must not be lost,
+      // only the listener callback — which could run app code against a
+      // torn-down client — is suppressed.
+      await seedStorage(false)
+      const mockListener = vi.fn()
+      interactor.addUpdateListener(mockListener)
+
+      const createdAt = clock.currentTimeMillis().toString()
+      await interactor.applyEvaluationsResponse(
+        {
+          evaluations: {
+            id: '17388826713971171773',
+            evaluations: [evaluation2],
+            createdAt,
+            forceUpdate: true,
+            archivedFeatureIds: [],
+          },
+          userEvaluationsId: 'new_user_evaluation_id',
+        },
+        () => false,
+      )
+
+      expect(mockListener).not.toHaveBeenCalled()
+      const stored = await evaluationStorage.storage.get()
+      expect(stored?.currentEvaluationsId).toBe('new_user_evaluation_id')
+    })
+
+    test('shouldNotify=() => true behaves the same as omitting the argument', async () => {
+      await seedStorage(false)
+      const mockListener = vi.fn()
+      interactor.addUpdateListener(mockListener)
+
+      await interactor.applyEvaluationsResponse(
+        {
+          evaluations: {
+            id: '17388826713971171773',
+            evaluations: [evaluation2],
+            createdAt: clock.currentTimeMillis().toString(),
+            forceUpdate: true,
+            archivedFeatureIds: [],
+          },
+          userEvaluationsId: 'new_user_evaluation_id',
+        },
+        () => true,
+      )
+
+      expect(mockListener).toHaveBeenCalledTimes(1)
+    })
+
+    test('does NOT clear userAttributesUpdated (streamed data must not clear the flag)', async () => {
+      // A streamed message can race a concurrent updateUserAttributes() — it may
+      // have been produced before the new attributes existed, so it must never
+      // clear the flag. Only fetch(), which sent the attributes, may clear it.
+      await seedStorage(true)
+
+      await interactor.applyEvaluationsResponse({
+        evaluations: {
+          id: '17388826713971171773',
+          evaluations: [evaluation2],
+          createdAt: clock.currentTimeMillis().toString(),
+          forceUpdate: false,
+          archivedFeatureIds: [],
+        },
+        userEvaluationsId: 'new_user_evaluation_id',
+      })
+
+      const stored = await evaluationStorage.storage.get()
+      expect(stored?.userAttributesUpdated).toBe(true)
+    })
+
+    test('fetch() success applies the response AND clears userAttributesUpdated', async () => {
+      await seedStorage(true)
+
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          return HttpResponse.json({
+            evaluations: {
+              id: '17388826713971171773',
+              evaluations: [evaluation2],
+              createdAt: clock.currentTimeMillis().toString(),
+              forceUpdate: false,
+              archivedFeatureIds: [],
+            },
+            userEvaluationsId: 'new_user_evaluation_id',
+          })
+        }),
+      )
+
+      const result = await interactor.fetch(user1)
+      assert(result.type === 'success')
+
+      const stored = await evaluationStorage.storage.get()
+      expect(stored?.evaluations[evaluation2.featureId]).toStrictEqual(evaluation2)
+      expect(stored?.userAttributesUpdated).toBe(false)
     })
   })
 })

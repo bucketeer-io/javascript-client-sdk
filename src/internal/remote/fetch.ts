@@ -17,6 +17,7 @@ export type FetchResponseLike = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   json: () => Promise<any>
   text: () => Promise<string>
+  body?: ReadableStream<Uint8Array> | null
 }
 
 export type FetchLike = (

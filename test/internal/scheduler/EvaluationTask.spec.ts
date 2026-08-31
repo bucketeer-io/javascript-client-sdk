@@ -11,7 +11,7 @@ import {
   beforeAll,
 } from 'vitest'
 
-import { destroyBKTClient } from '../../../src/BKTClient'
+import { BKTClientImpl, destroyBKTClient } from '../../../src/BKTClient'
 import { BKTConfig, defineBKTConfig } from '../../../src/BKTConfig'
 import { DefaultComponent } from '../../../src/internal/di/Component'
 import { DataModule } from '../../../src/internal/di/DataModule'
@@ -103,6 +103,57 @@ suite('internal/scheduler/EventTask', () => {
     await vi.runOnlyPendingTimersAsync()
 
     expect(requestCount).toBe(3)
+  })
+
+  test('start(true) fetches immediately and continues normal polling after', async () => {
+    // Stubbed one level below EvaluationTask's own fetchEvaluations(), same as
+    // StreamingTask.spec.ts does for EvaluationTask itself — this isolates the
+    // start()/reschedule() scheduling behavior under test from real network
+    // timing (in particular, postInternal's own abort/timeout timer, which
+    // would otherwise become "pending" the instant start(true) synchronously
+    // invokes fetchEvaluations(), unlike the timer-driven plain start()).
+    const fetchInternal = vi
+      .spyOn(BKTClientImpl, 'fetchEvaluationsInternal')
+      .mockResolvedValue(undefined)
+
+    task = new EvaluationTask(component)
+    task.start(true)
+
+    // Fired synchronously off of start(true) — no pollingInterval timer stands
+    // between them, unlike plain start(). So a stream drop's polling fallback
+    // doesn't leave users on stale evaluations for a full pollingInterval.
+    expect(fetchInternal).toHaveBeenCalledTimes(1)
+
+    // Let fetchEvaluations()'s own success path run reschedule() — the only
+    // thing that arms the next poll timer, so there's never a second one.
+    await Promise.resolve()
+    expect(vi.getTimerCount()).toBe(1)
+
+    await vi.advanceTimersByTimeAsync(config.pollingInterval)
+    expect(fetchInternal).toHaveBeenCalledTimes(2)
+  })
+
+  test('stop() while a fetch is in flight does not reschedule afterward', async () => {
+    let resolveFetch: () => void = () => {}
+    vi.spyOn(BKTClientImpl, 'fetchEvaluationsInternal').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
+
+    task = new EvaluationTask(component)
+    task.start(true) // fetch begins synchronously and is now in flight
+
+    task.stop()
+    expect(task.isRunning()).toBe(false)
+
+    resolveFetch() // let the orphaned fetch resolve after stop()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // The now-orphaned completion handler must not arm a new timer.
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   test('stop should cancel timer', async () => {

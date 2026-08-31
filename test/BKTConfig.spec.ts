@@ -29,6 +29,8 @@ suite('defineBKTConfig', () => {
       fetch,
       storageFactory: createBKTStorage,
       enableAutoPageLifecycleFlush: true,
+      enableStreaming: false,
+      streamingFallbackToPolling: true,
       sdkVersion: SDK_VERSION,
       sourceId: SourceId.JAVASCRIPT,
     })
@@ -50,11 +52,37 @@ suite('defineBKTConfig', () => {
       fetch,
       storageFactory: createBKTStorage,
       enableAutoPageLifecycleFlush: true,
+      enableStreaming: false,
+      streamingFallbackToPolling: true,
       wrapperSdkSourceId: SourceId.REACT,
       wrapperSdkVersion: '1.2.5',
       sdkVersion: '1.2.5',
       sourceId: SourceId.REACT,
     })
+  })
+
+  test('enableStreaming without eventSource resolves (built-in transport is always available)', () => {
+    const result = defineBKTConfig({
+      ...defaultConfig,
+      enableStreaming: true,
+    })
+
+    expect(result.enableStreaming).toBe(true)
+    expect(result.streamingFallbackToPolling).toBe(true)
+    expect(result.eventSource).toBeUndefined()
+  })
+
+  test('an injected eventSource is preserved', () => {
+    class CustomEventSource {}
+    const result = defineBKTConfig({
+      ...defaultConfig,
+      enableStreaming: true,
+      eventSource: CustomEventSource as unknown as NonNullable<
+        RawBKTConfig['eventSource']
+      >,
+    })
+
+    expect(result.eventSource).toBe(CustomEventSource)
   })
 
   test('empty apiKey throws', () => {

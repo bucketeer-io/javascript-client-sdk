@@ -17,6 +17,8 @@ const inputConfig = {
   eventsMaxQueueSize: 0,
   pollingInterval: 0,
   enableAutoPageLifecycleFlush: false,
+  enableStreaming: false,
+  streamingFallbackToPolling: true,
   fetch: function (_url: string, _request: FetchRequestLike): Promise<FetchResponseLike> {
     throw new Error('Just a stub for testing')
   },

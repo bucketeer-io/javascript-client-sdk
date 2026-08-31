@@ -1,9 +1,10 @@
 import { IdGenerator } from '../IdGenerator'
 import { Evaluation } from '../model/Evaluation'
 import { User } from '../model/User'
+import { GetEvaluationsResponse } from '../model/response/GetEvaluationsResponse'
 import { ApiClient } from '../remote/ApiClient'
 import { GetEvaluationsResult } from '../remote/GetEvaluationsResult'
-import { EvaluationStorage } from './EvaluationStorage'
+import { EvaluationStorage, UserAttributesState } from './EvaluationStorage'
 
 export class EvaluationInteractor {
   constructor(
@@ -30,18 +31,26 @@ export class EvaluationInteractor {
     user: User,
     timeoutMillis?: number,
   ): Promise<GetEvaluationsResult> {
+    // Captured synchronously as the FIRST statement, before any await: the
+    // caller reads `user` in the same synchronous expression that invokes
+    // fetch(), so capturing here makes the user snapshot and this state
+    // snapshot atomic. Captured after an await instead, a
+    // setUserAttributesUpdated() landing in that gap would stamp this request
+    // with a sequence for attributes the request's user object doesn't carry —
+    // and the success-path clear below would then wipe a flag whose
+    // attributes were never sent. See EvaluationStorage.
+    // clearUserAttributesUpdated().
+    const attributesStateAtStart = this.evaluationStorage.getUserAttributesState()
     const currentEvaluationsId =
       await this.evaluationStorage.getCurrentEvaluationsId() ?? ''
     const evaluatedAt = await this.evaluationStorage.getEvaluatedAt() ?? '0'
-    const userAttributesUpdated = await
-            this.evaluationStorage.getUserAttributesUpdated()
     const result = await this.apiClient.getEvaluations(
       {
         user,
         userEvaluationsId: currentEvaluationsId,
         userEvaluationCondition: {
           evaluatedAt: evaluatedAt,
-          userAttributesUpdated: userAttributesUpdated,
+          userAttributesUpdated: attributesStateAtStart.userAttributesUpdated,
         },
         tag: this.featureTag,
       },
@@ -49,46 +58,94 @@ export class EvaluationInteractor {
     )
 
     if (result.type === 'success') {
-      const response = result.value
-
-      let shouldNotify: boolean
-      if (response.evaluations.forceUpdate) {
-        // 1- Delete all the evaluations from local storage, and save the latest evaluations from the response into the local storage
-        // 2- Save the UserEvaluations.CreatedAt in the response as evaluatedAt in the localStorage
-        await this.evaluationStorage.deleteAllAndInsert(
-          response.userEvaluationsId,
-          response.evaluations.evaluations ?? [],
-          response.evaluations.createdAt,
-        )
-        shouldNotify = true
-      } else {
-        // 1- Check the evaluation list in the response and upsert them in the localStorage if the list is not empty
-        // 2- Check the archivedFeatureIds list and delete them from the localStorage if is not empty
-        // 3- Save the UserEvaluations.CreatedAt in the response as evaluatedAt in the localStorage
-        shouldNotify = await this.evaluationStorage.update(
-          response.userEvaluationsId,
-          response.evaluations.evaluations ?? [],
-          response.evaluations.archivedFeatureIds ?? [],
-          response.evaluations.createdAt,
-        )
-      }
-
-      await this.evaluationStorage.clearUserAttributesUpdated()
-
-      if (shouldNotify) {
-        Object.values(this.updateListeners).forEach((listener) => listener())
+      // Ordering carries two invariants. Write BEFORE clear: the response to
+      // a userAttributesUpdated:true request carries the re-evaluation the
+      // flag asked for, so a rejected write must skip the clear — the flag
+      // survives and the next poll retries. Clear BEFORE notify: a listener
+      // that triggers a nested fetch (refresh-on-change pattern) must
+      // observe the flag already cleared — this request already carried it —
+      // or the nested call re-sends userAttributesUpdated:true and gets back
+      // a redundant forceUpdate snapshot. Streamed data must never clear the
+      // flag (race) — only this, the polling/fetch path, does.
+      const changed = await this.writeEvaluations(result.value)
+      await this.evaluationStorage.clearUserAttributesUpdated(
+        attributesStateAtStart,
+      )
+      if (changed) {
+        this.notifyListeners()
       }
     }
 
     return result
   }
 
+  async applyEvaluationsResponse(
+    response: GetEvaluationsResponse,
+    // shouldNotify is re-checked AFTER the storage write completes: the write
+    // is awaited, so a stop()/destroy racing it must be able to suppress the
+    // listener callbacks (which may run app code against a torn-down client).
+    // The write itself is allowed to land — it's just unused cached data.
+    shouldNotify: () => boolean = () => true,
+  ): Promise<void> {
+    const changed = await this.writeEvaluations(response)
+    if (changed && shouldNotify()) {
+      this.notifyListeners()
+    }
+  }
+
+  // @returns whether anything changed. A skipped stale write (see
+  // EvaluationStorage's staleness guard) returns false — callers must not
+  // notify in that case.
+  private async writeEvaluations(
+    response: GetEvaluationsResponse,
+  ): Promise<boolean> {
+    if (response.evaluations.forceUpdate) {
+      return this.evaluationStorage.deleteAllAndInsert(
+        response.userEvaluationsId,
+        response.evaluations.evaluations ?? [],
+        response.evaluations.createdAt,
+      )
+    }
+    return this.evaluationStorage.update(
+      response.userEvaluationsId,
+      response.evaluations.evaluations ?? [],
+      response.evaluations.archivedFeatureIds ?? [],
+      response.evaluations.createdAt,
+    )
+  }
+
+  private notifyListeners(): void {
+    Object.values(this.updateListeners).forEach((listener) => listener())
+  }
+
   getLatest(featureId: string): Evaluation | null {
     return this.evaluationStorage.getByFeatureId(featureId)
   }
 
+  // Used by StreamingTask.buildRequest() to send the last-known state on
+  // every (re)connect, so the backend can reply with a diff instead of a
+  // full snapshot. Throws before initialize() — see the comment on
+  // EvaluationStorage.getCurrentEvaluationsCondition().
+  getCurrentEvaluationsCondition(): {
+    currentEvaluationsId: string | null
+    evaluatedAt: string | null
+  } {
+    return this.evaluationStorage.getCurrentEvaluationsCondition()
+  }
+
   async setUserAttributesUpdated(): Promise<void> {
     return this.evaluationStorage.setUserAttributesUpdated()
+  }
+
+  // Used by StreamingTask.buildRequest()/onOpen to capture the flag's state
+  // at request-build time and clear it once the connection this request
+  // built actually opens — see EvaluationStorage.clearUserAttributesUpdated().
+  getUserAttributesState(): UserAttributesState {
+    return this.evaluationStorage.getUserAttributesState()
+  }
+
+  async clearUserAttributesUpdated(state: UserAttributesState): Promise<void> {
+    return this.evaluationStorage.clearUserAttributesUpdated(state)
   }
 
   addUpdateListener(listener: () => void): string {
