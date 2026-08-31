@@ -17,7 +17,6 @@ module.exports = [
       '**/*.d.ts',
       '.github',
       'eslint-rules/',
-      'refs/',
     ],
   },
   ...tseslint.configs.recommended,
