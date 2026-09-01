@@ -13,9 +13,10 @@
  *      Use for failures that fix themselves in SECONDS.
  *
  *   2. RETRY SLOW (in NEITHER set: the default for any unlisted 4xx)
- *      Give up on this attempt immediately. StreamingTask starts the polling
- *      fallback and arms a 5-minute streaming recovery timer, and reconnect()
- *      from updateUserAttributes() can reopen the stream at any time.
+ *      Give up on this attempt immediately. StreamingTask arms a 5-minute
+ *      streaming recovery timer, starts the polling fallback if
+ *      streamingFallbackToPolling is on, and reconnect() from
+ *      updateUserAttributes() can reopen the stream at any time.
  *      Use for failures that fix themselves in MINUTES, or only when the app
  *      acts.
  *
@@ -30,13 +31,15 @@
  * WHICH FIELD MATTERS: StreamingTask.buildRequest() rebuilds the request on
  * every reconnect, but only part of it actually varies: user.data changes on
  * every updateUserAttributes() call, and userEvaluationsId/evaluatedAt change
- * as the cache refreshes. Both are far too slow for category 1, but are
- * reached by category 2. The REST of the body (tag, user.id, sourceId,
- * sdkVersion) cannot change while the client runs, no less than the API key,
- * URL, method, or headers can: none of the six has a public API that mutates
- * it on a live instance, only destroy + re-initialize can produce a different
- * value, and that starts a new client with a fresh StreamingTask, not a
- * change visible to this one.
+ * as the cache refreshes. Category 1's own retries produce neither, the
+ * backoff loop just resends whatever buildRequest() returns and nothing in
+ * that loop refreshes the cache, so category 2 is where both become
+ * reachable. The REST of the body (tag, user.id, sourceId, sdkVersion) cannot
+ * change while the client runs, no less than the API key, URL, method, or
+ * headers can: none of them has a public API that mutates it on a live
+ * instance, only destroy + re-initialize can produce a different value, and
+ * that starts a new client with a fresh StreamingTask, not a change visible
+ * to this one.
  *
  * WHY CATEGORY 2, NOT 1 OR 3: "the status depends on the body" is not proof
  * that a retry can eventually succeed. A 400 caused by a malformed tag fails
@@ -48,12 +51,16 @@
  * Reserve category 3 for statuses decided entirely by parts of the REQUEST
  * that this client cannot vary.
  *
- * DEPENDS ON THE POLLING FALLBACK: category 2's "reached by category 2"
- * promise above only holds if something is actually doing the refreshing.
- * Only the polling fallback writes a new evaluatedAt, the SSE connection
- * itself never does, so that half of the promise depends on
- * streamingFallbackToPolling staying enabled. With it off, a status caused
- * by a stale evaluatedAt never self-corrects: category 2 just resends the
+ * DEPENDS ON THE POLLING FALLBACK: the "category 2 is where both become
+ * reachable" claim above only holds if something is doing the refreshing.
+ * A CONNECTED stream refreshes evaluatedAt on its own, that is what put/patch
+ * events do (StreamingTask.handleData -> applyEvaluationsResponse -> storage).
+ * But category 2 is by definition the state where the stream is NOT connected,
+ * and a closed stream delivers no events, so the only writers left are the
+ * polling fallback and a manual client.fetchEvaluations() call. That makes
+ * this half of the promise depend on streamingFallbackToPolling staying
+ * enabled, or on the app fetching by hand. With neither, a status caused by a
+ * stale evaluatedAt never self-corrects: category 2 just resends the
  * identical failing body every recovery interval, forever.
  *
  * CATEGORY 3 HAS THE SAME LIMIT: "cannot vary" above means the REQUEST, not
@@ -61,8 +68,8 @@
  * resolve if the SERVER changed, e.g. a backend deploy that adds the route.
  * They stay terminal anyway, on the same reasoning as the 404 note below:
  * this codebase does not treat those as rollout signals, and the cost of
- * being wrong is bounded (streaming stays off, polling carries on) until the
- * app restarts.
+ * being wrong is bounded (streaming stays off, polling carries on when
+ * streamingFallbackToPolling is enabled) until the app restarts.
  */
 
 export function isRecoverableStatus(status: number | undefined): boolean {
@@ -75,8 +82,8 @@ export function isRecoverableStatus(status: number | undefined): boolean {
     // backend rollout that polling survives must not kill the stream instead.
     //
     // 400 is deliberately absent: it's decided by the request BODY
-    // (attributes, cache state), which cannot change inside this loop's 120s
-    // window, so every fast retry would just resend the same failing request.
+    // (attributes, cache state), which this loop's own retries cannot change,
+    // so every fast retry would just resend the same failing request.
     // See category 2 in the file header.
     return status === 408 || status === 429 || status === 499
   }
