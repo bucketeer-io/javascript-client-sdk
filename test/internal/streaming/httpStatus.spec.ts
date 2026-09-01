@@ -54,12 +54,12 @@ suite('internal/streaming/httpStatus', () => {
   })
 
   // 400, 413, and 422 all depend on the request BODY (attributes, cache
-  // state), which changes at runtime via updateUserAttributes() or a cache
-  // refresh, just not fast enough for the backoff loop, and not "never" the
-  // way a fixed API key or URL is. They belong in neither predicate: not
-  // recoverable (no benefit from a tight retry loop), not terminal (a later
-  // attempt can genuinely differ). Pinned here explicitly so a future change
-  // to either predicate can't silently move one of them into a category by
+  // state). Not recoverable: the backoff loop's own retries cannot change that
+  // state, so a fast retry just resends the same failing request. Not terminal
+  // either: unlike a fixed API key or URL, a later attempt can genuinely
+  // differ, once the app updates attributes or the cache refreshes. So they
+  // belong in neither predicate. Pinned here explicitly so a future change to
+  // either predicate can't silently move one of them into a category by
   // accident.
   suite('statuses that depend on the request body are neither recoverable nor terminal', () => {
     test.each([400, 413, 422])('%i is false for both predicates', (status) => {
