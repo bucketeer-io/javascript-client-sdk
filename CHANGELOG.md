@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.7.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.6.1...v2.7.0) (2026-09-02)
+
+
+### Features
+
+* support SSE for update evaluation ([#333](https://github.com/bucketeer-io/javascript-client-sdk/issues/333)) ([263231d](https://github.com/bucketeer-io/javascript-client-sdk/commit/263231d1c4c5ee99d4b1fe15d1d05ef63e42ef82))
+
+
+### Bug Fixes
+
+* **client:** clear evaluation update listeners on destroy ([#338](https://github.com/bucketeer-io/javascript-client-sdk/issues/338)) ([2d91a58](https://github.com/bucketeer-io/javascript-client-sdk/commit/2d91a58dc13eab1bea67883d9fd0f45790e654f8))
+* **lifecycle:** close a destroy-during-init page-lifecycle race ([#336](https://github.com/bucketeer-io/javascript-client-sdk/issues/336)) ([eb9a6ec](https://github.com/bucketeer-io/javascript-client-sdk/commit/eb9a6ecccacd817be455986a4143816cff29385c))
+* **scheduler:** stop event flush loop from resurrecting after stop() ([#337](https://github.com/bucketeer-io/javascript-client-sdk/issues/337)) ([c04d175](https://github.com/bucketeer-io/javascript-client-sdk/commit/c04d175f8e917511ff9c43ac64521005e4f76b4b))
+* **streaming:** reclassify body-dependent 4xx statuses (400, 413, 422) ([#343](https://github.com/bucketeer-io/javascript-client-sdk/issues/343)) ([c3798d8](https://github.com/bucketeer-io/javascript-client-sdk/commit/c3798d87241382437714dd5f13d462c674d4f5f7))
+
+
+### Miscellaneous
+
+* **example:** improve example app for more easy testing ([#321](https://github.com/bucketeer-io/javascript-client-sdk/issues/321)) ([d242d5a](https://github.com/bucketeer-io/javascript-client-sdk/commit/d242d5a16ab348943e8aaf564484ac56db371d41))
+
+
+### Build System
+
+* **deps:** bump build-patch ([#344](https://github.com/bucketeer-io/javascript-client-sdk/issues/344)) ([3c0f8d8](https://github.com/bucketeer-io/javascript-client-sdk/commit/3c0f8d84c5a0f7138bd6d14854076b35b75276f7))
+* **deps:** bump build-patch group to v7.3.5 [SECURITY] ([#330](https://github.com/bucketeer-io/javascript-client-sdk/issues/330)) ([c2d82fc](https://github.com/bucketeer-io/javascript-client-sdk/commit/c2d82fcc52bc8bfdd3199ca117960ca28f1b398b))
+
 ## [2.6.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.6.0...v2.6.1) (2026-05-13)
 
 
