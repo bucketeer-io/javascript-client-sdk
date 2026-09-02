@@ -462,6 +462,22 @@ suite('internal/streaming/StreamingTask', () => {
     expect(evaluationTaskStop).toHaveBeenCalled()
   })
 
+  test.each([400, 413, 422])(
+    'error with status %i (body-dependent 4xx) starts polling AND arms recovery, same as any other non-terminal error',
+    async (status) => {
+      await startTask(buildComponent())
+
+      latest().onerror?.({ status })
+
+      expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+
+      vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
+      expect(FakeEventSource.instances).toHaveLength(2)
+      latest().onopen?.({})
+      expect(evaluationTaskStop).toHaveBeenCalled()
+    },
+  )
+
   test('non-terminal error with fallback DISABLED still arms recovery', async () => {
     await startTask(buildComponent({ streamingFallbackToPolling: false }))
 
@@ -693,6 +709,26 @@ suite('internal/streaming/StreamingTask', () => {
 
     // Fallback stops once onOpen proves the reopened stream actually works
     // (no polling gap in between).
+    latest().onopen?.({})
+    expect(evaluationTaskStop).toHaveBeenCalled()
+  })
+
+  test('reconnect() after a 413 reopens the stream with the corrected attributes (unlike a genuinely terminal error, the request can differ on retry)', async () => {
+    const component = buildComponent()
+    const t = await startTask(component)
+
+    latest().onerror?.({ status: 413 }) // oversized user.data
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+    expect(FakeEventSource.instances).toHaveLength(1)
+
+    // App shrinks the attributes that caused the 413, then updates them.
+    component.userHolder().updateAttributes(() => ({ plan: 'basic' }))
+    t.reconnect()
+
+    expect(FakeEventSource.instances).toHaveLength(2)
+    const body = JSON.parse(latest().init?.body ?? '')
+    expect(body.user.data).toEqual({ plan: 'basic' })
+
     latest().onopen?.({})
     expect(evaluationTaskStop).toHaveBeenCalled()
   })

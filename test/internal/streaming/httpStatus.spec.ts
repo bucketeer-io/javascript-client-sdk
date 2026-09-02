@@ -14,7 +14,7 @@ suite('internal/streaming/httpStatus', () => {
       expect(isRecoverableStatus(status)).toBe(true)
     })
 
-    test.each([400, 408, 429])(
+    test.each([408, 429])(
       'retryable 4xx (%i) is recoverable',
       (status) => {
         expect(isRecoverableStatus(status)).toBe(true)
@@ -29,7 +29,7 @@ suite('internal/streaming/httpStatus', () => {
       expect(isRecoverableStatus(499)).toBe(true)
     })
 
-    test.each([401, 403, 404, 405])(
+    test.each([400, 401, 403, 404, 405, 413, 422])(
       'other 4xx (%i) is not recoverable',
       (status) => {
         expect(isRecoverableStatus(status)).toBe(false)
@@ -38,18 +38,33 @@ suite('internal/streaming/httpStatus', () => {
   })
 
   suite('isTerminalStatus', () => {
-    test.each([401, 403, 404, 405, 406, 410, 413, 414, 415, 422, 431, 451])(
+    test.each([401, 403, 404, 405, 406, 410, 414, 415, 431, 451])(
       '%i is terminal',
       (status) => {
         expect(isTerminalStatus(status)).toBe(true)
       },
     )
 
-    test.each([undefined, 400, 402, 408, 409, 428, 429, 500, 503])(
+    test.each([undefined, 400, 402, 408, 409, 413, 422, 428, 429, 500, 503])(
       '%s is not terminal',
       (status) => {
         expect(isTerminalStatus(status)).toBe(false)
       },
     )
+  })
+
+  // 400, 413, and 422 all depend on the request BODY (attributes, cache
+  // state). Not recoverable: the backoff loop's own retries cannot change that
+  // state, so a fast retry just resends the same failing request. Not terminal
+  // either: unlike a fixed API key or URL, a later attempt can genuinely
+  // differ, once the app updates attributes or the cache refreshes. So they
+  // belong in neither predicate. Pinned here explicitly so a future change to
+  // either predicate can't silently move one of them into a category by
+  // accident.
+  suite('statuses that depend on the request body are neither recoverable nor terminal', () => {
+    test.each([400, 413, 422])('%i is false for both predicates', (status) => {
+      expect(isRecoverableStatus(status)).toBe(false)
+      expect(isTerminalStatus(status)).toBe(false)
+    })
   })
 })

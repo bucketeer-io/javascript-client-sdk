@@ -358,6 +358,21 @@ suite('internal/streaming/StreamConnection — health model', () => {
     expect(FakeEventSource.instances).toHaveLength(1)
   })
 
+  test.each([400, 413, 422])(
+    'error with status %i gives up non-terminal immediately, no backoff retry',
+    (status) => {
+      startConnection()
+      latest().onerror?.({ status })
+      expect(onError).toHaveBeenCalledWith({ terminal: false })
+      expect(FakeEventSource.instances[0].closed).toBe(true)
+
+      // Neither the fast backoff loop nor a later retry opens a new connection:
+      // the caller (StreamingTask) owns retrying this status, not StreamConnection.
+      vi.advanceTimersByTime(300_000)
+      expect(FakeEventSource.instances).toHaveLength(1)
+    },
+  )
+
   test('error with terminal: true from the EventSource gives up terminal, no retry', () => {
     startConnection()
     latest().onopen?.({})
