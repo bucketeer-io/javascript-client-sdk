@@ -252,6 +252,13 @@ export class StreamingTask implements ScheduledTask {
       // Remembered so reconnect() (e.g. a later updateUserAttributes() call)
       // doesn't retry a permanently dead stream — see reconnect().
       this.terminalFailure = true
+      // This state never recovers on its own (only destroy + re-initialize
+      // brings streaming back), and it used to be completely silent — the
+      // app had no way to learn that flags stopped updating over the stream.
+      console.warn(
+        'StreamingTask: streaming has stopped permanently (terminal error); ' +
+          'falling back to polling for the rest of this client\'s lifetime',
+      )
     } else {
       // Terminal failures (bad API key, streaming unsupported) are not retried;
       // everything else gets a streaming retry after the recovery interval.
@@ -282,7 +289,6 @@ export class StreamingTask implements ScheduledTask {
   }
 
   private startFallback(): void {
-    if (!this.component.config().streamingFallbackToPolling) return
     if (!this.fallbackTask) {
       this.fallbackTask = new EvaluationTask(this.component)
       // Named instead of passed as a bare literal so the call site reads on
