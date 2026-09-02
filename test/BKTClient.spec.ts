@@ -48,6 +48,7 @@ import { RegisterEventsResponse } from '../src/internal/model/response/RegisterE
 import { DefaultComponent } from '../src/internal/di/Component'
 import { DataModule } from '../src/internal/di/DataModule'
 import { InteractorModule } from '../src/internal/di/InteractorModule'
+import { EvaluationTask } from '../src/internal/scheduler/EvaluationTask'
 import { BKTEvaluationDetails } from '../src/BKTEvaluationDetails'
 import { requiredInternalConfig } from '../src/internal/InternalConfig'
 import { SourceId } from '../src/internal/model/SourceId'
@@ -1994,6 +1995,167 @@ suite('BKTClient', () => {
       expect(clearSpy).toHaveBeenCalledTimes(1)
 
       clearSpy.mockRestore()
+    })
+
+    // If destroy leaves a listener registered, a fetch that is already in
+    // flight (a poll, or a manual fetchEvaluations() call) can still resolve
+    // afterward and invoke it, running app code against a torn-down client.
+    test('should clear evaluation update listeners when destroying client', async () => {
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+
+      await initializeBKTClientInternal(component, 1000)
+
+      const client = getBKTClient()
+      assert(client !== null)
+
+      client.addEvaluationUpdateListener(vi.fn())
+
+      destroyBKTClient()
+
+      expect(
+        Object.keys(
+          getDefaultComponent(client).evaluationInteractor().updateListeners,
+        ),
+      ).toHaveLength(0)
+    })
+
+    // A manual fetchEvaluations() call can already be waiting on the network
+    // when destroy runs. If that call resolves with changed evaluations
+    // afterward, the listener map has to already be empty, or this
+    // still-in-flight call is the one that fires the stale listener.
+    test('should not fire a listener when a manual fetchEvaluations() resolves after destroy', async () => {
+      // Step 1: get a real, initialized client with a listener registered on it.
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+      await initializeBKTClientInternal(component, 1000)
+
+      const client = getBKTClient()
+      assert(client !== null)
+
+      const listener = vi.fn()
+      client.addEvaluationUpdateListener(listener)
+
+      // Step 2: swap in a handler that stays pending until releaseResponse()
+      // is called, so we can control exactly when the fetch "returns from
+      // the network", after destroy has already run.
+      let releaseResponse: () => void
+      const responseGate = new Promise<void>((resolve) => {
+        releaseResponse = resolve
+      })
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          await responseGate
+          // forceUpdate makes this response an unconditional change, so the
+          // test fails without the fix instead of passing by coincidence of
+          // a no-op response.
+          return HttpResponse.json({
+            evaluations: { ...user1Evaluations, forceUpdate: true },
+            userEvaluationsId: 'user_evaluation_id_value_2',
+          })
+        }),
+      )
+
+      // Step 3: start the fetch but don't await it, it is now suspended on
+      // responseGate, i.e. "in flight". destroyBKTClient() then runs
+      // synchronously right after, before the gate is ever released, so it
+      // is guaranteed to land while the fetch above is still pending.
+      const fetchPromise = client.fetchEvaluations()
+      destroyBKTClient()
+      expect(getBKTClient()).toBeNull()
+
+      // Step 4: only now let the response through, and let the fetch finish.
+      releaseResponse!()
+      await fetchPromise
+
+      expect(listener).not.toHaveBeenCalled()
+    })
+
+    // Same race as above, but through the actual EvaluationTask the running
+    // client already scheduled, instead of a manual fetchEvaluations() call.
+    // This is the default, most common way the race happens in practice: a
+    // background poll in flight when the app destroys the SDK.
+    test('should not fire a listener when the scheduled poll resolves after destroy', async () => {
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, () => {
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+      await initializeBKTClientInternal(component, 1000)
+
+      const client = getBKTClient()
+      assert(client !== null)
+
+      const listener = vi.fn()
+      client.addEvaluationUpdateListener(listener)
+
+      let releaseResponse: () => void
+      const responseGate = new Promise<void>((resolve) => {
+        releaseResponse = resolve
+      })
+      server.use(
+        http.post<
+          Record<string, never>,
+          GetEvaluationsRequest,
+          GetEvaluationsResponse
+        >(`${config.apiEndpoint}/get_evaluations`, async () => {
+          await responseGate
+          return HttpResponse.json({
+            evaluations: { ...user1Evaluations, forceUpdate: true },
+            userEvaluationsId: 'user_evaluation_id_value_2',
+          })
+        }),
+      )
+
+      // Reach the EvaluationTask the running client already created (config
+      // in this suite never sets enableStreaming, so it defaults to false
+      // and the scheduler's main task is an EvaluationTask), and call its
+      // fetchEvaluations() directly instead of waiting on its real timer.
+      // That keeps this test deterministic without needing fake timers.
+      const evaluationTask = (client as BKTClientImpl).taskScheduler?.[
+        'schedulers'
+      ].find((s) => s instanceof EvaluationTask) as EvaluationTask | undefined
+      assert(evaluationTask !== undefined)
+
+      const fetchPromise = evaluationTask.fetchEvaluations()
+      destroyBKTClient()
+      expect(getBKTClient()).toBeNull()
+
+      releaseResponse!()
+      await fetchPromise
+
+      expect(listener).not.toHaveBeenCalled()
     })
   })
 })

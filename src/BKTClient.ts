@@ -433,7 +433,12 @@ export const initializeBKTClientInternal = async (
 export const destroyBKTClient = (): void => {
   const client = getInstance()
   if (client) {
-    ;(client as BKTClientImpl).resetTasks()
+    const clientImpl = client as BKTClientImpl
+    clientImpl.resetTasks()
+    // A fetch already in flight (poll or manual fetchEvaluations()) can
+    // still resolve after this point, so clear listeners now rather than
+    // relying on each caller to check whether the client is still alive.
+    clientImpl.clearEvaluationUpdateListeners()
   }
   // Clean up page lifecycle event listeners
   clearPageLifecycleCleanup()
