@@ -129,7 +129,7 @@ suite('internal/streaming/StreamingTask', () => {
 
     expect(FakeEventSource.instances).toHaveLength(1)
     const es = latest()
-    expect(es.url).toBe('https://api.bucketeer.io/stream_evaluations')
+    expect(es.url).toBe('https://api.bucketeer.io/v1/gateway/stream_evaluations')
     expect(es.init?.method).toBe('POST')
     // The FULL profile must be here — injected transports receive it as-is.
     expect(es.init?.headers).toEqual({
@@ -177,7 +177,7 @@ suite('internal/streaming/StreamingTask', () => {
     expect(FakeEventSource.instances).toHaveLength(0)
     expect(fetchImpl).toHaveBeenCalledTimes(1)
     const [url, request] = vi.mocked(fetchImpl).mock.calls[0]
-    expect(url).toBe('https://api.bucketeer.io/stream_evaluations')
+    expect(url).toBe('https://api.bucketeer.io/v1/gateway/stream_evaluations')
     expect(request.headers.Accept).toBe('text/event-stream')
     expect(request.headers.Authorization).toBe('api_key_value')
   })

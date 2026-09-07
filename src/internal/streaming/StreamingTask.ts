@@ -9,7 +9,7 @@ import { FetchEventSource } from './FetchEventSource'
 import { EventSourceLike, EventSourceLikeInit } from './EventSourceLike'
 import { StreamConnection, StreamConnectionErrorInfo } from './StreamConnection'
 
-const STREAM_EVALUATIONS_PATH = '/stream_evaluations'
+const STREAM_EVALUATIONS_PATH = '/v1/gateway/stream_evaluations'
 const RECOVERY_INTERVAL_MILLIS = 5 * 60_000
 
 // Minimal structural check, not full validation: just enough to stop a
