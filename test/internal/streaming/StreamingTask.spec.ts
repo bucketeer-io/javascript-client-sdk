@@ -478,18 +478,6 @@ suite('internal/streaming/StreamingTask', () => {
     },
   )
 
-  test('non-terminal error with fallback DISABLED still arms recovery', async () => {
-    await startTask(buildComponent({ streamingFallbackToPolling: false }))
-
-    latest().onerror?.({ status: 402 }) // unclassified 4xx — immediate give-up
-
-    // No polling fallback...
-    expect(evaluationTaskStart).not.toHaveBeenCalled()
-    // ...but streaming must not be permanently dead: recovery still reopens it.
-    vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
-    expect(FakeEventSource.instances).toHaveLength(2)
-  })
-
   test('terminal error starts fallback but never schedules recovery', async () => {
     await startTask(buildComponent())
 
@@ -500,6 +488,97 @@ suite('internal/streaming/StreamingTask', () => {
     expect(vi.getTimerCount()).toBe(0)
     vi.advanceTimersByTime(30 * 60_000)
     expect(FakeEventSource.instances).toHaveLength(1)
+  })
+
+  test('an unhealthy stream that exceeds the give-up window without ever getting a status starts the polling fallback', async () => {
+    // Arrange: a connection needs to open once before it can drop.
+    await startTask(buildComponent())
+
+    // Act: it opens, then drops with no status attached at all (e.g. a
+    // plain network blip). StreamConnection treats an undefined status as
+    // recoverable, so this starts a backoff retry loop instead of an
+    // immediate give-up — unlike the 402/400/413/422 cases above, which
+    // give up on the very first error.
+    latest().onopen?.({})
+    latest().onerror?.({}) // unhealthy clock starts here
+
+    // Act: every retry fails the same way, with backoff escalating
+    // 1,2,4,8,16,30,30s (jitter mocked to 0 in beforeEach). The assertion
+    // inside the loop proves the give-up genuinely waits for the full 120s
+    // window, it does not fire on the first, second, or any early drop.
+    for (const delaySeconds of [1, 2, 4, 8, 16, 30, 30]) {
+      vi.advanceTimersByTime(delaySeconds * 1_000)
+      expect(evaluationTaskStart).not.toHaveBeenCalled()
+      latest().onerror?.({})
+    }
+    // Act: one more failure past the 120s window, the drop that finally
+    // makes StreamConnection give up with { terminal: false } even though
+    // no HTTP status was ever involved in this whole sequence.
+    vi.advanceTimersByTime(30_000) // 121s since the first failure
+    latest().onerror?.({})
+
+    // Assert: the poller must start on this status-less give-up path too,
+    // not only on give-ups that carry a recognizable HTTP status.
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+  })
+
+  test('a synchronously throwing eventSource constructor starts the polling fallback', async () => {
+    // Arrange: an injected transport that fails before it can even open.
+    // openConnection() wraps `new eventSource(...)` in try/catch specifically
+    // to survive a misbehaving injected EventSourceLike like this one.
+    class ThrowingEventSource {
+      constructor() {
+        throw new Error('boom')
+      }
+    }
+
+    // Act: start() runs openStream() synchronously, so the throw and the
+    // resulting give-up both happen before startTask() resolves, no timer
+    // advance is needed to observe the outcome.
+    await startTask(
+      buildComponent({
+        eventSource: ThrowingEventSource as unknown as EventSourceLike,
+      }),
+    )
+
+    // Assert: this give-up never produced an EventSourceErrorLike at all
+    // (construction failed before there was a connection to report on), so
+    // it must still start the poller like every other give-up path.
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+  })
+
+  test('a terminal give-up warns once that streaming has stopped permanently', async () => {
+    // Arrange: capture console.warn so it doesn't print during the test run
+    // and so its calls can be asserted on.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await startTask(buildComponent())
+
+    // Act: a terminal status (bad API key). Streaming can never recover
+    // from this on its own, only destroy + re-initialize brings it back.
+    latest().onerror?.({ status: 401 })
+
+    // Assert: polling still takes over so evaluations keep updating...
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+    // ...and the app is told, exactly once, that streaming itself is gone
+    // for good, a state that used to be completely silent.
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+  })
+
+  test('a non-terminal give-up does not warn', async () => {
+    // Arrange: same capture as the terminal case above, for the same reason.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await startTask(buildComponent())
+
+    // Act: a non-terminal give-up (an unclassified 4xx). This one is
+    // expected to self-heal later via the 5-minute recovery timer, so it is
+    // not the same kind of permanent loss as the terminal case.
+    latest().onerror?.({ status: 402 })
+
+    // Assert: the poller starts the same as any give-up...
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+    // ...but nothing is printed, so a flaky network cannot spam the console,
+    // and the terminal warning above stays meaningful when it does appear.
+    expect(warnSpy).not.toHaveBeenCalled()
   })
 
   test('onOpen after recovery cancels fallback and leaves no recovery pending', async () => {

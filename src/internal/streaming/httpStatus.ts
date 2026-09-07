@@ -14,9 +14,9 @@
  *
  *   2. RETRY SLOW (in NEITHER set: the default for any unlisted 4xx)
  *      Give up on this attempt immediately. StreamingTask arms a 5-minute
- *      streaming recovery timer, starts the polling fallback if
- *      streamingFallbackToPolling is on, and reconnect() from
- *      updateUserAttributes() can reopen the stream at any time.
+ *      streaming recovery timer, starts the polling fallback, and
+ *      reconnect() from updateUserAttributes() can reopen the stream at any
+ *      time.
  *      Use for failures that fix themselves in MINUTES, or only when the app
  *      acts.
  *
@@ -56,20 +56,19 @@
  * A CONNECTED stream refreshes evaluatedAt on its own, that is what put/patch
  * events do (StreamingTask.handleData -> applyEvaluationsResponse -> storage).
  * But category 2 is by definition the state where the stream is NOT connected,
- * and a closed stream delivers no events, so the only writers left are the
- * polling fallback and a manual client.fetchEvaluations() call. That makes
- * this half of the promise depend on streamingFallbackToPolling staying
- * enabled, or on the app fetching by hand. With neither, a status caused by a
- * stale evaluatedAt never self-corrects: category 2 just resends the
- * identical failing body every recovery interval, forever.
+ * and a closed stream delivers no events, so the writer that actually
+ * refreshes a stale evaluatedAt while streaming is down is the polling
+ * fallback, which StreamingTask always starts on any give-up (a manual
+ * client.fetchEvaluations() call works too, but nothing requires the app to
+ * make one).
  *
  * CATEGORY 3 HAS THE SAME LIMIT: "cannot vary" above means the REQUEST, not
  * the world. Several category 3 entries (404, 405, 406, 415) would also
  * resolve if the SERVER changed, e.g. a backend deploy that adds the route.
  * They stay terminal anyway, on the same reasoning as the 404 note below:
  * this codebase does not treat those as rollout signals, and the cost of
- * being wrong is bounded (streaming stays off, polling carries on when
- * streamingFallbackToPolling is enabled) until the app restarts.
+ * being wrong is bounded (streaming stays off, polling carries on) until the
+ * app restarts.
  */
 
 export function isRecoverableStatus(status: number | undefined): boolean {

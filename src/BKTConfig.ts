@@ -67,10 +67,8 @@ export interface RawBKTConfig {
 
   // Enable SSE streaming as the evaluation update mechanism (default: false).
   // When true, StreamingTask replaces EvaluationTask as the main scheduler.
+  // Streaming always falls back to polling when it fails or is unavailable.
   enableStreaming?: boolean
-
-  // When streaming fails or is unavailable, fall back to polling (default: true).
-  streamingFallbackToPolling?: boolean
 }
 
 export interface BKTConfig extends RawBKTConfig {
@@ -83,7 +81,6 @@ export interface BKTConfig extends RawBKTConfig {
   storageFactory: <T>(key: string) => BKTStorage<T>
   enableAutoPageLifecycleFlush: boolean
   enableStreaming: boolean
-  streamingFallbackToPolling: boolean
 }
 
 const defaultUserAgent = () => {
@@ -116,7 +113,6 @@ export const defineBKTConfig = (config: RawBKTConfig): BKTConfig => {
     storageFactory: config.storageFactory ?? createBKTStorage,
     enableAutoPageLifecycleFlush: config.enableAutoPageLifecycleFlush ?? true,
     enableStreaming: config.enableStreaming ?? false,
-    streamingFallbackToPolling: config.streamingFallbackToPolling ?? true,
   }
 
   // Advanced properties: only included when explicitly set (not undefined)

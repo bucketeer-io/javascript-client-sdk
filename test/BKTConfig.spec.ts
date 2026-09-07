@@ -30,7 +30,6 @@ suite('defineBKTConfig', () => {
       storageFactory: createBKTStorage,
       enableAutoPageLifecycleFlush: true,
       enableStreaming: false,
-      streamingFallbackToPolling: true,
       sdkVersion: SDK_VERSION,
       sourceId: SourceId.JAVASCRIPT,
     })
@@ -53,7 +52,6 @@ suite('defineBKTConfig', () => {
       storageFactory: createBKTStorage,
       enableAutoPageLifecycleFlush: true,
       enableStreaming: false,
-      streamingFallbackToPolling: true,
       wrapperSdkSourceId: SourceId.REACT,
       wrapperSdkVersion: '1.2.5',
       sdkVersion: '1.2.5',
@@ -68,7 +66,6 @@ suite('defineBKTConfig', () => {
     })
 
     expect(result.enableStreaming).toBe(true)
-    expect(result.streamingFallbackToPolling).toBe(true)
     expect(result.eventSource).toBeUndefined()
   })
 
