@@ -12,13 +12,14 @@ Refer to the [SDK documentation](https://docs.bucketeer.io/sdk/client-side/javas
 - Node.js
   - check `./.node-version`
 
-You need `.env` file to provide api secrets.
+You need a `.env` file to provide api secrets for development (used by the test suites).
 Just copy `env.template` and rename it to `.env`, then update it with your secrets.
 
 
 ## Example
 
-- You need `.env` file. Please follow instruction in [Environment](#environment) section.
-- Define `Feature Flags` and `Goals` in your Bucketeer console
-- Modify `example/index.ts` to use your `Feature Tag`, `Feature IDs` and `Goal IDs`
+The example app has its own `.env`, separate from the one above.
+
+- Copy `example/env.template` to `example/.env` and update it with your API secrets.
+- Define `Feature Flags` and `Goals` in your Bucketeer console.
 - Run `pnpm example:serve`

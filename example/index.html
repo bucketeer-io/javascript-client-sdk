@@ -4,19 +4,48 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>Bucketeer JS Client SDK Example</title>
 </head>
-<body>
-  <div id="app">
+<body style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <header style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #0b1f3a; color: #fff;">
+    <img src="https://avatars.githubusercontent.com/u/103725510?v=4" alt="Bucketeer logo" width="32" height="32" style="border-radius: 6px;">
+    <div>
+      <div style="font-weight: 600; font-size: 1.1em;">Bucketeer</div>
+      <div style="font-size: 0.8em; opacity: 0.8;">JavaScript Client SDK Example</div>
+    </div>
+    <div style="margin-left: auto; font-size: 0.85em;">
+      <a href="https://bucketeer.io" target="_blank" rel="noopener" style="color: #9fd3ff; margin-right: 12px;">bucketeer.io</a>
+      <a href="https://docs.bucketeer.io/sdk/client-side/javascript" target="_blank" rel="noopener" style="color: #9fd3ff;">SDK docs</a>
+    </div>
+  </header>
+  <div id="app" style="padding: 16px;">
+    <fieldset style="margin-bottom: 8px;">
+      <legend>Update mode</legend>
+      <label style="display: block;"><input type="radio" name="mode" value="polling"> polling (comparison mode, the SDK default transport; this demo polls every 60s, the SDK's own default is 10 minutes)</label>
+      <label style="display: block;"><input type="radio" name="mode" value="streaming"> streaming, built-in transport (recommended: near-instant updates)</label>
+      <label style="display: block;"><input type="radio" name="mode" value="custom"> streaming, custom eventSource (advanced: eventsource-client adapter)</label>
+    </fieldset>
     <div style="margin-bottom: 8px; display: flex; gap: 8px; align-items: center;">
       <button id="init" type="button">Initialize</button>
       <button id="destroy" type="button" disabled>Destroy</button>
+      <button id="clear_log" type="button">Clear log</button>
     </div>
     <div style="margin-bottom: 8px; display: flex; gap: 8px;">
       <button id="track_goal" type="button" disabled>track goal event</button>
       <button id="flush" type="button" disabled>flush events</button>
-      <button id="set_user_attributes" type="button">set user attributes</button>
-      <button id="view_user_attributes" type="button">view user attributes</button>
+      <button id="set_user_attributes" type="button" disabled>set user attributes</button>
+      <button id="view_user_attributes" type="button" disabled>view user attributes</button>
+    </div>
+    <div id="status" style="border: 1px solid #ccc; padding: 8px; margin-bottom: 8px; font-family: monospace;">
+      <div>mode: <span id="status_mode">-</span></div>
+      <div>stream state: <span id="status_stream_state" role="status">-</span></div>
+      <div>last update: <span id="status_last_update">-</span></div>
+      <div>evaluation updates: <span id="status_update_count">0</span></div>
+      <div>heartbeats: <span id="status_heartbeat_count">0</span></div>
+      <div style="font-size: 0.85em; color: #666; margin-top: 4px;">Inferred by this example from network activity. The SDK itself has no connection-status API.</div>
+    </div>
+    <div id="flag_value" style="border: 1px solid #ccc; padding: 8px; margin-bottom: 8px; font-family: monospace;">
+      flag value: <span id="flag_value_text">-</span>
     </div>
     <div id="logs" style="border: 1px solid #ccc; padding: 8px; font-family: monospace; min-height: 200px; max-height: 400px; overflow-y: auto;"></div>
   </div>
