@@ -4,7 +4,8 @@
     "serve": "vite serve"
   },
   "dependencies": {
-    "@bucketeer/js-client-sdk": "workspace:*"
+    "@bucketeer/js-client-sdk": "workspace:*",
+    "eventsource-client": "1.2.0"
   },
   "devDependencies": {
     "vite": "7.3.6",
