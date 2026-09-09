@@ -168,8 +168,14 @@ export class EventSourceAdapter implements EventSourceInstance {
     const terminal = this.lastErrorTerminal
     this.lastErrorStatus = undefined
     this.lastErrorTerminal = false
-    this.onerror?.({ status, terminal })
+    // report() before onerror(): for a non-terminal, non-fast-retry status
+    // (e.g. 400/413/422), onerror synchronously starts the SDK's polling
+    // fallback, whose request reports 'polling fallback'. Calling onerror
+    // first would let this closed report overwrite that with 'disconnected'
+    // right after, leaving the panel wrong while polling is actually
+    // running.
     this.report({ kind: 'closed', status, terminal })
+    this.onerror?.({ status, terminal })
   }
 
   // 4. Event routing. StreamingTask registers exactly three named handlers

@@ -141,6 +141,26 @@ suite('example/eventSourceAdapter', () => {
     expect(of('open')).toHaveLength(0)
   })
 
+  test('the closed report fires before onerror, not after', async () => {
+    // onerror is what the SDK reacts to; for a non-terminal, non-fast-retry
+    // status it can synchronously start the polling fallback, which reports
+    // its own 'request'. If the closed report fired after onerror, it would
+    // land after that and overwrite the fallback state the fallback request
+    // just set.
+    const order: string[] = []
+    const adapter = new EventSourceAdapter(STREAM_URL, {}, (event) => {
+      if (event.kind === 'closed') order.push('report:closed')
+    })
+    adapter.onerror = () => order.push('onerror')
+    const client = created[created.length - 1]
+    vi.stubGlobal('fetch', () => Promise.resolve(response({ status: 400 })))
+
+    await expect(client.options.fetch(STREAM_URL)).rejects.toThrow('400')
+    client.options.onScheduleReconnect?.({ delay: 2000 })
+
+    expect(order).toEqual(['report:closed', 'onerror'])
+  })
+
   test('a 2xx response with no readable body is terminal', async () => {
     const { client, errors, of } = build()
     vi.stubGlobal('fetch', () =>

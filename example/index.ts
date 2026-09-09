@@ -132,7 +132,13 @@ export default async function start(root: HTMLElement) {
         } else if (
           event.path === '/get_evaluations' &&
           mode !== 'polling' &&
-          !terminalFailure
+          !terminalFailure &&
+          // initializeBKTClient() always issues one bootstrap get_evaluations
+          // request alongside opening the stream (BKTClient.scheduleAndFetch),
+          // whether or not streaming ever fails. Counting that one as
+          // fallback would mislabel a normally connecting stream, possibly
+          // until the connection opens or times out.
+          !initializing
         ) {
           setStreamState('polling fallback')
         }
