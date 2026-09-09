@@ -72,6 +72,14 @@ export default async function start(root: HTMLElement) {
   // would flip the display back to "polling fallback" and hide the
   // terminal state that actually explains why streaming stopped.
   let terminalFailure = false
+  // initializeBKTClient() always fires one bootstrap get_evaluations request
+  // alongside opening the stream (BKTClient.scheduleAndFetch), whether or not
+  // streaming ever fails. Set true right before that call and consumed by
+  // exactly the next get_evaluations request seen, so only that one bootstrap
+  // request is ignored: a real fallback request racing in before init settles
+  // (the stream can fail before the bootstrap fetch resolves) still reports
+  // 'polling fallback' correctly.
+  let awaitingBootstrapFetch = false
 
   modeEls.forEach((input) => {
     input.checked = input.value === initialMode
@@ -132,15 +140,13 @@ export default async function start(root: HTMLElement) {
         } else if (
           event.path === '/get_evaluations' &&
           mode !== 'polling' &&
-          !terminalFailure &&
-          // initializeBKTClient() always issues one bootstrap get_evaluations
-          // request alongside opening the stream (BKTClient.scheduleAndFetch),
-          // whether or not streaming ever fails. Counting that one as
-          // fallback would mislabel a normally connecting stream, possibly
-          // until the connection opens or times out.
-          !initializing
+          !terminalFailure
         ) {
-          setStreamState('polling fallback')
+          if (awaitingBootstrapFetch) {
+            awaitingBootstrapFetch = false
+          } else {
+            setStreamState('polling fallback')
+          }
         }
         break
       case 'response':
@@ -253,6 +259,7 @@ export default async function start(root: HTMLElement) {
         id: 'user_id_1',
       })
 
+      awaitingBootstrapFetch = true
       await initializeBKTClient(config, user)
       log('Initialization completed')
       updateButtons(true)
