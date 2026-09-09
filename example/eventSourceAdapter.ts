@@ -189,7 +189,7 @@ export class EventSourceAdapter implements EventSourceInstance {
       this.report({
         kind: 'sse',
         name: message.event,
-        bytes: message.data.length,
+        chars: message.data.length,
       })
     }
     const handlers = this.listeners.get(eventName)
