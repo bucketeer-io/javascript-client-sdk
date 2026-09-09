@@ -1,5 +1,3 @@
 import { defineConfig } from 'vitest/config'
 
-export default defineConfig({
-  envDir: '../',
-})
+export default defineConfig({})
