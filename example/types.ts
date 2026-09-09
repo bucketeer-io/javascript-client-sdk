@@ -6,7 +6,7 @@ export type StreamEvent =
   | { kind: 'request'; path: string; method: string }
   | { kind: 'response'; path: string; status: number }
   | { kind: 'open' }
-  | { kind: 'sse'; name: string; bytes: number } // put | patch | error
+  | { kind: 'sse'; name: string; chars: number } // put | patch | error
   | { kind: 'heartbeat' }
   | { kind: 'closed'; status?: number; terminal?: boolean }
   | { kind: 'note'; text: string }

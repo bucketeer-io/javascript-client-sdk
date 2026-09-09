@@ -10,9 +10,55 @@ const classify = (url: string): string | null => {
   return null
 }
 
-// Reads the tee'd branch of the stream body, reporting an `sse` event for
-// each block with an `event:` line and a `heartbeat` event for a block that
-// is only SSE comment lines (the backend's `:` keep-alive).
+// Reports one complete SSE block: an `sse` event for a block with an
+// `event:` line, a `heartbeat` event for a block that is only SSE comment
+// lines (the backend's `:` keep-alive).
+const reportBlock = (block: string, report: StreamReporter): void => {
+  const lines = block.split('\n')
+  const eventLine = lines.find((line) => line.startsWith('event:'))
+  if (eventLine) {
+    // Counts the payload the SDK would receive, not the raw block, so the
+    // number means the same thing here and in the custom adapter (which only
+    // ever sees the parsed data). Joined the way the SSE spec joins `data:`
+    // lines, one leading space stripped.
+    const data = lines
+      .filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice('data:'.length).trimStart())
+      .join('\n')
+    report({
+      kind: 'sse',
+      name: eventLine.slice('event:'.length).trim(),
+      chars: data.length,
+    })
+  } else if (lines.some((line) => line.startsWith(':'))) {
+    report({ kind: 'heartbeat' })
+  }
+}
+
+// Reports every complete block in `buffer` and returns the unconsumed
+// remainder. The '\n\n' scan starts at `searchFrom` rather than splitting the
+// whole string, because everything before that offset went through a previous
+// call and held no separator. Without it, a large `put` snapshot arriving in
+// many chunks would be rescanned and reallocated from the start on every
+// chunk; the SDK's own parser avoids that the same way.
+const reportCompleteBlocks = (
+  buffer: string,
+  searchFrom: number,
+  report: StreamReporter,
+): string => {
+  let remainder = buffer
+  let offset = searchFrom
+  for (;;) {
+    const sepIndex = remainder.indexOf('\n\n', offset)
+    if (sepIndex === -1) return remainder
+    reportBlock(remainder.slice(0, sepIndex), report)
+    remainder = remainder.slice(sepIndex + 2)
+    offset = 0
+  }
+}
+
+// Reads the tee'd branch of the stream body, reporting each complete block
+// through reportBlock above.
 const watchStreamBody = async (
   body: ReadableStream<Uint8Array>,
   report: StreamReporter,
@@ -25,14 +71,21 @@ const watchStreamBody = async (
   // the network split across two chunks. Normalizing it right away would turn
   // it into '\n' and the next chunk's leading '\n' would then look like a
   // blank line, ending the block early. Hold it back and prepend it to the
-  // next chunk instead, as the SDK's own parser does. At EOF a held-back
-  // '\r' needs no flush: it can only belong to an unterminated block, and
-  // unterminated blocks are never reported.
+  // next chunk instead, as the SDK's own parser does. It still has to be
+  // flushed at EOF: on a CR-only stream the held-back '\r' is the second half
+  // of the CR CR terminator, so dropping it would lose the final block.
   let pendingCR = ''
+  // Resume point for the next '\n\n' scan: the buffer before this offset has
+  // already been searched and holds no separator, so it is never rescanned.
+  let searchOffset = 0
   try {
     for (;;) {
       const { done, value } = await reader.read()
       if (done) {
+        if (pendingCR) {
+          pendingCR = ''
+          buffer = reportCompleteBlocks(buffer + '\n', searchOffset, report)
+        }
         // A clean EOF: the SDK still goes through its own reconnect/backoff,
         // but nothing else in this file will report that the stream closed.
         report({ kind: 'closed', status: undefined })
@@ -48,21 +101,10 @@ const watchStreamBody = async (
       // block/line splitting below (which only looks for '\n') sees every
       // one of them.
       buffer += chunkText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-      const blocks = buffer.split('\n\n')
-      buffer = blocks.pop() ?? ''
-      for (const block of blocks) {
-        const lines = block.split('\n')
-        const eventLine = lines.find((line) => line.startsWith('event:'))
-        if (eventLine) {
-          report({
-            kind: 'sse',
-            name: eventLine.slice('event:'.length).trim(),
-            bytes: block.length,
-          })
-        } else if (lines.some((line) => line.startsWith(':'))) {
-          report({ kind: 'heartbeat' })
-        }
-      }
+      buffer = reportCompleteBlocks(buffer, searchOffset, report)
+      // Resume one character back, so a '\n\n' whose halves land in this
+      // chunk and the next is still found.
+      searchOffset = Math.max(0, buffer.length - 1)
     }
   } catch {
     // The SDK aborts this request on close/reconnect, which rejects this

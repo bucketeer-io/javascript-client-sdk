@@ -151,7 +151,7 @@ export default async function start(root: HTMLElement) {
         setStreamState('open')
         break
       case 'sse':
-        log(`event: ${event.name}`)
+        log(`event: ${event.name} (${event.chars} chars)`)
         stampLastUpdate()
         break
       case 'heartbeat':
