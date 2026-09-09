@@ -7,6 +7,10 @@ on:
   workflow_dispatch:
   workflow_call:
 
+concurrency:
+  group: e2e
+  cancel-in-progress: true
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -37,3 +41,4 @@ jobs:
         env:
           VITE_BKT_API_ENDPOINT: ${{ secrets.BKT_API_ENDPOINT }}
           VITE_BKT_API_KEY: ${{ secrets.BKT_API_KEY }}
+          VITE_BKT_PUBLIC_API_KEY: ${{ secrets.BKT_PUBLIC_API_KEY }}
