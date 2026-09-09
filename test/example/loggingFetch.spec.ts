@@ -84,6 +84,23 @@ suite('example/loggingFetch', () => {
     ])
   })
 
+  test('only a single leading space after "data:" is a separator', async () => {
+    const { report, of } = recorder()
+    // Three spaces after "data:": one is the separator, the other two are
+    // part of the value per the SSE spec.
+    vi.stubGlobal('fetch', () =>
+      Promise.resolve(
+        streamResponse(streamOf('event: put\ndata:   indented\n\n')),
+      ),
+    )
+
+    await collect(() => loggingFetch(report)(STREAM_URL, request()))
+
+    expect(of('sse')).toEqual([
+      { kind: 'sse', name: 'put', chars: '  indented'.length },
+    ])
+  })
+
   test('CRLF split across chunks keeps the block whole', async () => {
     const { report, of } = recorder()
     // The '\r' of a '\r\n' lands at the end of one network chunk and its '\n'
