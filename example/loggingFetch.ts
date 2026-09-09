@@ -19,11 +19,17 @@ const reportBlock = (block: string, report: StreamReporter): void => {
   if (eventLine) {
     // Counts the payload the SDK would receive, not the raw block, so the
     // number means the same thing here and in the custom adapter (which only
-    // ever sees the parsed data). Joined the way the SSE spec joins `data:`
-    // lines, one leading space stripped.
+    // ever sees the parsed data). Per the SSE spec (and eventsource-parser,
+    // which the custom adapter uses under eventsource-client), only a single
+    // leading space after "data:" is a separator; anything past that first
+    // character is part of the value, so `data:   x` carries two leading
+    // spaces, not zero.
     const data = lines
       .filter((line) => line.startsWith('data:'))
-      .map((line) => line.slice('data:'.length).trimStart())
+      .map((line) => {
+        const value = line.slice('data:'.length)
+        return value.startsWith(' ') ? value.slice(1) : value
+      })
       .join('\n')
     report({
       kind: 'sse',
