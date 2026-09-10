@@ -7,7 +7,7 @@ import { fetchLike } from './environment'
 import { recordingFetch } from './recordingFetch'
 import { setVariationValue, streamingTestToken } from './featureFlagApi'
 
-suite.skip('e2e/streamingPatch', () => {
+suite('e2e/streamingPatch', () => {
   afterEach(() => {
     destroyBKTClient()
   })

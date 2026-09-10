@@ -14,7 +14,7 @@ import { TimeoutException } from '../src/BKTExceptions'
 import { fetchLike } from './environment'
 import { recordingFetch } from './recordingFetch'
 
-suite.skip('e2e/streaming', () => {
+suite('e2e/streaming', () => {
   let config: BKTConfig
   let user: BKTUser
   let recorder: ReturnType<typeof recordingFetch>
