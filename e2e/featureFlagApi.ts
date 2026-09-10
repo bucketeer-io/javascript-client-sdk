@@ -1,6 +1,9 @@
 import { fetchLike } from './environment'
 
 export const publicApiKey = import.meta.env.VITE_BKT_PUBLIC_API_KEY
+if (!publicApiKey) {
+  throw new Error('VITE_BKT_PUBLIC_API_KEY is not set (needed by e2e/streamingPatch.spec.ts)')
+}
 
 // Unique per run, so two overlapping e2e runs never wait for the same value.
 export const streamingTestToken = () =>
