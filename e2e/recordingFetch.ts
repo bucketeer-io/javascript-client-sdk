@@ -1,3 +1,4 @@
+import { expect, vi } from 'vitest'
 import { FetchLike, FetchResponseLike } from '../src/internal/remote/fetch'
 
 export const recordingFetch = (base: FetchLike) => {
@@ -19,3 +20,24 @@ export const recordingFetch = (base: FetchLike) => {
     responses.find((r) => r.url.endsWith(path))?.response
   return { fetch, urls, countOf, responseFor }
 }
+
+// FetchEventSource only opens the connection once the stream request's
+// response resolves with ok: true (src/internal/streaming/FetchEventSource.ts),
+// which is exactly when `recordingFetch` records that response - not when the
+// request is merely sent. initializeBKTClient() resolves once the REST
+// get_evaluations call finishes, and the stream request can still be
+// connecting at that point, so tests that need the stream open (not just
+// requested) before doing something else should wait on this first.
+export const waitForStreamOpen = (
+  recorder: Pick<ReturnType<typeof recordingFetch>, 'responseFor'>,
+  timeout = 20_000,
+) =>
+  vi.waitFor(
+    () => {
+      const streamResponse = recorder.responseFor(
+        '/v1/gateway/stream_evaluations',
+      )
+      expect(streamResponse?.ok).toBe(true)
+    },
+    { timeout, interval: 500 },
+  )

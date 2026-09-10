@@ -4,7 +4,7 @@ import { defineBKTConfig } from '../src/BKTConfig'
 import { defineBKTUser } from '../src/BKTUser'
 import { FEATURE_ID_STREAMING, USER_ID } from './constants'
 import { fetchLike } from './environment'
-import { recordingFetch } from './recordingFetch'
+import { recordingFetch, waitForStreamOpen } from './recordingFetch'
 import { setVariationValue, streamingTestToken } from './featureFlagApi'
 
 suite('e2e/streamingPatch', () => {
@@ -52,6 +52,11 @@ suite('e2e/streamingPatch', () => {
         observed.push(client.stringVariation(FEATURE_ID_STREAMING, ''))
       })
 
+      // Without this, a fast PATCH below can land before the stream is open,
+      // so the push goes to nobody and the test times out instead of failing
+      // with a clear cause.
+      await waitForStreamOpen(recorder, 10_000)
+
       await setVariationValue(
         FEATURE_ID_STREAMING,
         variationId,
@@ -71,7 +76,10 @@ suite('e2e/streamingPatch', () => {
         { timeout: 20_000, interval: 500 },
       )
 
-      // Arrived by patch, not by a poll.
+      // The init fetch is the only /get_evaluations call. A second one would
+      // mean the observed value came from a REST re-fetch (or the polling
+      // fallback) instead of the server-pushed patch this test is meant to
+      // exercise.
       expect(recorder.countOf('/get_evaluations')).toBe(1)
     },
     30_000,

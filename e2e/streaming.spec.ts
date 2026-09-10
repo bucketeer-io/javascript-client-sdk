@@ -5,7 +5,7 @@ import { BKTUser, defineBKTUser } from '../src/BKTUser'
 import { FEATURE_ID_STRING, USER_ID } from './constants'
 import { TimeoutException } from '../src/BKTExceptions'
 import { fetchLike } from './environment'
-import { recordingFetch } from './recordingFetch'
+import { recordingFetch, waitForStreamOpen } from './recordingFetch'
 
 suite('e2e/streaming', () => {
   let config: BKTConfig
@@ -44,24 +44,16 @@ suite('e2e/streaming', () => {
 
       // The stream request is issued before initializeBKTClient() resolves
       // (see BKTClient.ts's scheduleAndFetch()), but its response can still
-      // arrive after. FetchEventSource only opens the connection when this
-      // resolves with ok: true (src/internal/streaming/FetchEventSource.ts) -
-      // a 401, a 404, or an aborted request never satisfies this, unlike the
-      // old assertion, which only checked that the request was sent.
+      // arrive after. waitForStreamOpen only resolves once the stream request
+      // settles with ok: true - a 401, a 404, or an aborted request never
+      // satisfies this, unlike the old assertion, which only checked that the
+      // request was sent.
       //
       // Timeout below the 30_000 test timeout on purpose: the init fetch above
       // already spent part of the clock, so an inner timeout equal to the
       // outer one would always lose the race, and the failure would read as
       // an opaque "test timed out" instead of this assertion's own message.
-      await vi.waitFor(
-        () => {
-          const streamResponse = recorder.responseFor(
-            '/v1/gateway/stream_evaluations',
-          )
-          expect(streamResponse?.ok).toBe(true)
-        },
-        { timeout: 20_000, interval: 500 },
-      )
+      await waitForStreamOpen(recorder, 20_000)
     },
     30_000,
   )
@@ -137,6 +129,10 @@ suite('e2e/streaming', () => {
 
       expect(listenerCalled).toBe(true)
       expect(client.objectVariationDetails(FEATURE_ID_STRING, {})?.reason).toBe('RULE')
+
+      // The init fetch is the only /get_evaluations call. A second one would
+      // mean updateUserAttributes() re-evaluated over a REST re-fetch instead
+      // of the SSE reconnect this test is meant to exercise.
       expect(recorder.countOf('/get_evaluations')).toBe(1)
     },
     30_000,
