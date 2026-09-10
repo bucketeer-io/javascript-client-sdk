@@ -38,7 +38,7 @@ suite('e2e/streamingPatch', () => {
 
       // Both fields are needed: the server replaces the whole variation object,
       // so the write must resend the existing name along with the new value.
-      const evaluation = client.evaluationDetails(FEATURE_ID_STREAMING)
+      const evaluation = client.objectVariationDetails(FEATURE_ID_STREAMING, {})
       assert(evaluation != null)
       const { variationId, variationName } = evaluation
 
@@ -59,11 +59,16 @@ suite('e2e/streamingPatch', () => {
         token,
       )
 
+      // Below the 30_000 test timeout on purpose: init and the PATCH write
+      // above already spent part of the clock, so an inner timeout equal to
+      // the outer one would always lose the race, and the failure would read
+      // as an opaque "test timed out" instead of this assertion's own
+      // message.
       await vi.waitFor(
         () => {
           expect(observed).toContain(token)
         },
-        { timeout: 30_000, interval: 500 },
+        { timeout: 20_000, interval: 500 },
       )
 
       // Arrived by patch, not by a poll.

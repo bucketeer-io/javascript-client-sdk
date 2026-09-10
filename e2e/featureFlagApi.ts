@@ -6,6 +6,12 @@ export const publicApiKey = import.meta.env.VITE_BKT_PUBLIC_API_KEY
 export const streamingTestToken = () =>
   `sse-e2e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 
+// The written value is never restored after the test runs. That's intentional,
+// not an oversight: every caller passes a fresh, disposable value (see
+// streamingTestToken()), never a value any test depends on reading back later,
+// and every PATCH bumps the flag's version on the backend regardless of what
+// the previous value was. So there is no baseline to drift away from, and
+// leaving the flag on the last run's value doesn't affect any later run.
 export const setVariationValue = async (
   featureId: string,
   variationId: string,

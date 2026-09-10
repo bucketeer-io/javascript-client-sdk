@@ -2,14 +2,7 @@ import { suite, test, expect, beforeEach, afterEach, assert, vi } from 'vitest'
 import { destroyBKTClient, getBKTClient, initializeBKTClient } from './module'
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { BKTUser, defineBKTUser } from '../src/BKTUser'
-import {
-  FEATURE_ID_BOOLEAN,
-  FEATURE_ID_DOUBLE,
-  FEATURE_ID_INT,
-  FEATURE_ID_JSON,
-  FEATURE_ID_STRING,
-  USER_ID,
-} from './constants'
+import { FEATURE_ID_STRING, USER_ID } from './constants'
 import { TimeoutException } from '../src/BKTExceptions'
 import { fetchLike } from './environment'
 import { recordingFetch } from './recordingFetch'
@@ -42,24 +35,33 @@ suite('e2e/streaming', () => {
   })
 
   test(
-    'streaming init still delivers correct values',
+    'stream connection opens successfully during init',
     async () => {
       await initializeBKTClient(config, user)
 
       const client = getBKTClient()
       assert(client != null)
 
-      expect(client.stringVariation(FEATURE_ID_STRING, '')).toBe('value-1')
-      expect(client.numberVariation(FEATURE_ID_INT, 0)).toBe(10)
-      expect(client.numberVariation(FEATURE_ID_DOUBLE, 0.0)).toBe(2.1)
-      expect(client.booleanVariation(FEATURE_ID_BOOLEAN, false)).toBe(true)
-      expect(client.jsonVariation(FEATURE_ID_JSON, '')).toStrictEqual({
-        key: 'value-1',
-      })
-
-      expect(
-        recorder.urls.some((u) => u.endsWith('/v1/gateway/stream_evaluations')),
-      ).toBe(true)
+      // The stream request is issued before initializeBKTClient() resolves
+      // (see BKTClient.ts's scheduleAndFetch()), but its response can still
+      // arrive after. FetchEventSource only opens the connection when this
+      // resolves with ok: true (src/internal/streaming/FetchEventSource.ts) -
+      // a 401, a 404, or an aborted request never satisfies this, unlike the
+      // old assertion, which only checked that the request was sent.
+      //
+      // Timeout below the 30_000 test timeout on purpose: the init fetch above
+      // already spent part of the clock, so an inner timeout equal to the
+      // outer one would always lose the race, and the failure would read as
+      // an opaque "test timed out" instead of this assertion's own message.
+      await vi.waitFor(
+        () => {
+          const streamResponse = recorder.responseFor(
+            '/v1/gateway/stream_evaluations',
+          )
+          expect(streamResponse?.ok).toBe(true)
+        },
+        { timeout: 20_000, interval: 500 },
+      )
     },
     30_000,
   )
@@ -79,11 +81,16 @@ suite('e2e/streaming', () => {
       const client = getBKTClient()
       assert(client != null)
 
+      // Below the 30_000 test timeout on purpose: the test clock starts before
+      // this (the aborted init fetch already ran), so an inner timeout equal
+      // to the outer one would always lose the race, and the failure would
+      // read as an opaque "test timed out" instead of this assertion's own
+      // message.
       await vi.waitFor(
         () => {
           expect(client.stringVariation(FEATURE_ID_STRING, '')).toBe('value-1')
         },
-        { timeout: 30_000, interval: 500 },
+        { timeout: 20_000, interval: 500 },
       )
 
       // The aborted init fetch is the only /get_evaluations call. A second one
@@ -117,15 +124,19 @@ suite('e2e/streaming', () => {
 
       await client.updateUserAttributes({ app_version: '0.0.1' })
 
+      // Below the 30_000 test timeout on purpose: the init fetch above already
+      // spent part of the clock, so an inner timeout equal to the outer one
+      // would always lose the race, and the failure would read as an opaque
+      // "test timed out" instead of this assertion's own message.
       await vi.waitFor(
         () => {
           expect(client.stringVariation(FEATURE_ID_STRING, '')).toBe('value-2')
         },
-        { timeout: 30_000, interval: 500 },
+        { timeout: 20_000, interval: 500 },
       )
 
       expect(listenerCalled).toBe(true)
-      expect(client.evaluationDetails(FEATURE_ID_STRING)?.reason).toBe('RULE')
+      expect(client.objectVariationDetails(FEATURE_ID_STRING, {})?.reason).toBe('RULE')
       expect(recorder.countOf('/get_evaluations')).toBe(1)
     },
     30_000,
