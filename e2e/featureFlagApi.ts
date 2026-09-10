@@ -37,5 +37,8 @@ export const setVariationValue = async (
       ],
     }),
   })
-  if (!res.ok) throw new Error(`failed to update ${featureId}: ${res.status} ${res.statusText}`)
+  const body = await res.text()
+  if (!res.ok) {
+    throw new Error(`failed to update ${featureId}: ${res.status} ${res.statusText} ${body}`)
+  }
 }
