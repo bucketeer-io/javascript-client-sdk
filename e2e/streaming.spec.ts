@@ -61,13 +61,18 @@ suite('e2e/streaming', () => {
   test(
     'evaluations arrive over the stream when REST is unavailable',
     async () => {
-      // Own storage prefix: initializeCache() loads whatever is already cached
-      // under a prefix, and a leftover value from another test would make this
-      // pass even if the stream delivered nothing.
-      config.storageKeyPrefix = 'streaming-timeout'
+      const timeoutConfig = defineBKTConfig({
+        apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
+        apiKey: import.meta.env.VITE_BKT_API_KEY,
+        featureTag: 'javascript',
+        appVersion: '1.2.3',
+        fetch: recorder.fetch,
+        enableStreaming: true,
+        storageKeyPrefix: 'streaming-timeout',
+      })
 
       await expect(() =>
-        initializeBKTClient(config, user, 1),
+        initializeBKTClient(timeoutConfig, user, 1),
       ).rejects.toThrowError(TimeoutException)
 
       const client = getBKTClient()
