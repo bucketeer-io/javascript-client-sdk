@@ -133,7 +133,7 @@ suite('e2e/streaming', () => {
       )
 
       expect(listenerCalled).toBe(true)
-      expect(client.objectVariationDetails(FEATURE_ID_STRING, {})?.reason).toBe('RULE')
+      expect(client.stringVariationDetails(FEATURE_ID_STRING, '')?.reason).toBe('RULE')
 
       // The init fetch is the only /get_evaluations call. A second one would
       // mean updateUserAttributes() re-evaluated over a REST re-fetch instead

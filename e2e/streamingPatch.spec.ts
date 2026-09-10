@@ -38,7 +38,7 @@ suite('e2e/streamingPatch', () => {
 
       // Both fields are needed: the server replaces the whole variation object,
       // so the write must resend the existing name along with the new value.
-      const evaluation = client.objectVariationDetails(FEATURE_ID_STREAMING, {})
+      const evaluation = client.stringVariationDetails(FEATURE_ID_STREAMING, '')
       assert(evaluation != null)
       const { variationId, variationName } = evaluation
 
