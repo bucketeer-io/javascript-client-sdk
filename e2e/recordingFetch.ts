@@ -14,20 +14,26 @@ export const recordingFetch = (base: FetchLike) => {
     })
   }
   const countOf = (path: string) => urls.filter((u) => u.endsWith(path)).length
-  // Resolved response for the first recorded call whose URL ends with `path`,
-  // so callers can check ok/status - not just that a request was sent.
+  // Resolved response for the most recent recorded call whose URL ends with
+  // `path`, so callers can check ok/status - not just that a request was
+  // sent. Uses the most recent one (not the first) so a retry after a
+  // recoverable failure is reflected here instead of being hidden behind the
+  // earlier failed attempt.
   const responseFor = (path: string) =>
-    responses.find((r) => r.url.endsWith(path))?.response
+    responses.findLast((r) => r.url.endsWith(path))?.response
   return { fetch, urls, countOf, responseFor }
 }
 
 // FetchEventSource only opens the connection once the stream request's
-// response resolves with ok: true (src/internal/streaming/FetchEventSource.ts),
-// which is exactly when `recordingFetch` records that response - not when the
-// request is merely sent. initializeBKTClient() resolves once the REST
-// get_evaluations call finishes, and the stream request can still be
-// connecting at that point, so tests that need the stream open (not just
-// requested) before doing something else should wait on this first.
+// response resolves with ok: true AND a usable readable body - a response
+// with no body (or one whose body has no getReader(), e.g. a runtime/fetch
+// that can't stream) is treated as terminal instead of open
+// (src/internal/streaming/FetchEventSource.ts). `recordingFetch` records the
+// response at the same point, not when the request is merely sent.
+// initializeBKTClient() resolves once the REST get_evaluations call
+// finishes, and the stream request can still be connecting at that point, so
+// tests that need the stream open (not just requested) before doing
+// something else should wait on this first.
 export const waitForStreamOpen = (
   recorder: Pick<ReturnType<typeof recordingFetch>, 'responseFor'>,
   timeout = 20_000,
@@ -38,6 +44,7 @@ export const waitForStreamOpen = (
         '/v1/gateway/stream_evaluations',
       )
       expect(streamResponse?.ok).toBe(true)
+      expect(typeof streamResponse?.body?.getReader).toBe('function')
     },
     { timeout, interval: 500 },
   )
