@@ -9,7 +9,6 @@ export type StreamEvent =
   | { kind: 'sse'; name: string; chars: number } // put | patch | error
   | { kind: 'heartbeat' }
   | { kind: 'closed'; status?: number; terminal?: boolean }
-  | { kind: 'note'; text: string }
 
 export type StreamReporter = (event: StreamEvent) => void
 

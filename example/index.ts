@@ -184,9 +184,6 @@ export default async function start(root: HTMLElement) {
           }
         }
         break
-      case 'note':
-        log(event.text)
-        break
     }
   }
 
