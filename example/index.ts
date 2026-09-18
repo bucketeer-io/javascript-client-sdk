@@ -5,8 +5,6 @@ import {
   getBKTClient,
   destroyBKTClient,
 } from '@bucketeer/js-client-sdk'
-import { EventSourceAdapter } from './eventSourceAdapter'
-import type { Mode } from './types'
 
 const FEATURE_TAG = import.meta.env.VITE_BKT_FEATURE_TAG ?? 'feature-tag'
 const STRING_FEATURE_ID = import.meta.env.VITE_BKT_FEATURE_ID ?? 'feature_id'
@@ -16,12 +14,8 @@ const AUTO_INIT_FLAG = true
 
 // Vite exposes every custom env var as a string, so compare against the
 // exact string 'true' rather than relying on truthiness ('false' is truthy).
-const initialMode: Mode =
-  import.meta.env.VITE_BKT_ENABLE_STREAMING !== 'true'
-    ? 'polling'
-    : import.meta.env.VITE_BKT_USE_CUSTOM_EVENT_SOURCE === 'true'
-      ? 'custom'
-      : 'streaming'
+const initialMode =
+  import.meta.env.VITE_BKT_ENABLE_STREAMING === 'true' ? 'streaming' : 'polling'
 
 export default async function start(root: HTMLElement) {
   const logsEl = root.querySelector('#logs')
@@ -37,7 +31,6 @@ export default async function start(root: HTMLElement) {
 
   let listenerId: string | null | undefined = null
   let initializing = false
-  let mode: Mode = initialMode
 
   modeEls.forEach((input) => {
     input.checked = input.value === initialMode
@@ -87,8 +80,9 @@ export default async function start(root: HTMLElement) {
       return
     }
 
-    const selected = root.querySelector<HTMLInputElement>('input[name="mode"]:checked')
-    mode = (selected?.value as Mode | undefined) ?? 'polling'
+    const streaming =
+      root.querySelector<HTMLInputElement>('input[name="mode"]:checked')
+        ?.value === 'streaming'
     // Lock the radios in now, before the async initialization below can be
     // interrupted by a mode change that no longer matches what was captured.
     // The failure path further down re-enables them via updateButtons(false).
@@ -96,7 +90,9 @@ export default async function start(root: HTMLElement) {
       input.disabled = true
     })
 
-    log(`Initializing BKTClient in ${mode} mode...`)
+    log(
+      `Initializing BKTClient with streaming ${streaming ? 'enabled' : 'disabled'}...`,
+    )
     try {
       // Built inside the try: defineBKTConfig/defineBKTUser validate their
       // input and can throw synchronously (e.g. a malformed
@@ -108,13 +104,7 @@ export default async function start(root: HTMLElement) {
         featureTag: FEATURE_TAG,
         appVersion: '1.2.3',
         pollingInterval: 60_000, // minimum allowed
-        enableStreaming: mode !== 'polling',
-        // Only the `custom` mode replaces the built-in SSE transport. Kept as a
-        // single conditional spread of one known key (never a merged options
-        // object), so the eslint-disable below is trivially safe: there is no
-        // earlier `eventSource` property for an undefined value to override.
-        // eslint-disable-next-line custom-rules/no-spread-after-defaults
-        ...(mode === 'custom' ? { eventSource: EventSourceAdapter } : {}),
+        enableStreaming: streaming,
       })
 
       const user = defineBKTUser({
