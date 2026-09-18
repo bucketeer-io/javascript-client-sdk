@@ -33,7 +33,8 @@ jobs:
         run: pnpm build
 
       - name: Run Tests
-        run: pnpm test:e2e --browser.headless
+        run: pnpm test:e2e
         env:
           VITE_BKT_API_ENDPOINT: ${{ secrets.BKT_API_ENDPOINT }}
           VITE_BKT_API_KEY: ${{ secrets.BKT_API_KEY }}
+          VITE_BKT_PUBLIC_API_KEY: ${{ secrets.BKT_PUBLIC_API_KEY }}

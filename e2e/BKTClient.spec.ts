@@ -71,7 +71,7 @@ suite('e2e/BKTClientTest', () => {
 
       expect(client.stringVariation(FEATURE_ID_STRING, '')).toBe('value-1')
 
-      client.updateUserAttributes({ app_version: '0.0.1' })
+      await client.updateUserAttributes({ app_version: '0.0.1' })
 
       await client.fetchEvaluations()
 

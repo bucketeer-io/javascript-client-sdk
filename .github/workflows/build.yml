@@ -33,6 +33,12 @@ jobs:
           pnpm lint
           pnpm test:custom-eslint-rules
 
+      - name: Run type checks for library
+        run: pnpm typecheck:lib
+
+      - name: Run type checks for tests
+        run: pnpm typecheck:test
+
       - name: Run Tests for Browser environment
         run: pnpm test:browser
 
