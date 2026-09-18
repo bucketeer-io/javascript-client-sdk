@@ -68,6 +68,7 @@ export default async function start(root: HTMLElement) {
     if (initializing) return
     initializing = true
     if (initEl) initEl.disabled = true
+    if (flagValueEl) flagValueEl.textContent = '-'
 
     const apiEndpoint = import.meta.env.VITE_BKT_API_ENDPOINT
     const apiKey = import.meta.env.VITE_BKT_API_KEY
@@ -140,6 +141,7 @@ export default async function start(root: HTMLElement) {
       listenerId = null
     }
     destroyBKTClient()
+    if (flagValueEl) flagValueEl.textContent = '-'
     log('BKTClient destroyed')
     updateButtons(false)
   }
