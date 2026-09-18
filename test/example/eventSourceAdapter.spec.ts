@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, expect, suite, test, vi } from 'vitest'
 import type { EventSourceErrorLike } from '../../src/internal/streaming/EventSourceLike'
-import type { StreamEvent } from '../../example/types'
 
 // The adapter's whole job is translating eventsource-client's callbacks into
 // the SDK's EventSourceLike contract, so the library is replaced with a fake
@@ -53,24 +52,21 @@ const READY_STATE_CLOSED = 2
 
 const STREAM_URL = 'https://api.example.test/stream_evaluations'
 
-// Builds an adapter plus everything needed to inspect what it reported.
+// Builds an adapter plus everything needed to inspect what it handed the SDK.
 function build() {
-  const events: StreamEvent[] = []
   const errors: (EventSourceErrorLike | unknown)[] = []
   const messages: { data?: string }[] = []
-  const adapter = new EventSourceAdapter(
-    STREAM_URL,
-    { method: 'POST', headers: { Authorization: 'bearer key' }, body: '{}' },
-    (event) => events.push(event),
-  )
+  const opens: unknown[] = []
+  const adapter = new EventSourceAdapter(STREAM_URL, {
+    method: 'POST',
+    headers: { Authorization: 'bearer key' },
+    body: '{}',
+  })
+  adapter.onopen = (ev) => opens.push(ev)
   adapter.onerror = (ev) => errors.push(ev)
   adapter.onmessage = (ev) => messages.push(ev)
   const client = created[created.length - 1]
-  const of = <K extends StreamEvent['kind']>(kind: K) =>
-    events.filter(
-      (e): e is Extract<StreamEvent, { kind: K }> => e.kind === kind,
-    )
-  return { adapter, client, events, errors, messages, of }
+  return { adapter, client, errors, messages, opens }
 }
 
 function response(init: {
@@ -93,12 +89,9 @@ afterEach(() => {
 })
 
 suite('example/eventSourceAdapter', () => {
-  test('reports the request and passes the init through unchanged', () => {
-    const { client, of } = build()
+  test('passes the init through unchanged', () => {
+    const { client } = build()
 
-    expect(of('request')).toEqual([
-      { kind: 'request', path: '/stream_evaluations', method: 'POST' },
-    ])
     expect(client.options.url).toBe(STREAM_URL)
     expect(client.options.method).toBe('POST')
     expect(client.options.headers).toEqual({ Authorization: 'bearer key' })
@@ -106,27 +99,26 @@ suite('example/eventSourceAdapter', () => {
   })
 
   test('onConnect opens the stream', () => {
-    const { adapter, client, of } = build()
+    const { adapter, client, opens } = build()
     expect(adapter.readyState).toBe(READY_STATE_CONNECTING)
 
     client.options.onConnect?.()
 
     expect(adapter.readyState).toBe(READY_STATE_OPEN)
-    expect(of('open')).toHaveLength(1)
+    expect(opens).toHaveLength(1)
   })
 
   test('a comment heartbeat produces a bare liveness tick', () => {
-    const { client, messages, of } = build()
+    const { client, messages } = build()
 
     client.options.onComment?.('ping')
 
     // Bare tick: the SDK watchdog only needs to know bytes arrived.
     expect(messages).toEqual([{ data: undefined }])
-    expect(of('heartbeat')).toHaveLength(1)
   })
 
   test('a non-2xx response is rejected instead of reported as open', async () => {
-    const { client, errors, of } = build()
+    const { client, errors, opens } = build()
     vi.stubGlobal('fetch', () => Promise.resolve(response({ status: 401 })))
 
     await expect(client.options.fetch(STREAM_URL)).rejects.toThrow('401')
@@ -135,34 +127,11 @@ suite('example/eventSourceAdapter', () => {
     client.options.onScheduleReconnect?.({ delay: 2000 })
 
     expect(errors).toEqual([{ status: 401, terminal: false }])
-    expect(of('closed')).toEqual([
-      { kind: 'closed', status: 401, terminal: false },
-    ])
-    expect(of('open')).toHaveLength(0)
-  })
-
-  test('the closed report fires before onerror, not after', async () => {
-    // onerror is what the SDK reacts to; for a non-terminal, non-fast-retry
-    // status it can synchronously start the polling fallback, which reports
-    // its own 'request'. If the closed report fired after onerror, it would
-    // land after that and overwrite the fallback state the fallback request
-    // just set.
-    const order: string[] = []
-    const adapter = new EventSourceAdapter(STREAM_URL, {}, (event) => {
-      if (event.kind === 'closed') order.push('report:closed')
-    })
-    adapter.onerror = () => order.push('onerror')
-    const client = created[created.length - 1]
-    vi.stubGlobal('fetch', () => Promise.resolve(response({ status: 400 })))
-
-    await expect(client.options.fetch(STREAM_URL)).rejects.toThrow('400')
-    client.options.onScheduleReconnect?.({ delay: 2000 })
-
-    expect(order).toEqual(['report:closed', 'onerror'])
+    expect(opens).toHaveLength(0)
   })
 
   test('a 2xx response with no readable body is terminal', async () => {
-    const { client, errors, of } = build()
+    const { client, errors } = build()
     vi.stubGlobal('fetch', () =>
       Promise.resolve(response({ status: 200, body: null })),
     )
@@ -173,9 +142,6 @@ suite('example/eventSourceAdapter', () => {
     client.options.onScheduleReconnect?.({ delay: 2000 })
 
     expect(errors).toEqual([{ status: undefined, terminal: true }])
-    expect(of('closed')).toEqual([
-      { kind: 'closed', status: undefined, terminal: true },
-    ])
   })
 
   test('a body that is not a web stream is terminal too', async () => {
@@ -193,7 +159,7 @@ suite('example/eventSourceAdapter', () => {
   })
 
   test('a rejected fetch closes the stream and tells the SDK', async () => {
-    const { adapter, client, errors, of } = build()
+    const { adapter, client, errors } = build()
     vi.stubGlobal('fetch', () => Promise.reject(new Error('dns failure')))
 
     await expect(client.options.fetch(STREAM_URL)).rejects.toThrow(
@@ -203,14 +169,13 @@ suite('example/eventSourceAdapter', () => {
 
     // Recoverable, so the SDK retries on its own schedule.
     expect(errors).toEqual([{ status: undefined, terminal: false }])
-    expect(of('closed')).toHaveLength(1)
     // The library's own retry loop must be stopped, or two loops race.
     expect(client.closeCalls).toBe(1)
     expect(adapter.readyState).toBe(READY_STATE_CLOSED)
   })
 
   test('a successful response clears the status an earlier failure recorded', async () => {
-    const { client, errors, of } = build()
+    const { client, errors } = build()
     vi.stubGlobal('fetch', () => Promise.resolve(response({ status: 500 })))
     await expect(client.options.fetch(STREAM_URL)).rejects.toThrow('500')
 
@@ -224,13 +189,10 @@ suite('example/eventSourceAdapter', () => {
     // this connection ended, or the SDK would treat a recoverable end of
     // stream as a server error.
     expect(errors).toEqual([{ status: undefined, terminal: false }])
-    expect(of('closed')).toEqual([
-      { kind: 'closed', status: undefined, terminal: false },
-    ])
   })
 
   test('end of stream reports the closure exactly once', () => {
-    const { client, errors, of } = build()
+    const { client, errors } = build()
     client.options.onConnect?.()
 
     // At EOF the library calls both, back to back, in this order.
@@ -238,23 +200,21 @@ suite('example/eventSourceAdapter', () => {
     client.options.onDisconnect?.()
 
     expect(errors).toHaveLength(1)
-    expect(of('closed')).toHaveLength(1)
     expect(client.closeCalls).toBe(1)
   })
 
   test('onDisconnect alone also reports the closure once', () => {
-    const { client, errors, of } = build()
+    const { client, errors } = build()
     client.options.onConnect?.()
 
     client.options.onDisconnect?.()
     client.options.onDisconnect?.()
 
     expect(errors).toHaveLength(1)
-    expect(of('closed')).toHaveLength(1)
   })
 
   test('a discarded instance goes quiet after close()', () => {
-    const { adapter, client, errors, messages, of } = build()
+    const { adapter, client, errors, messages, opens } = build()
     client.options.onConnect?.()
 
     adapter.close()
@@ -267,14 +227,12 @@ suite('example/eventSourceAdapter', () => {
     expect(adapter.readyState).toBe(READY_STATE_CLOSED)
     expect(errors).toHaveLength(0)
     expect(messages).toHaveLength(0)
-    expect(of('closed')).toHaveLength(0)
-    expect(of('sse')).toHaveLength(0)
     // Only the open from before close().
-    expect(of('open')).toHaveLength(1)
+    expect(opens).toHaveLength(1)
   })
 
   test('a named event reaches its registered listener', () => {
-    const { adapter, client, messages, of } = build()
+    const { adapter, client, messages } = build()
     const put: string[] = []
     adapter.addEventListener('put', (ev) => put.push(ev.data ?? ''))
 
@@ -282,18 +240,14 @@ suite('example/eventSourceAdapter', () => {
 
     expect(put).toEqual(['{"a":1}'])
     expect(messages).toHaveLength(0)
-    expect(of('sse')).toEqual([
-      { kind: 'sse', name: 'put', chars: '{"a":1}'.length },
-    ])
   })
 
   test('a block with no event name goes to onmessage', () => {
-    const { client, messages, of } = build()
+    const { client, messages } = build()
 
     client.options.onMessage?.({ data: '{"a":1}' })
 
     expect(messages).toEqual([{ data: '{"a":1}' }])
-    expect(of('sse')).toHaveLength(0)
   })
 
   test('an explicit "event: message" goes to onmessage as well', () => {

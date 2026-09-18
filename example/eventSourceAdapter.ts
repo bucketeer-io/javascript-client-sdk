@@ -13,7 +13,6 @@ import type {
   EventSourceLikeInit,
   MessageEventLike,
 } from '@bucketeer/js-client-sdk'
-import type { StreamReporter } from './types'
 
 const READY_STATE_CONNECTING = 0
 const READY_STATE_OPEN = 1
@@ -30,8 +29,8 @@ export class EventSourceAdapter implements EventSourceInstance {
     Array<(ev: MessageEventLike) => void>
   >()
   // 5. StreamConnection closes and replaces instances freely. Once set, every
-  // callback below returns early so a dying instance cannot fire onerror (or
-  // report()) into the SDK/UI after being discarded.
+  // callback below returns early so a dying instance cannot fire onerror into
+  // the SDK after being discarded.
   private closed = false
   // 3. eventsource-client's own callbacks carry no HTTP status, but the SDK's
   // terminal-vs-recoverable classification needs one (see
@@ -44,17 +43,7 @@ export class EventSourceAdapter implements EventSourceInstance {
   private lastErrorTerminal = false
   private readonly client: ReturnType<typeof createEventSource>
 
-  constructor(
-    url: string,
-    init: EventSourceLikeInit | undefined,
-    private readonly report: StreamReporter,
-  ) {
-    this.report({
-      kind: 'request',
-      path: '/stream_evaluations',
-      method: init?.method ?? 'POST',
-    })
-
+  constructor(url: string, init?: EventSourceLikeInit) {
     // 3. Recover the HTTP status and treat a non-2xx response as a failed
     // connection. eventsource-client calls onConnect for any response that
     // resolves, 2xx or not, so a 401/403 would otherwise report a false
@@ -94,7 +83,6 @@ export class EventSourceAdapter implements EventSourceInstance {
         if (this.closed) return
         this.readyState = READY_STATE_OPEN
         this.onopen?.({})
-        this.report({ kind: 'open' })
       },
       // 1. Heartbeat liveness. The backend heartbeats with SSE comment lines
       // every 25s and the SDK watchdog fires at 70s
@@ -104,7 +92,6 @@ export class EventSourceAdapter implements EventSourceInstance {
       onComment: () => {
         if (this.closed) return
         this.onmessage?.({ data: undefined })
-        this.report({ kind: 'heartbeat' })
       },
       onMessage: (message) => {
         if (this.closed) return
@@ -157,8 +144,8 @@ export class EventSourceAdapter implements EventSourceInstance {
   }
 
   // Shared by onDisconnect and onScheduleReconnect above. Stops the
-  // library's own retry loop and reports the closure once; the `closed`
-  // guard makes a repeat call a no-op.
+  // library's own retry loop and tells the SDK once; the `closed` guard
+  // makes a repeat call a no-op.
   private handleDisconnect(): void {
     if (this.closed) return
     this.closed = true
@@ -168,13 +155,6 @@ export class EventSourceAdapter implements EventSourceInstance {
     const terminal = this.lastErrorTerminal
     this.lastErrorStatus = undefined
     this.lastErrorTerminal = false
-    // report() before onerror(): for a non-terminal, non-fast-retry status
-    // (e.g. 400/413/422), onerror synchronously starts the SDK's polling
-    // fallback, whose request reports 'polling fallback'. Calling onerror
-    // first would let this closed report overwrite that with 'disconnected'
-    // right after, leaving the panel wrong while polling is actually
-    // running.
-    this.report({ kind: 'closed', status, terminal })
     this.onerror?.({ status, terminal })
   }
 
@@ -191,13 +171,6 @@ export class EventSourceAdapter implements EventSourceInstance {
     // undefined, so this covers the empty case the SSE spec maps to the
     // default type too.
     const eventName = message.event ?? 'message'
-    if (message.event) {
-      this.report({
-        kind: 'sse',
-        name: message.event,
-        chars: message.data.length,
-      })
-    }
     const handlers = this.listeners.get(eventName)
     if (handlers && handlers.length > 0) {
       handlers.forEach((handler) => handler({ data: message.data }))
