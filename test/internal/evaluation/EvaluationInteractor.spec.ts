@@ -395,6 +395,143 @@ suite('internal/evaluation/EvaluationInteractor', () => {
         evaluationStorage.getUserAttributesState().userAttributesUpdated,
       ).toBe(true)
     })
+
+    suite('a reply skipped as stale keeps userAttributesUpdated set', () => {
+      // The reply to a userAttributesUpdated:true request carries the
+      // re-evaluation for the new attributes. If storage skips that reply
+      // because a newer one is already stored, the re-evaluation was never
+      // saved, so the flag must survive for the next poll to ask again.
+      const storedEvaluationsId = 'stored_evaluations_id'
+      const storedEvaluatedAt = '1700000100'
+      const olderCreatedAt = '1700000000'
+
+      const reply = (
+        userEvaluationsId: string,
+        createdAt: string,
+        forceUpdate: boolean,
+      ): GetEvaluationsResponse => ({
+        evaluations: {
+          id: '17388826713971171773',
+          evaluations: [evaluation2],
+          createdAt,
+          forceUpdate,
+          archivedFeatureIds: [],
+        },
+        userEvaluationsId,
+      })
+
+      const seedStorage = async (evaluatedAt: string) => {
+        await evaluationStorage.storage.set({
+          userId: user1.id,
+          currentEvaluationsId: storedEvaluationsId,
+          evaluations: {
+            [evaluation1.featureId]: evaluation1,
+          },
+          currentFeatureTag: 'feature_tag_value',
+          evaluatedAt,
+          userAttributesUpdated: false,
+        })
+        await interactor.initialize()
+      }
+
+      test.each([
+        ['full snapshot (forceUpdate: true)', true],
+        ['diff (forceUpdate: false)', false],
+      ])('a stale %s reply does not clear the flag', async (_, forceUpdate) => {
+        server.use(
+          http.post<
+            Record<string, never>,
+            GetEvaluationsRequest,
+            GetEvaluationsResponse
+          >(`${config.apiEndpoint}/get_evaluations`, async () => {
+            return HttpResponse.json(
+              reply('older_evaluations_id', olderCreatedAt, forceUpdate),
+            )
+          }),
+        )
+        await seedStorage(storedEvaluatedAt)
+        await interactor.setUserAttributesUpdated()
+
+        const result = await interactor.fetch(user1)
+        assert(result.type === 'success')
+
+        // The reply was really skipped: nothing from it was stored.
+        const stored = await evaluationStorage.storage.get()
+        expect(stored?.currentEvaluationsId).toBe(storedEvaluationsId)
+        expect(stored?.evaluatedAt).toBe(storedEvaluatedAt)
+        expect(
+          evaluationStorage.getUserAttributesState().userAttributesUpdated,
+        ).toBe(true)
+      })
+
+      test('the next poll still sends userAttributesUpdated: true', async () => {
+        const sentFlags: boolean[] = []
+        server.use(
+          http.post<
+            Record<string, never>,
+            GetEvaluationsRequest,
+            GetEvaluationsResponse
+          >(`${config.apiEndpoint}/get_evaluations`, async ({ request }) => {
+            const body = await request.json()
+            sentFlags.push(body.userEvaluationCondition.userAttributesUpdated)
+            return HttpResponse.json(
+              reply('older_evaluations_id', olderCreatedAt, true),
+            )
+          }),
+        )
+        await seedStorage(storedEvaluatedAt)
+        await interactor.setUserAttributesUpdated()
+
+        await interactor.fetch(user1)
+        await interactor.fetch(user1)
+
+        // The first value proves the setup; the second is the real check.
+        expect(sentFlags).toEqual([true, true])
+      })
+
+      test('overlapping polls: an older reply for the new attributes arriving after a newer reply for the old attributes', async () => {
+        // A scheduled poll and a manual fetchEvaluations() do not wait for
+        // each other. Poll A starts before updateUserAttributes(), poll B
+        // after. The server evaluates B first, so A's reply is newer and
+        // B's reply is skipped when it arrives second.
+        const sentFlags: boolean[] = []
+        const pendingReplies: Array<(response: GetEvaluationsResponse) => void> =
+          []
+        server.use(
+          http.post<
+            Record<string, never>,
+            GetEvaluationsRequest,
+            GetEvaluationsResponse
+          >(`${config.apiEndpoint}/get_evaluations`, async ({ request }) => {
+            const body = await request.json()
+            sentFlags.push(body.userEvaluationCondition.userAttributesUpdated)
+            const response = await new Promise<GetEvaluationsResponse>(
+              (resolve) => pendingReplies.push(resolve),
+            )
+            return HttpResponse.json(response)
+          }),
+        )
+        await seedStorage(olderCreatedAt)
+
+        const pollA = interactor.fetch(user1)
+        await vi.waitFor(() => expect(pendingReplies).toHaveLength(1))
+        await interactor.setUserAttributesUpdated()
+        const pollB = interactor.fetch(user1)
+        await vi.waitFor(() => expect(pendingReplies).toHaveLength(2))
+        expect(sentFlags).toEqual([false, true])
+
+        pendingReplies[0](reply('reply_a_evaluations_id', '1700000205', true))
+        await pollA
+        pendingReplies[1](reply('reply_b_evaluations_id', '1700000200', true))
+        await pollB
+
+        const stored = await evaluationStorage.storage.get()
+        expect(stored?.currentEvaluationsId).toBe('reply_a_evaluations_id')
+        expect(
+          evaluationStorage.getUserAttributesState().userAttributesUpdated,
+        ).toBe(true)
+      })
+    })
   })
 
   suite('getLatest', () => {
