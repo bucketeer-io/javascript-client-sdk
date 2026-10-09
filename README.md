@@ -21,7 +21,7 @@ Just copy `env.template` and rename it to `.env`, then update it with your secre
 The example app has its own `.env`, separate from the one above.
 
 - Copy `example/env.template` to `example/.env` and update it with your API secrets.
-- Define `Feature Flags` and `Goals` in your Bucketeer console.
+- Define `Feature Flags` and `Goals` in your Bucketeer console, then set `VITE_BKT_FEATURE_TAG`, `VITE_BKT_FEATURE_ID` and `VITE_BKT_GOAL_ID` in `example/.env` to match them.
 - Run `pnpm example:serve`
 
 ### Try a real-time flag update (SSE)
