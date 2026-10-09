@@ -4,7 +4,11 @@ import { User } from '../model/User'
 import { GetEvaluationsResponse } from '../model/response/GetEvaluationsResponse'
 import { ApiClient } from '../remote/ApiClient'
 import { GetEvaluationsResult } from '../remote/GetEvaluationsResult'
-import { EvaluationStorage, UserAttributesState } from './EvaluationStorage'
+import {
+  EvaluationStorage,
+  EvaluationWriteResult,
+  UserAttributesState,
+} from './EvaluationStorage'
 
 export class EvaluationInteractor {
   constructor(
@@ -60,18 +64,23 @@ export class EvaluationInteractor {
     if (result.type === 'success') {
       // Ordering carries two invariants. Write BEFORE clear: the response to
       // a userAttributesUpdated:true request carries the re-evaluation the
-      // flag asked for, so a rejected write must skip the clear — the flag
-      // survives and the next poll retries. Clear BEFORE notify: a listener
-      // that triggers a nested fetch (refresh-on-change pattern) must
-      // observe the flag already cleared — this request already carried it —
-      // or the nested call re-sends userAttributesUpdated:true and gets back
-      // a redundant forceUpdate snapshot. Streamed data must never clear the
-      // flag (race) — only this, the polling/fetch path, does.
-      const changed = await this.writeEvaluations(result.value)
+      // flag asked for, so a write that throws or is skipped as stale must
+      // skip the clear. The flag survives and the next poll asks again.
+      // Clear BEFORE notify: a listener that triggers a nested fetch
+      // (refresh-on-change pattern) must observe the flag already cleared
+      // (this request already carried it), or the nested call re-sends
+      // userAttributesUpdated:true and gets back a redundant forceUpdate
+      // snapshot. Streamed payloads never clear the flag (race); on the
+      // stream side, only StreamingTask's onOpen clears it, when a
+      // connection opens.
+      const writeResult = await this.writeEvaluations(result.value)
+      if (writeResult.type === 'skippedStale') {
+        return result
+      }
       await this.evaluationStorage.clearUserAttributesUpdated(
         attributesStateAtStart,
       )
-      if (changed) {
+      if (writeResult.shouldNotify) {
         this.notifyListeners()
       }
     }
@@ -87,18 +96,22 @@ export class EvaluationInteractor {
     // The write itself is allowed to land — it's just unused cached data.
     shouldNotify: () => boolean = () => true,
   ): Promise<void> {
-    const changed = await this.writeEvaluations(response)
-    if (changed && shouldNotify()) {
+    const writeResult = await this.writeEvaluations(response)
+    if (
+      writeResult.type === 'landed' &&
+      writeResult.shouldNotify &&
+      shouldNotify()
+    ) {
       this.notifyListeners()
     }
   }
 
-  // @returns whether anything changed. A skipped stale write (see
-  // EvaluationStorage's staleness guard) returns false — callers must not
-  // notify in that case.
+  // @returns skippedStale when EvaluationStorage's staleness guard skipped the
+  // write. Callers must not notify, and fetch() must not clear
+  // userAttributesUpdated, in that case.
   private async writeEvaluations(
     response: GetEvaluationsResponse,
-  ): Promise<boolean> {
+  ): Promise<EvaluationWriteResult> {
     if (response.evaluations.forceUpdate) {
       return this.evaluationStorage.deleteAllAndInsert(
         response.userEvaluationsId,

@@ -17,8 +17,8 @@ export interface EvaluationEntity {
 // an equal evaluatedAt still applies, since two patches computed in the same
 // clock tick are not stale relative to each other, and dropping an
 // equal-timestamp write would be a worse failure than the race this guards
-// against. `Number()` is safe for the observed decimal-millisecond-string
-// format, far below 2^53.
+// against. `Number()` is safe for the decimal-string format the server sends
+// (whole seconds since the epoch), far below 2^53.
 function isStale(entity: EvaluationEntity, evaluatedAt: string): boolean {
   return (
     entity.evaluatedAt !== null &&
@@ -40,6 +40,17 @@ export interface UserAttributesState {
   updateSequence: number
 }
 
+/**
+ * Outcome of deleteAllAndInsert() / update(). "Skipped" and "landed" must stay
+ * distinguishable: a poll clears userAttributesUpdated only when its reply
+ * landed, because a skipped reply may have been the re-evaluation that flag
+ * asked for. shouldNotify says whether listeners should hear about a landed
+ * write.
+ */
+export type EvaluationWriteResult =
+  | { type: 'skippedStale' }
+  | { type: 'landed'; shouldNotify: boolean }
+
 export interface EvaluationStorage {
   getByFeatureId(featureId: string): Evaluation | null
 
@@ -50,24 +61,26 @@ export interface EvaluationStorage {
   initialize(): Promise<void>
 
   /**
-   * @returns false (a no-op) if the incoming write is stale — see isStale()
-   * for the full rule and rationale — otherwise true.
+   * @returns skippedStale (a no-op) if the incoming write is stale (see
+   * isStale() for the full rule and rationale), otherwise landed with
+   * shouldNotify true, even when the snapshot empties the cache.
    */
   deleteAllAndInsert(
     evaluationsId: string,
     evaluations: Evaluation[],
     evaluatedAt: string,
-  ): Promise<boolean>
+  ): Promise<EvaluationWriteResult>
   /**
-   * @returns false if the incoming write is stale — see isStale() — otherwise
-   * true iff something changed.
+   * @returns skippedStale (a no-op) if the incoming write is stale (see
+   * isStale()), otherwise landed, with shouldNotify true iff the id changed
+   * or the reply carried evaluations or archived IDs.
    */
   update(
     evaluationsId: string,
     evaluations: Evaluation[],
     archivedFeatureIds: string[],
     evaluatedAt: string,
-  ): Promise<boolean>
+  ): Promise<EvaluationWriteResult>
 
   getCurrentEvaluationsId(): Promise<string | null>
 
@@ -179,10 +192,10 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     evaluationsId: string,
     evaluations: Evaluation[],
     evaluatedAt: string,
-  ): Promise<boolean> {
+  ): Promise<EvaluationWriteResult> {
     return await runWithMutex(this.mutex, async () => {
       const entity = this.getCachedEvaluationEntity()
-      if (isStale(entity, evaluatedAt)) return false
+      if (isStale(entity, evaluatedAt)) return { type: 'skippedStale' }
       const updated: EvaluationEntity = {
         ...entity,
         userId: this.userId,
@@ -196,7 +209,7 @@ export class EvaluationStorageImpl implements EvaluationStorage {
         evaluatedAt,
       }
       await this.saveAsync(updated)
-      return true
+      return { type: 'landed', shouldNotify: true }
     })
   }
 
@@ -205,10 +218,10 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     evaluations: Evaluation[],
     archivedFeatureIds: string[],
     evaluatedAt: string,
-  ): Promise<boolean> {
+  ): Promise<EvaluationWriteResult> {
     return await runWithMutex(this.mutex, async () => {
       const entity = this.getCachedEvaluationEntity()
-      if (isStale(entity, evaluatedAt)) return false
+      if (isStale(entity, evaluatedAt)) return { type: 'skippedStale' }
 
       // remove archived evaluations
       const activeEvaluations = Object.fromEntries(
@@ -229,11 +242,13 @@ export class EvaluationStorageImpl implements EvaluationStorage {
         evaluatedAt,
       })
 
-      return (
-        entity.currentEvaluationsId !== evaluationsId ||
-        evaluations.length > 0 ||
-        archivedFeatureIds.length > 0
-      )
+      return {
+        type: 'landed',
+        shouldNotify:
+          entity.currentEvaluationsId !== evaluationsId ||
+          evaluations.length > 0 ||
+          archivedFeatureIds.length > 0,
+      }
     })
   }
 

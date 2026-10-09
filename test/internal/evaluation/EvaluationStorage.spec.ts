@@ -221,7 +221,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
     }
 
     suite('update', () => {
-      test('strictly-older evaluatedAt is a no-op: returns false, storage unchanged', async () => {
+      test('strictly-older evaluatedAt is a no-op: returns skippedStale, storage unchanged', async () => {
         await seed('1700000000')
 
         const result = await evaluationStorage.update(
@@ -231,7 +231,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
           '1699999999',
         )
 
-        expect(result).toBe(false)
+        expect(result).toStrictEqual({ type: 'skippedStale' })
         expect(await storage.get()).toStrictEqual<EvaluationEntity>({
           userId: 'user_id_1',
           currentEvaluationsId: 'evaluations_id_1',
@@ -254,7 +254,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
           '1700000000',
         )
 
-        expect(result).toBe(true)
+        expect(result).toStrictEqual({ type: 'landed', shouldNotify: true })
         expect((await storage.get())?.currentEvaluationsId).toBe(
           'evaluations_id_2',
         )
@@ -270,7 +270,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
           '1700000001',
         )
 
-        expect(result).toBe(true)
+        expect(result).toStrictEqual({ type: 'landed', shouldNotify: true })
         expect((await storage.get())?.evaluatedAt).toBe('1700000001')
       })
 
@@ -284,13 +284,29 @@ suite('internal/evaluation/EvaluationStorage', () => {
           '0',
         )
 
-        expect(result).toBe(true)
+        expect(result).toStrictEqual({ type: 'landed', shouldNotify: true })
         expect((await storage.get())?.evaluatedAt).toBe('0')
+      })
+
+      test('a saved reply with the same id and no content is landed without notify, not a stale skip', async () => {
+        // A caller must be able to tell this apart from a stale skip: this
+        // reply was saved, so the server did answer the request.
+        await seed('1700000000')
+
+        const result = await evaluationStorage.update(
+          'evaluations_id_1',
+          [],
+          [],
+          '1700000001',
+        )
+
+        expect(result).toStrictEqual({ type: 'landed', shouldNotify: false })
+        expect((await storage.get())?.evaluatedAt).toBe('1700000001')
       })
     })
 
     suite('deleteAllAndInsert', () => {
-      test('strictly-older evaluatedAt is a no-op: returns false, storage unchanged', async () => {
+      test('strictly-older evaluatedAt is a no-op: returns skippedStale, storage unchanged', async () => {
         await seed('1700000000')
 
         const result = await evaluationStorage.deleteAllAndInsert(
@@ -299,7 +315,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
           '1699999999',
         )
 
-        expect(result).toBe(false)
+        expect(result).toStrictEqual({ type: 'skippedStale' })
         expect(await storage.get()).toStrictEqual<EvaluationEntity>({
           userId: 'user_id_1',
           currentEvaluationsId: 'evaluations_id_1',
@@ -321,7 +337,7 @@ suite('internal/evaluation/EvaluationStorage', () => {
           '1700000000',
         )
 
-        expect(result).toBe(true)
+        expect(result).toStrictEqual({ type: 'landed', shouldNotify: true })
         expect((await storage.get())?.currentEvaluationsId).toBe(
           'evaluations_id_2',
         )
@@ -336,8 +352,21 @@ suite('internal/evaluation/EvaluationStorage', () => {
           '1700000001',
         )
 
-        expect(result).toBe(true)
+        expect(result).toStrictEqual({ type: 'landed', shouldNotify: true })
         expect((await storage.get())?.evaluatedAt).toBe('1700000001')
+      })
+
+      test('a snapshot that empties the cache is landed with notify', async () => {
+        await seed('1700000000')
+
+        const result = await evaluationStorage.deleteAllAndInsert(
+          'evaluations_id_2',
+          [],
+          '1700000001',
+        )
+
+        expect(result).toStrictEqual({ type: 'landed', shouldNotify: true })
+        expect((await storage.get())?.evaluations).toStrictEqual({})
       })
     })
   })
