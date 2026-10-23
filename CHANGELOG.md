@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.7.1](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.7.0...v2.7.1) (2026-10-23)
+
+
+### Build System
+
+* **deps:** bump build-patch group to v7.3.7 [SECURITY] ([#353](https://github.com/bucketeer-io/javascript-client-sdk/issues/353)) ([43268af](https://github.com/bucketeer-io/javascript-client-sdk/commit/43268afd7a61b6fc72da7b5767b4be5bf2a30bcf))
+
 ## [2.7.0](https://github.com/bucketeer-io/javascript-client-sdk/compare/v2.6.1...v2.7.0) (2026-10-09)
 
 
