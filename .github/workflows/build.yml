@@ -33,6 +33,9 @@ jobs:
           pnpm lint
           pnpm test:custom-eslint-rules
 
+      - name: Run build
+        run: pnpm build
+
       - name: Run type checks for library
         run: pnpm typecheck:lib
 
@@ -44,6 +47,3 @@ jobs:
 
       - name: Run Tests form Node.js environment
         run: pnpm test:node
-
-      - name: Run build
-        run: pnpm build

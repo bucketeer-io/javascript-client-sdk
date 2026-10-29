@@ -6,11 +6,16 @@ import {
   destroyBKTClient,
 } from '@bucketeer/js-client-sdk'
 
-const FEATURE_TAG = 'feature-tag' // replace here
-const STRING_FEATURE_ID = 'feature_id' // replace here
-const GOAL_ID = 'goal_id' // replace here
+const FEATURE_TAG = import.meta.env.VITE_BKT_FEATURE_TAG ?? 'feature-tag'
+const STRING_FEATURE_ID = import.meta.env.VITE_BKT_FEATURE_ID ?? 'feature_id'
+const GOAL_ID = import.meta.env.VITE_BKT_GOAL_ID ?? 'goal_id'
 
 const AUTO_INIT_FLAG = true
+
+// Vite exposes every custom env var as a string, so compare against the
+// exact string 'true' rather than relying on truthiness ('false' is truthy).
+const initialMode =
+  import.meta.env.VITE_BKT_ENABLE_STREAMING === 'true' ? 'streaming' : 'polling'
 
 export default async function start(root: HTMLElement) {
   const logsEl = root.querySelector('#logs')
@@ -20,9 +25,16 @@ export default async function start(root: HTMLElement) {
   const viewUserAttributesEl = root.querySelector<HTMLButtonElement>('#view_user_attributes')
   const initEl = root.querySelector<HTMLButtonElement>('#init')
   const destroyEl = root.querySelector<HTMLButtonElement>('#destroy')
+  const clearLogEl = root.querySelector<HTMLButtonElement>('#clear_log')
+  const modeEls = root.querySelectorAll<HTMLInputElement>('input[name="mode"]')
+  const flagValueEl = root.querySelector('#flag_value_text')
 
   let listenerId: string | null | undefined = null
   let initializing = false
+
+  modeEls.forEach((input) => {
+    input.checked = input.value === initialMode
+  })
 
   function log(message: string) {
     if (logsEl) {
@@ -34,51 +46,91 @@ export default async function start(root: HTMLElement) {
     console.log(message)
   }
 
+  function refreshFlagValue() {
+    const client = getBKTClient()
+    const value = client?.stringVariation(STRING_FEATURE_ID, 'default_value')
+    if (flagValueEl) flagValueEl.textContent = value ?? '-'
+  }
+
   function updateButtons(initialized: boolean) {
     if (buttonEl) buttonEl.disabled = !initialized
     if (flushEl) flushEl.disabled = !initialized
+    if (setUserAttributesEl) setUserAttributesEl.disabled = !initialized
+    if (viewUserAttributesEl) viewUserAttributesEl.disabled = !initialized
     if (initEl) initEl.disabled = initialized
     if (destroyEl) destroyEl.disabled = !initialized
+    modeEls.forEach((input) => {
+      input.disabled = initialized
+    })
   }
 
   const handleInit = async () => {
     if (initializing) return
     initializing = true
     if (initEl) initEl.disabled = true
-    const config = defineBKTConfig({
-      apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
-      apiKey: import.meta.env.VITE_BKT_API_KEY,
-      featureTag: FEATURE_TAG,
-      appVersion: '1.2.3',
-      fetch: window.fetch,
-    })
+    if (flagValueEl) flagValueEl.textContent = '-'
 
-    const user = defineBKTUser({
-      id: 'user_id_1',
-    })
-
-    log('Initializing BKTClient...')
-    try {
-      await initializeBKTClient(config, user)
+    const apiEndpoint = import.meta.env.VITE_BKT_API_ENDPOINT
+    const apiKey = import.meta.env.VITE_BKT_API_KEY
+    if (!apiEndpoint || !apiKey) {
       initializing = false
+      if (initEl) initEl.disabled = false
+      const message =
+        'Set VITE_BKT_API_ENDPOINT and VITE_BKT_API_KEY in example/.env, then reload'
+      log(message)
+      return
+    }
+
+    const streaming =
+      root.querySelector<HTMLInputElement>('input[name="mode"]:checked')
+        ?.value === 'streaming'
+    // Lock the radios in now, before the async initialization below can be
+    // interrupted by a mode change that no longer matches what was captured.
+    // The failure path further down re-enables them via updateButtons(false).
+    modeEls.forEach((input) => {
+      input.disabled = true
+    })
+
+    log(
+      `Initializing BKTClient with streaming ${streaming ? 'enabled' : 'disabled'}...`,
+    )
+    try {
+      // Built inside the try: defineBKTConfig/defineBKTUser validate their
+      // input and can throw synchronously (e.g. a malformed
+      // VITE_BKT_API_ENDPOINT), which must still hit the catch below so
+      // Initialize and the mode radios don't stay stuck disabled.
+      const config = defineBKTConfig({
+        apiEndpoint,
+        apiKey,
+        featureTag: FEATURE_TAG,
+        appVersion: '1.2.3',
+        pollingInterval: 60_000, // minimum allowed
+        enableStreaming: streaming,
+      })
+
+      const user = defineBKTUser({
+        id: 'user_id_1',
+      })
+
+      await initializeBKTClient(config, user)
       log('Initialization completed')
       updateButtons(true)
 
       const client = getBKTClient()
-      const value = client?.stringVariation(STRING_FEATURE_ID, 'default_value')
-      log(`Value for ${STRING_FEATURE_ID}: ${value}`)
+      refreshFlagValue()
+      log(`Value for ${STRING_FEATURE_ID}: ${flagValueEl?.textContent ?? ''}`)
 
       listenerId = client?.addEvaluationUpdateListener(() => {
-        log('Evaluation updated')
-        const newValue = client?.stringVariation(STRING_FEATURE_ID, 'default_value')
-        log(`Value for ${STRING_FEATURE_ID}: ${newValue}`)
+        refreshFlagValue()
+        log(`Evaluation updated. Value for ${STRING_FEATURE_ID}: ${flagValueEl?.textContent ?? ''}`)
       })
     } catch (error) {
-      initializing = false
       log(`Initialization failed: ${error}`)
       listenerId = null
       destroyBKTClient()
       updateButtons(false)
+    } finally {
+      initializing = false
     }
   }
 
@@ -89,12 +141,17 @@ export default async function start(root: HTMLElement) {
       listenerId = null
     }
     destroyBKTClient()
+    if (flagValueEl) flagValueEl.textContent = '-'
     log('BKTClient destroyed')
     updateButtons(false)
   }
 
   initEl?.addEventListener('click', handleInit)
   destroyEl?.addEventListener('click', handleDestroy)
+
+  clearLogEl?.addEventListener('click', () => {
+    if (logsEl) logsEl.textContent = ''
+  })
 
   buttonEl?.addEventListener('click', async () => {
     try {
@@ -138,6 +195,8 @@ export default async function start(root: HTMLElement) {
   window.addEventListener('beforeunload', () => {
     handleDestroy()
   })
+
+  updateButtons(false)
 
   if (AUTO_INIT_FLAG) {
     handleInit()
