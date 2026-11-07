@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { defineBKTUser } from '../src/BKTUser'
+import { IllegalArgumentException } from '../src/BKTExceptions'
 
 describe('defineBKTUser', () => {
   test('all parameters are valid', () => {
@@ -24,6 +25,14 @@ describe('defineBKTUser', () => {
         id: '',
       })
     }).toThrowError('user id is required')
+  })
+
+  test('empty id throws IllegalArgumentException', () => {
+    expect(() => {
+      defineBKTUser({
+        id: '',
+      })
+    }).toThrowError(IllegalArgumentException)
   })
 
   test('calling without customAttributes results in empty attributes', () => {

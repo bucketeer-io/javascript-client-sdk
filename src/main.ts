@@ -28,6 +28,25 @@ export type {
   BKTJsonPrimitive,
 } from './BKTValue'
 export type { BKTEvaluationDetails } from './BKTEvaluationDetails'
+export type { BKTException } from './BKTExceptions'
+export {
+  BKTBaseException,
+  BadRequestException,
+  ClientClosedRequestException,
+  ForbiddenException,
+  IllegalArgumentException,
+  IllegalStateException,
+  InternalServerErrorException,
+  InvalidHttpMethodException,
+  NetworkException,
+  NotFoundException,
+  PayloadTooLargeException,
+  RedirectRequestException,
+  ServiceUnavailableException,
+  TimeoutException,
+  UnauthorizedException,
+  UnknownException,
+} from './BKTExceptions'
 export type {
   EventSourceLike,
   EventSourceLikeInit,
