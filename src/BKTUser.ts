@@ -1,3 +1,5 @@
+import { IllegalArgumentException } from './BKTExceptions'
+
 interface RawBKTUser {
   id: string
   customAttributes?: Record<string, string>
@@ -10,7 +12,7 @@ export interface BKTUser extends RawBKTUser {
 
 export const defineBKTUser = (user: RawBKTUser): BKTUser => {
   if (!user.id) {
-    throw new Error('user id is required')
+    throw new IllegalArgumentException('user id is required')
   }
 
   return {

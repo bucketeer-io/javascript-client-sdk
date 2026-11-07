@@ -10,5 +10,11 @@ export default defineBuildConfig({
       // preventAssignment: true,
       delimiters: ['\\${', '}'],
     },
+    dts: {
+      compilerOptions: {
+        // Keeps members marked @internal out of the published type files.
+        stripInternal: true,
+      },
+    },
   },
 })
