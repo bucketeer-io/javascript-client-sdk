@@ -486,21 +486,22 @@ export const initializeBKTClientInternal = async (
 }
 
 export const destroyBKTClient = (): void => {
-  const client = getInstance()
-  if (client) {
-    const clientImpl = client as BKTClientImpl
+  const clientImpl = getInstance() as BKTClientImpl | null
+  if (clientImpl) {
     clientImpl.resetTasks()
     // A fetch already in flight (poll or manual fetchEvaluations()) can
     // still resolve after this point, so clear listeners now rather than
     // relying on each caller to check whether the client is still alive.
     clientImpl.clearEvaluationUpdateListeners()
-    // Sends DESTROYED to the sync status listeners once, then removes them. A
-    // request still in flight can no longer change the status after this.
-    clientImpl.component.evaluationSyncStatusTracker().markDestroyed()
   }
   // Clean up page lifecycle event listeners
   clearPageLifecycleCleanup()
   clearInstance()
+  // Last, after the client is fully destroyed: a listener may start a new
+  // client here. Sends DESTROYED to the sync status listeners once, then
+  // removes them. A request still in flight can no longer change the status
+  // after this.
+  clientImpl?.component.evaluationSyncStatusTracker().markDestroyed()
 }
 
 function assetNonBlankString(input: string) {

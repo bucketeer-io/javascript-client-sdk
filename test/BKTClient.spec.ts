@@ -2288,6 +2288,28 @@ suite('BKTClient', () => {
 
       expect(listener).toHaveBeenCalledTimes(1)
     })
+
+    test('a DESTROYED listener can start a new client', async () => {
+      const client = await initializedClient()
+      const newComponent = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(user1, requiredInternalConfig(config)),
+        new InteractorModule(),
+      )
+      let newInit: Promise<void> | undefined
+      client.addEvaluationSyncStatusListener((status) => {
+        if (status.state === 'DESTROYED') {
+          newInit = initializeBKTClientInternal(newComponent, 1000)
+        }
+      })
+
+      destroyBKTClient()
+      await newInit
+
+      const current = getBKTClient()
+      expect(current).not.toBeNull()
+      expect(getDefaultComponent(current!)).toBe(newComponent)
+    })
   })
 })
 
