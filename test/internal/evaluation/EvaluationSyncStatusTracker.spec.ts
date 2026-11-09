@@ -375,6 +375,33 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       expect(second).not.toHaveBeenCalled()
     })
 
+    test('when a listener destroys the client, the other listeners get DESTROYED once and nothing after it', () => {
+      makeSynced()
+      const calls: string[] = []
+      tracker.addListener((status) => {
+        calls.push(`A:${status.state}`)
+        if (status.state === 'FAILING') tracker.markDestroyed()
+      })
+      tracker.addListener((status) => {
+        calls.push(`B:${status.state}`)
+      })
+
+      tracker.reportFailure('POLLING', serverError)
+
+      expect(calls).toEqual(['A:FAILING', 'A:DESTROYED', 'B:DESTROYED'])
+    })
+
+    test('a listener removed by another listener during a call is not called', () => {
+      const removed = vi.fn()
+      let removedId = ''
+      tracker.addListener(() => tracker.removeListener(removedId))
+      removedId = tracker.addListener(removed)
+
+      tracker.reportFailure('POLLING', serverError)
+
+      expect(removed).not.toHaveBeenCalled()
+    })
+
     test('a listener that throws does not stop other listeners and does not throw to the caller', () => {
       const consoleError = vi
         .spyOn(console, 'error')

@@ -157,7 +157,10 @@ export class EvaluationSyncStatusTrackerImpl
   }
 
   private notifyListeners(): void {
-    Object.values(this.listeners).forEach((listener) => {
+    Object.entries(this.listeners).forEach(([id, listener]) => {
+      // A listener can remove another listener, or destroy the client (which
+      // removes all of them). A removed listener must not be called.
+      if (this.listeners[id] !== listener) return
       try {
         listener(this.getStatus())
       } catch (e) {
