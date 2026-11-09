@@ -50,6 +50,7 @@ import { DefaultComponent } from '../src/internal/di/Component'
 import { DataModule } from '../src/internal/di/DataModule'
 import { InteractorModule } from '../src/internal/di/InteractorModule'
 import { EvaluationTask } from '../src/internal/scheduler/EvaluationTask'
+import { EventTask } from '../src/internal/scheduler/EventTask'
 import { BKTEvaluationDetails } from '../src/BKTEvaluationDetails'
 import { requiredInternalConfig } from '../src/internal/InternalConfig'
 import { SourceId } from '../src/internal/model/SourceId'
@@ -2309,6 +2310,55 @@ suite('BKTClient', () => {
       const current = getBKTClient()
       expect(current).not.toBeNull()
       expect(getDefaultComponent(current!)).toBe(newComponent)
+    })
+
+    test('a listener that destroys the client while init starts the tasks leaves nothing running', async () => {
+      class ThrowingEventSource {
+        constructor() {
+          throw new Error('bad url')
+        }
+      }
+      let fetchCount = 0
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () => {
+          fetchCount++
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+      const streamingConfig = defineBKTConfig({
+        apiKey: 'api_key_value',
+        apiEndpoint: config.apiEndpoint,
+        featureTag: 'feature_tag_value',
+        appVersion: '1.2.3',
+        enableStreaming: true,
+        eventSource: ThrowingEventSource as unknown as EventSourceLike,
+        fetch,
+      })
+      const streamingComponent = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(user1, requiredInternalConfig(streamingConfig)),
+        new InteractorModule(),
+      )
+      const eventTaskStart = vi.spyOn(EventTask.prototype, 'start')
+
+      // The app adds its listener before init finishes, and destroys the
+      // client on the first error.
+      const initPromise = initializeBKTClientInternal(streamingComponent, 1000)
+      const client = getBKTClient()
+      assert(client !== null)
+      client.addEvaluationSyncStatusListener((status) => {
+        if (status.lastError !== null) destroyBKTClient()
+      })
+      await initPromise.catch(() => {})
+
+      const eventTaskStarted = eventTaskStart.mock.calls.length
+      eventTaskStart.mockRestore()
+      expect(getBKTClient()).toBeNull()
+      expect.soft(eventTaskStarted).toBe(0)
+      expect.soft(fetchCount).toBe(0)
     })
   })
 })

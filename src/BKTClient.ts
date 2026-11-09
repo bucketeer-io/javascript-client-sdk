@@ -132,6 +132,10 @@ export class BKTClientImpl implements BKTClient {
    */
   scheduleAndFetch(timeoutMillis: number): Promise<void> {
     this.scheduleTasks()
+    // A sync status listener may have destroyed the client while the tasks
+    // started (resetTasks() then set taskScheduler to null). Skip the first
+    // fetch for a destroyed client.
+    if (!this.taskScheduler) return Promise.resolve()
     return this.fetchEvaluations(timeoutMillis)
   }
 
