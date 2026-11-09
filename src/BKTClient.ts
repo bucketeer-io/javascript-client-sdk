@@ -473,6 +473,10 @@ export const initializeBKTClientInternal = async (
     // new client).
     if (getInstance() === client) {
       clearInstance()
+      // The client is gone, so its sync status must not stay INITIALIZING.
+      // Sends DESTROYED after clearInstance(), so a listener can start a new
+      // client here. The app still gets the error from the rejected promise.
+      client.markSyncStatusDestroyed()
     }
     throw err
   }

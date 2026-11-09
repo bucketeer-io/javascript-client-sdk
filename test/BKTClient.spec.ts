@@ -2360,6 +2360,37 @@ suite('BKTClient', () => {
       expect.soft(eventTaskStarted).toBe(0)
       expect.soft(fetchCount).toBe(0)
     })
+
+    test('a cache load failure at init gives DESTROYED, and the listener can start a new client', async () => {
+      respondWith(200)
+      vi.spyOn(component.evaluationInteractor(), 'initialize')
+        .mockRejectedValueOnce(new Error('storage corrupted'))
+      const newComponent = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(user1, requiredInternalConfig(config)),
+        new InteractorModule(),
+      )
+
+      const initPromise = initializeBKTClientInternal(component, 1000)
+      const client = getBKTClient()
+      assert(client !== null)
+      const states: string[] = []
+      let newInit: Promise<void> | undefined
+      client.addEvaluationSyncStatusListener((status) => {
+        states.push(status.state)
+        if (status.state === 'DESTROYED') {
+          newInit = initializeBKTClientInternal(newComponent, 1000)
+        }
+      })
+
+      await expect(initPromise).rejects.toThrow('storage corrupted')
+      await newInit
+
+      expect(states).toEqual(['DESTROYED'])
+      const current = getBKTClient()
+      expect(current).not.toBeNull()
+      expect(getDefaultComponent(current!)).toBe(newComponent)
+    })
   })
 })
 
