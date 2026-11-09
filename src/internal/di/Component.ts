@@ -1,5 +1,10 @@
 import { BKTConfig } from '../../BKTConfig'
 import { EvaluationInteractor } from '../evaluation/EvaluationInteractor'
+import {
+  EvaluationSyncStatusTracker,
+  EvaluationSyncStatusTrackerImpl,
+} from '../evaluation/EvaluationSyncStatusTracker'
+import { StreamingSyncReporter } from '../evaluation/StreamingSyncReporter'
 import { EventInteractor } from '../event/EventInteractor'
 import { UserHolder } from '../UserHolder'
 import { DataModule } from './DataModule'
@@ -11,11 +16,16 @@ export interface Component {
   userHolder(): UserHolder
   evaluationInteractor(): EvaluationInteractor
   eventInteractor(): EventInteractor
+  // For BKTClient: read the sync status, manage its listeners, init and destroy.
+  evaluationSyncStatusTracker(): EvaluationSyncStatusTracker
+  // For StreamingTask: report the stream facts only it knows.
+  streamingSyncReporter(): StreamingSyncReporter
 }
 
 export class DefaultComponent implements Component {
   private _evaluationInteractor?: EvaluationInteractor
   private _eventInteractor?: EventInteractor
+  private _syncStatusTracker?: EvaluationSyncStatusTrackerImpl
 
   constructor(
     public platformModule: PlatformModule,
@@ -38,6 +48,7 @@ export class DefaultComponent implements Component {
         this.dataModule.apiClient(),
         this.dataModule.evaluationStorage(),
         this.platformModule.idGenerator(),
+        this.syncStatusTrackerImpl(),
       ))
   }
 
@@ -53,5 +64,22 @@ export class DefaultComponent implements Component {
       this.dataModule.config().sourceId,
       this.dataModule.config().sdkVersion,
     ))
+  }
+
+  evaluationSyncStatusTracker(): EvaluationSyncStatusTracker {
+    return this.syncStatusTrackerImpl()
+  }
+
+  streamingSyncReporter(): StreamingSyncReporter {
+    return this.syncStatusTrackerImpl()
+  }
+
+  // One object, given out to each caller as only the interface it uses.
+  private syncStatusTrackerImpl(): EvaluationSyncStatusTrackerImpl {
+    return (this._syncStatusTracker ??=
+      this.interactorModule.evaluationSyncStatusTracker(
+        this.dataModule.clock(),
+        this.platformModule.idGenerator(),
+      ))
   }
 }

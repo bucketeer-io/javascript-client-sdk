@@ -12,6 +12,10 @@ import { TaskScheduler } from './internal/scheduler/TaskScheduler'
 import { toBKTUser } from './internal/UserHolder'
 import { BKTValue } from './BKTValue'
 import { BKTEvaluationDetails } from './BKTEvaluationDetails'
+import {
+  BKTEvaluationSyncStatus,
+  BKTEvaluationSyncStatusListener,
+} from './BKTEvaluationSyncStatus'
 
 export interface BKTClient {
   booleanVariation: (featureId: string, defaultValue: boolean) => boolean
@@ -70,6 +74,29 @@ export interface BKTClient {
   addEvaluationUpdateListener: (listener: () => void) => string
   removeEvaluationUpdateListener: (listenerId: string) => void
   clearEvaluationUpdateListeners: () => void
+
+  /**
+   * Returns whether syncing flag values with the server works right now.
+   */
+  evaluationSyncStatus: () => BKTEvaluationSyncStatus
+  /**
+   * Adds a listener that is called on every state change, and on every reported
+   * error even if the state stays `FAILING`. To be told when flag values change,
+   * use `addEvaluationUpdateListener` instead.
+   *
+   * @returns The listener id, for `removeEvaluationSyncStatusListener`.
+   */
+  addEvaluationSyncStatusListener: (
+    listener: BKTEvaluationSyncStatusListener,
+  ) => string
+  /**
+   * Removes the listener with the id that `addEvaluationSyncStatusListener` returned.
+   */
+  removeEvaluationSyncStatusListener: (listenerId: string) => void
+  /**
+   * Removes every listener added with `addEvaluationSyncStatusListener`.
+   */
+  clearEvaluationSyncStatusListeners: () => void
 }
 
 export class BKTClientImpl implements BKTClient {
@@ -257,6 +284,24 @@ export class BKTClientImpl implements BKTClient {
     this.component.evaluationInteractor().clearUpdateListeners()
   }
 
+  evaluationSyncStatus(): BKTEvaluationSyncStatus {
+    return this.component.evaluationSyncStatusTracker().getStatus()
+  }
+
+  addEvaluationSyncStatusListener(
+    listener: BKTEvaluationSyncStatusListener,
+  ): string {
+    return this.component.evaluationSyncStatusTracker().addListener(listener)
+  }
+
+  removeEvaluationSyncStatusListener(listenerId: string) {
+    this.component.evaluationSyncStatusTracker().removeListener(listenerId)
+  }
+
+  clearEvaluationSyncStatusListeners() {
+    this.component.evaluationSyncStatusTracker().clearListeners()
+  }
+
   private getVariationDetails<T extends BKTValue>(
     featureId: string,
     defaultValue: T,
@@ -427,7 +472,17 @@ export const initializeBKTClientInternal = async (
   // leak an unstoppable stream and timers. Same identity check the catch block
   // above uses.
   if (getInstance() !== client) return
-  return client.scheduleAndFetch(timeoutMillis)
+  // Tell the sync status how init ended. A failed init (for example the
+  // timeout) moves INITIALIZING to FAILING. The app still gets the same
+  // rejection as before.
+  const syncStatusTracker = component.evaluationSyncStatusTracker()
+  try {
+    await client.scheduleAndFetch(timeoutMillis)
+    syncStatusTracker.finishInitializing(true)
+  } catch (err) {
+    syncStatusTracker.finishInitializing(false)
+    throw err
+  }
 }
 
 export const destroyBKTClient = (): void => {
@@ -439,6 +494,9 @@ export const destroyBKTClient = (): void => {
     // still resolve after this point, so clear listeners now rather than
     // relying on each caller to check whether the client is still alive.
     clientImpl.clearEvaluationUpdateListeners()
+    // Sends DESTROYED to the sync status listeners once, then removes them. A
+    // request still in flight can no longer change the status after this.
+    clientImpl.component.evaluationSyncStatusTracker().markDestroyed()
   }
   // Clean up page lifecycle event listeners
   clearPageLifecycleCleanup()

@@ -37,6 +37,7 @@ import {
 import { user1 } from './mocks/users'
 import {
   InternalServerErrorException,
+  ServiceUnavailableException,
   TimeoutException,
 } from '../src/BKTExceptions'
 import { Evaluation } from '../src/internal/model/Evaluation'
@@ -2156,6 +2157,136 @@ suite('BKTClient', () => {
       await fetchPromise
 
       expect(listener).not.toHaveBeenCalled()
+    })
+  })
+
+  suite('evaluationSyncStatus', () => {
+    const respondWith = (status: number) => {
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () =>
+          status === 200
+            ? HttpResponse.json({
+                evaluations: user1Evaluations,
+                userEvaluationsId: 'user_evaluation_id_value',
+              })
+            : HttpResponse.json(
+                { error: { code: status, message: 'request failed' } },
+                { status },
+              ),
+        ),
+      )
+    }
+
+    const initializedClient = async () => {
+      respondWith(200)
+      await initializeBKTClientInternal(component, 1000)
+      const client = getBKTClient()
+      assert(client !== null)
+      return client
+    }
+
+    test('a successful init gives SYNCED', async () => {
+      const client = await initializedClient()
+
+      const status = client.evaluationSyncStatus()
+      expect(status.state).toBe('SYNCED')
+      expect(status.lastSyncedAt).not.toBeNull()
+      expect(status.lastError).toBeNull()
+    })
+
+    test('a 503 at init still rejects as before, and gives FAILING with the error', async () => {
+      respondWith(503)
+
+      await expect(
+        initializeBKTClientInternal(component, 1000),
+      ).rejects.toThrow(ServiceUnavailableException)
+
+      const client = getBKTClient()
+      assert(client !== null)
+      const status = client.evaluationSyncStatus()
+      expect(status.state).toBe('FAILING')
+      expect(status.lastSyncedAt).toBeNull()
+      expect(status.lastError?.cause).toBeInstanceOf(
+        ServiceUnavailableException,
+      )
+      expect(status.lastError?.source).toBe('POLLING')
+    })
+
+    test('a poll that gets 500 then 200 gives FAILING then SYNCED, and calls the listener for both', async () => {
+      const client = await initializedClient()
+      const states: string[] = []
+      client.addEvaluationSyncStatusListener((status) =>
+        states.push(status.state),
+      )
+
+      respondWith(500)
+      await expect(client.fetchEvaluations()).rejects.toThrow()
+      respondWith(200)
+      await client.fetchEvaluations()
+
+      expect(states).toEqual(['FAILING', 'SYNCED'])
+    })
+
+    test('a failed fetchEvaluations() reports the failure and still throws as before', async () => {
+      const client = await initializedClient()
+
+      respondWith(500)
+      await expect(client.fetchEvaluations()).rejects.toThrow(
+        InternalServerErrorException,
+      )
+
+      const status = client.evaluationSyncStatus()
+      expect(status.state).toBe('FAILING')
+      expect(status.lastError?.cause).toBeInstanceOf(
+        InternalServerErrorException,
+      )
+    })
+
+    test('a removed listener is not called, and clear removes the others', async () => {
+      const client = await initializedClient()
+      const removed = vi.fn()
+      const cleared = vi.fn()
+      const id = client.addEvaluationSyncStatusListener(removed)
+      client.addEvaluationSyncStatusListener(cleared)
+
+      client.removeEvaluationSyncStatusListener(id)
+      client.clearEvaluationSyncStatusListeners()
+      respondWith(500)
+      await expect(client.fetchEvaluations()).rejects.toThrow()
+
+      expect(removed).not.toHaveBeenCalled()
+      expect(cleared).not.toHaveBeenCalled()
+    })
+
+    test('destroyBKTClient() gives the listener DESTROYED once, and a fetch that ends later calls no listener', async () => {
+      const client = await initializedClient()
+      const listener = vi.fn()
+      client.addEvaluationSyncStatusListener(listener)
+
+      let releaseResponse: () => void
+      const responseReleased = new Promise<void>((resolve) => {
+        releaseResponse = resolve
+      })
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, async () => {
+          await responseReleased
+          return HttpResponse.json(
+            { error: { code: 500, message: 'request failed' } },
+            { status: 500 },
+          )
+        }),
+      )
+      const fetchResult = client.fetchEvaluations().catch(() => {})
+
+      destroyBKTClient()
+
+      expect(listener).toHaveBeenCalledTimes(1)
+      expect(listener.mock.calls[0][0].state).toBe('DESTROYED')
+
+      releaseResponse!()
+      await fetchResult
+
+      expect(listener).toHaveBeenCalledTimes(1)
     })
   })
 })
