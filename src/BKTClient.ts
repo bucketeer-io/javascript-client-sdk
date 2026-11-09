@@ -306,6 +306,14 @@ export class BKTClientImpl implements BKTClient {
     this.component.evaluationSyncStatusTracker().clearListeners()
   }
 
+  /**
+   * Sends DESTROYED to the sync status listeners once, then removes them.
+   * Only destroyBKTClient() calls this.
+   */
+  markSyncStatusDestroyed() {
+    this.component.evaluationSyncStatusTracker().markDestroyed()
+  }
+
   private getVariationDetails<T extends BKTValue>(
     featureId: string,
     defaultValue: T,
@@ -505,7 +513,7 @@ export const destroyBKTClient = (): void => {
   // client here. Sends DESTROYED to the sync status listeners once, then
   // removes them. A request still in flight can no longer change the status
   // after this.
-  clientImpl?.component.evaluationSyncStatusTracker().markDestroyed()
+  clientImpl?.markSyncStatusDestroyed()
 }
 
 function assetNonBlankString(input: string) {
