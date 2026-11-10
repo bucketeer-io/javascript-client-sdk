@@ -284,6 +284,7 @@ suite('BKTClient', () => {
 
       expect(client.taskScheduler).toBeNull()
       expect(fetchSpy).not.toHaveBeenCalled()
+      expect(client.evaluationSyncStatus().state).toBe('DESTROYED')
     })
 
     test('evaluationInteractor().initialize() rejecting clears the singleton so a retry actually re-initializes (regression: silent no-op on retry)', async () => {
@@ -326,6 +327,8 @@ suite('BKTClient', () => {
         firstInitPromise,
       )
       const firstInitCall = initializeBKTClientInternal(component, 1000)
+      const firstClient = getBKTClient()
+      assert(firstClient !== null)
 
       // Orphan the first attempt, then start a second one on a fresh component.
       destroyBKTClient()
@@ -356,6 +359,8 @@ suite('BKTClient', () => {
       await expect(firstInitCall).rejects.toThrow('stale storage error')
 
       expect(getBKTClient()).toBe(secondClient)
+      expect(firstClient.evaluationSyncStatus().state).toBe('DESTROYED')
+      expect(secondClient!.evaluationSyncStatus().state).toBe('SYNCED')
     })
   })
 
@@ -2359,6 +2364,7 @@ suite('BKTClient', () => {
       expect(getBKTClient()).toBeNull()
       expect.soft(eventTaskStarted).toBe(0)
       expect.soft(fetchCount).toBe(0)
+      expect(client.evaluationSyncStatus().state).toBe('DESTROYED')
     })
 
     test('a cache load failure at init gives DESTROYED, and the listener can start a new client', async () => {
