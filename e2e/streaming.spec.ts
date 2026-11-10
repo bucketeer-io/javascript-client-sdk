@@ -3,7 +3,7 @@ import { destroyBKTClient, getBKTClient, initializeBKTClient } from './module'
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { BKTUser, defineBKTUser } from '../src/BKTUser'
 import { FEATURE_ID_STRING, USER_ID } from './constants'
-import { TimeoutException } from '../src/BKTExceptions'
+import { ForbiddenException, TimeoutException } from '../src/BKTExceptions'
 import { fetchLike } from './environment'
 import { recordingFetch, waitForStreamOpen } from './recordingFetch'
 
@@ -54,6 +54,11 @@ suite('e2e/streaming', () => {
       // outer one would always lose the race, and the failure would read as
       // an opaque "test timed out" instead of this assertion's own message.
       await waitForStreamOpen(recorder, 20_000)
+
+      // A normal connect reports no failure.
+      const status = client.evaluationSyncStatus()
+      expect(status.state).toBe('SYNCED')
+      expect(status.lastError).toBeNull()
     },
     30_000,
   )
@@ -93,6 +98,13 @@ suite('e2e/streaming', () => {
       // The aborted init fetch is the only /get_evaluations call. A second one
       // would mean the polling fallback filled the cache instead of the stream.
       expect(recorder.countOf('/get_evaluations')).toBe(1)
+
+      // The stream put recovered the failed init. lastError is kept after
+      // recovery, so it still shows why init failed.
+      const status = client.evaluationSyncStatus()
+      expect(status.state).toBe('SYNCED')
+      expect(status.lastError?.cause).toBeInstanceOf(TimeoutException)
+      expect(status.lastError?.source).toBe('POLLING')
     },
     30_000,
   )
@@ -139,6 +151,54 @@ suite('e2e/streaming', () => {
       // mean updateUserAttributes() re-evaluated over a REST re-fetch instead
       // of the SSE reconnect this test is meant to exercise.
       expect(recorder.countOf('/get_evaluations')).toBe(1)
+    },
+    30_000,
+  )
+
+  test(
+    'a wrong API key gives FAILING with the polling ForbiddenException',
+    async () => {
+      const wrongKeyConfig = defineBKTConfig({
+        apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
+        apiKey: 'wrong-api-key',
+        featureTag: 'javascript',
+        appVersion: '1.2.3',
+        fetch: recorder.fetch,
+        enableStreaming: true,
+        storageKeyPrefix: 'streaming-wrong-key',
+      })
+
+      // The backend answers a wrong key with 403 on get_evaluations and 401 on
+      // the stream.
+      await expect(() =>
+        initializeBKTClient(wrongKeyConfig, user),
+      ).rejects.toThrowError(ForbiddenException)
+
+      const client = getBKTClient()
+      assert(client != null)
+
+      // lastError keeps only the last error. What happens, in order:
+      // 1. The stream gets 401: lastError is UnauthorizedException (STREAMING),
+      //    and listeners are called with it.
+      // 2. The init poll gets 403: lastError is ForbiddenException (POLLING).
+      //    Steps 1 and 2 can arrive in either order.
+      // 3. A 401 stops the stream for good, so StreamingTask starts the polling
+      //    fallback, which polls at once. From now on, stream failures are
+      //    ignored, because the polling fallback decides the status.
+      // 4. The fallback poll gets 403: lastError is ForbiddenException (POLLING).
+      // Step 4 always comes after step 1, so the status always ends on the
+      // polling error. waitFor waits for step 4.
+      await vi.waitFor(
+        () => {
+          expect(recorder.responseFor('/stream_evaluations')?.status).toBe(401)
+          const status = client.evaluationSyncStatus()
+          expect(status.state).toBe('FAILING')
+          expect(status.lastSyncedAt).toBeNull()
+          expect(status.lastError?.cause).toBeInstanceOf(ForbiddenException)
+          expect(status.lastError?.source).toBe('POLLING')
+        },
+        { timeout: 20_000, interval: 200 },
+      )
     },
     30_000,
   )
