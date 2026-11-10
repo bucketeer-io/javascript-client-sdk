@@ -169,36 +169,49 @@ suite('e2e/streaming', () => {
       })
 
       // The backend answers a wrong key with 403 on get_evaluations and 401 on
-      // the stream.
-      await expect(() =>
-        initializeBKTClient(wrongKeyConfig, user),
-      ).rejects.toThrowError(ForbiddenException)
-
+      // the stream. What happens:
+      // - The stream gets 401 (UnauthorizedException, STREAMING).
+      // - The init poll gets 403 (ForbiddenException, POLLING).
+      //   These two can arrive in either order.
+      // - A 401 stops the stream for good, so StreamingTask starts the polling
+      //   fallback, which polls at once and gets 403 again. From then on the
+      //   fallback decides the status, so the status ends on a polling error.
+      const initPromise = initializeBKTClient(wrongKeyConfig, user)
       const client = getBKTClient()
       assert(client != null)
 
-      // lastError keeps only the last error. What happens, in order:
-      // 1. The stream gets 401: lastError is UnauthorizedException (STREAMING),
-      //    and listeners are called with it.
-      // 2. The init poll gets 403: lastError is ForbiddenException (POLLING).
-      //    Steps 1 and 2 can arrive in either order.
-      // 3. A 401 stops the stream for good, so StreamingTask starts the polling
-      //    fallback, which polls at once. From now on, stream failures are
-      //    ignored, because the polling fallback decides the status.
-      // 4. The fallback poll gets 403: lastError is ForbiddenException (POLLING).
-      // Step 4 always comes after step 1, so the status always ends on the
-      // polling error. waitFor waits for step 4.
+      // Collects each polling error once. The init error reaches the listener
+      // twice (still INITIALIZING, then FAILING when init ends), with the same
+      // cause object, so a Set counts it once.
+      const pollingErrors = new Set<unknown>()
+      client.addEvaluationSyncStatusListener((status) => {
+        if (status.lastError?.source === 'POLLING') {
+          pollingErrors.add(status.lastError.cause)
+        }
+      })
+
+      await expect(initPromise).rejects.toThrowError(ForbiddenException)
+
+      // Waits for 2 different polling errors: the init poll and the fallback
+      // poll. In either order of the first two answers, this is false until
+      // the fallback poll's 403 is reported. The next poll is a retry 60 s
+      // later, so there are exactly 2 polls in this test.
       await vi.waitFor(
         () => {
+          expect(pollingErrors.size).toBe(2)
+          expect(recorder.countOf('/get_evaluations')).toBe(2)
           expect(recorder.responseFor('/stream_evaluations')?.status).toBe(401)
-          const status = client.evaluationSyncStatus()
-          expect(status.state).toBe('FAILING')
-          expect(status.lastSyncedAt).toBeNull()
-          expect(status.lastError?.cause).toBeInstanceOf(ForbiddenException)
-          expect(status.lastError?.source).toBe('POLLING')
         },
         { timeout: 20_000, interval: 200 },
       )
+      for (const cause of pollingErrors) {
+        expect(cause).toBeInstanceOf(ForbiddenException)
+      }
+      const status = client.evaluationSyncStatus()
+      expect(status.state).toBe('FAILING')
+      expect(status.lastSyncedAt).toBeNull()
+      expect(status.lastError?.cause).toBeInstanceOf(ForbiddenException)
+      expect(status.lastError?.source).toBe('POLLING')
     },
     30_000,
   )
