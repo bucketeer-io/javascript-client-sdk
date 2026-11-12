@@ -37,6 +37,7 @@ import {
 import { user1 } from './mocks/users'
 import {
   InternalServerErrorException,
+  ServiceUnavailableException,
   TimeoutException,
 } from '../src/BKTExceptions'
 import { Evaluation } from '../src/internal/model/Evaluation'
@@ -49,6 +50,7 @@ import { DefaultComponent } from '../src/internal/di/Component'
 import { DataModule } from '../src/internal/di/DataModule'
 import { InteractorModule } from '../src/internal/di/InteractorModule'
 import { EvaluationTask } from '../src/internal/scheduler/EvaluationTask'
+import { EventTask } from '../src/internal/scheduler/EventTask'
 import { BKTEvaluationDetails } from '../src/BKTEvaluationDetails'
 import { requiredInternalConfig } from '../src/internal/InternalConfig'
 import { SourceId } from '../src/internal/model/SourceId'
@@ -282,6 +284,7 @@ suite('BKTClient', () => {
 
       expect(client.taskScheduler).toBeNull()
       expect(fetchSpy).not.toHaveBeenCalled()
+      expect(client.evaluationSyncStatus().state).toBe('DESTROYED')
     })
 
     test('evaluationInteractor().initialize() rejecting clears the singleton so a retry actually re-initializes (regression: silent no-op on retry)', async () => {
@@ -324,6 +327,8 @@ suite('BKTClient', () => {
         firstInitPromise,
       )
       const firstInitCall = initializeBKTClientInternal(component, 1000)
+      const firstClient = getBKTClient()
+      assert(firstClient !== null)
 
       // Orphan the first attempt, then start a second one on a fresh component.
       destroyBKTClient()
@@ -354,6 +359,8 @@ suite('BKTClient', () => {
       await expect(firstInitCall).rejects.toThrow('stale storage error')
 
       expect(getBKTClient()).toBe(secondClient)
+      expect(firstClient.evaluationSyncStatus().state).toBe('DESTROYED')
+      expect(secondClient!.evaluationSyncStatus().state).toBe('SYNCED')
     })
   })
 
@@ -2156,6 +2163,302 @@ suite('BKTClient', () => {
       await fetchPromise
 
       expect(listener).not.toHaveBeenCalled()
+    })
+  })
+
+  suite('evaluationSyncStatus', () => {
+    const respondWith = (status: number) => {
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () =>
+          status === 200
+            ? HttpResponse.json({
+                evaluations: user1Evaluations,
+                userEvaluationsId: 'user_evaluation_id_value',
+              })
+            : HttpResponse.json(
+                { error: { code: status, message: 'request failed' } },
+                { status },
+              ),
+        ),
+      )
+    }
+
+    const initializedClient = async () => {
+      respondWith(200)
+      await initializeBKTClientInternal(component, 1000)
+      const client = getBKTClient()
+      assert(client !== null)
+      return client
+    }
+
+    test('a successful init gives SYNCED', async () => {
+      const client = await initializedClient()
+
+      const status = client.evaluationSyncStatus()
+      expect(status.state).toBe('SYNCED')
+      expect(status.lastSyncedAt).not.toBeNull()
+      expect(status.lastError).toBeNull()
+    })
+
+    test('a 503 at init still rejects as before, and gives FAILING with the error', async () => {
+      respondWith(503)
+
+      await expect(
+        initializeBKTClientInternal(component, 1000),
+      ).rejects.toThrow(ServiceUnavailableException)
+
+      const client = getBKTClient()
+      assert(client !== null)
+      const status = client.evaluationSyncStatus()
+      expect(status.state).toBe('FAILING')
+      expect(status.lastSyncedAt).toBeNull()
+      expect(status.lastError?.cause).toBeInstanceOf(
+        ServiceUnavailableException,
+      )
+      expect(status.lastError?.source).toBe('POLLING')
+    })
+
+    test('a poll that gets 500 then 200 gives FAILING then SYNCED, and calls the listener for both', async () => {
+      const client = await initializedClient()
+      const states: string[] = []
+      client.addEvaluationSyncStatusListener((status) =>
+        states.push(status.state),
+      )
+
+      respondWith(500)
+      await expect(client.fetchEvaluations()).rejects.toThrow()
+      respondWith(200)
+      await client.fetchEvaluations()
+
+      expect(states).toEqual(['FAILING', 'SYNCED'])
+    })
+
+    test('a failed fetchEvaluations() reports the failure and still throws as before', async () => {
+      const client = await initializedClient()
+
+      respondWith(500)
+      await expect(client.fetchEvaluations()).rejects.toThrow(
+        InternalServerErrorException,
+      )
+
+      const status = client.evaluationSyncStatus()
+      expect(status.state).toBe('FAILING')
+      expect(status.lastError?.cause).toBeInstanceOf(
+        InternalServerErrorException,
+      )
+    })
+
+    test('a removed listener is not called, and clear removes the others', async () => {
+      const client = await initializedClient()
+      const removed = vi.fn()
+      const cleared = vi.fn()
+      const id = client.addEvaluationSyncStatusListener(removed)
+      client.addEvaluationSyncStatusListener(cleared)
+
+      client.removeEvaluationSyncStatusListener(id)
+      client.clearEvaluationSyncStatusListeners()
+      respondWith(500)
+      await expect(client.fetchEvaluations()).rejects.toThrow()
+
+      expect(removed).not.toHaveBeenCalled()
+      expect(cleared).not.toHaveBeenCalled()
+    })
+
+    test('destroyBKTClient() gives the listener DESTROYED once, and a fetch that ends later calls no listener', async () => {
+      const client = await initializedClient()
+      const listener = vi.fn()
+      client.addEvaluationSyncStatusListener(listener)
+
+      let releaseResponse: () => void
+      const responseReleased = new Promise<void>((resolve) => {
+        releaseResponse = resolve
+      })
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, async () => {
+          await responseReleased
+          return HttpResponse.json(
+            { error: { code: 500, message: 'request failed' } },
+            { status: 500 },
+          )
+        }),
+      )
+      const fetchResult = client.fetchEvaluations().catch(() => {})
+
+      destroyBKTClient()
+
+      expect(listener).toHaveBeenCalledTimes(1)
+      expect(listener.mock.calls[0][0].state).toBe('DESTROYED')
+
+      releaseResponse!()
+      await fetchResult
+
+      expect(listener).toHaveBeenCalledTimes(1)
+    })
+
+    test('a DESTROYED listener can start a new client', async () => {
+      const client = await initializedClient()
+      const newComponent = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(user1, requiredInternalConfig(config)),
+        new InteractorModule(),
+      )
+      let newInit: Promise<void> | undefined
+      client.addEvaluationSyncStatusListener((status) => {
+        if (status.state === 'DESTROYED') {
+          newInit = initializeBKTClientInternal(newComponent, 1000)
+        }
+      })
+
+      destroyBKTClient()
+      await newInit
+
+      const current = getBKTClient()
+      expect(current).not.toBeNull()
+      expect(getDefaultComponent(current!)).toBe(newComponent)
+    })
+
+    test('a listener that destroys the client while init starts the tasks leaves nothing running', async () => {
+      class ThrowingEventSource {
+        constructor() {
+          throw new Error('bad url')
+        }
+      }
+      let fetchCount = 0
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () => {
+          fetchCount++
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+      const streamingConfig = defineBKTConfig({
+        apiKey: 'api_key_value',
+        apiEndpoint: config.apiEndpoint,
+        featureTag: 'feature_tag_value',
+        appVersion: '1.2.3',
+        enableStreaming: true,
+        eventSource: ThrowingEventSource as unknown as EventSourceLike,
+        fetch,
+      })
+      const streamingComponent = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(user1, requiredInternalConfig(streamingConfig)),
+        new InteractorModule(),
+      )
+      const eventTaskStart = vi.spyOn(EventTask.prototype, 'start')
+
+      // The app adds its listener before init finishes, and destroys the
+      // client on the first error.
+      const initPromise = initializeBKTClientInternal(streamingComponent, 1000)
+      const client = getBKTClient()
+      assert(client !== null)
+      client.addEvaluationSyncStatusListener((status) => {
+        if (status.lastError !== null) destroyBKTClient()
+      })
+      await initPromise.catch(() => {})
+
+      const eventTaskStarted = eventTaskStart.mock.calls.length
+      eventTaskStart.mockRestore()
+      expect(getBKTClient()).toBeNull()
+      expect.soft(eventTaskStarted).toBe(0)
+      expect.soft(fetchCount).toBe(0)
+      expect(client.evaluationSyncStatus().state).toBe('DESTROYED')
+    })
+
+    test.each([
+      { responseStatus: 200, initEnds: 'resolves' },
+      { responseStatus: 500, initEnds: 'rejects' },
+    ])(
+      'destroy while the first init fetch waits for a $responseStatus response gives DESTROYED once, and init $initEnds',
+      async ({ responseStatus }) => {
+        let requestReceived: () => void
+        const requestStarted = new Promise<void>((resolve) => {
+          requestReceived = resolve
+        })
+        let releaseResponse: () => void
+        const responseReleased = new Promise<void>((resolve) => {
+          releaseResponse = resolve
+        })
+        server.use(
+          http.post(`${config.apiEndpoint}/get_evaluations`, async () => {
+            requestReceived()
+            await responseReleased
+            return responseStatus === 200
+              ? HttpResponse.json({
+                  evaluations: user1Evaluations,
+                  userEvaluationsId: 'user_evaluation_id_value',
+                })
+              : HttpResponse.json(
+                  { error: { code: 500, message: 'request failed' } },
+                  { status: 500 },
+                )
+          }),
+        )
+
+        const initPromise = initializeBKTClientInternal(component, 1000)
+        const client = getBKTClient()
+        assert(client !== null)
+        const states: string[] = []
+        client.addEvaluationSyncStatusListener((status) =>
+          states.push(status.state),
+        )
+
+        // Destroy only after the request reached the server, so init is past
+        // the cache load and waits for the first fetch.
+        await requestStarted
+        destroyBKTClient()
+        expect(states).toEqual(['DESTROYED'])
+
+        releaseResponse!()
+        // Init settles only after finishInitializing() ran, so the checks
+        // below see every listener call that init can make.
+        if (responseStatus === 200) {
+          await initPromise
+        } else {
+          await expect(initPromise).rejects.toThrow(
+            InternalServerErrorException,
+          )
+        }
+
+        expect(states).toEqual(['DESTROYED'])
+        const status = client.evaluationSyncStatus()
+        expect(status.state).toBe('DESTROYED')
+        expect(status.lastSyncedAt).toBeNull()
+        expect(status.lastError).toBeNull()
+      },
+    )
+
+    test('a cache load failure at init gives DESTROYED, and the listener can start a new client', async () => {
+      respondWith(200)
+      vi.spyOn(component.evaluationInteractor(), 'initialize')
+        .mockRejectedValueOnce(new Error('storage corrupted'))
+      const newComponent = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(user1, requiredInternalConfig(config)),
+        new InteractorModule(),
+      )
+
+      const initPromise = initializeBKTClientInternal(component, 1000)
+      const client = getBKTClient()
+      assert(client !== null)
+      const states: string[] = []
+      let newInit: Promise<void> | undefined
+      client.addEvaluationSyncStatusListener((status) => {
+        states.push(status.state)
+        if (status.state === 'DESTROYED') {
+          newInit = initializeBKTClientInternal(newComponent, 1000)
+        }
+      })
+
+      await expect(initPromise).rejects.toThrow('storage corrupted')
+      await newInit
+
+      expect(states).toEqual(['DESTROYED'])
+      const current = getBKTClient()
+      expect(current).not.toBeNull()
+      expect(getDefaultComponent(current!)).toBe(newComponent)
     })
   })
 })

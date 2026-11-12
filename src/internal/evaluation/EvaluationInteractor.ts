@@ -9,6 +9,7 @@ import {
   EvaluationWriteResult,
   UserAttributesState,
 } from './EvaluationStorage'
+import { EvaluationSyncReporter } from './EvaluationSyncReporter'
 
 export class EvaluationInteractor {
   constructor(
@@ -16,6 +17,7 @@ export class EvaluationInteractor {
     private apiClient: ApiClient,
     private evaluationStorage: EvaluationStorage,
     private idGenerator: IdGenerator,
+    private syncReporter: EvaluationSyncReporter,
   ) {}
 
   // visible for testing. should only be accessed from test code
@@ -62,6 +64,9 @@ export class EvaluationInteractor {
     )
 
     if (result.type === 'success') {
+      // Reported before the storage write, so a storage problem is not reported
+      // as a server problem.
+      this.syncReporter.reportSuccess('POLLING')
       // Ordering carries two invariants. Write BEFORE clear: the response to
       // a userAttributesUpdated:true request carries the re-evaluation the
       // flag asked for, so a write that throws or is skipped as stale must
@@ -83,6 +88,8 @@ export class EvaluationInteractor {
       if (writeResult.shouldNotify) {
         this.notifyListeners()
       }
+    } else {
+      this.syncReporter.reportFailure('POLLING', result.error)
     }
 
     return result
@@ -96,6 +103,10 @@ export class EvaluationInteractor {
     // The write itself is allowed to land — it's just unused cached data.
     shouldNotify: () => boolean = () => true,
   ): Promise<void> {
+    // Reported before the await, in the order the stream delivered it. A
+    // server error event that arrives while this write runs is then
+    // reported after this success, not overtaken by it.
+    this.syncReporter.reportSuccess('STREAMING')
     const writeResult = await this.writeEvaluations(response)
     if (
       writeResult.type === 'landed' &&

@@ -12,6 +12,10 @@ import { TaskScheduler } from './internal/scheduler/TaskScheduler'
 import { toBKTUser } from './internal/UserHolder'
 import { BKTValue } from './BKTValue'
 import { BKTEvaluationDetails } from './BKTEvaluationDetails'
+import {
+  BKTEvaluationSyncStatus,
+  BKTEvaluationSyncStatusListener,
+} from './BKTEvaluationSyncStatus'
 
 export interface BKTClient {
   booleanVariation: (featureId: string, defaultValue: boolean) => boolean
@@ -70,6 +74,29 @@ export interface BKTClient {
   addEvaluationUpdateListener: (listener: () => void) => string
   removeEvaluationUpdateListener: (listenerId: string) => void
   clearEvaluationUpdateListeners: () => void
+
+  /**
+   * Returns whether syncing flag values with the server works right now.
+   */
+  evaluationSyncStatus: () => BKTEvaluationSyncStatus
+  /**
+   * Adds a listener that is called on every state change, and on every reported
+   * error even if the state stays `FAILING`. To be told when flag values change,
+   * use `addEvaluationUpdateListener` instead.
+   *
+   * @returns The listener id, for `removeEvaluationSyncStatusListener`.
+   */
+  addEvaluationSyncStatusListener: (
+    listener: BKTEvaluationSyncStatusListener,
+  ) => string
+  /**
+   * Removes the listener with the id that `addEvaluationSyncStatusListener` returned.
+   */
+  removeEvaluationSyncStatusListener: (listenerId: string) => void
+  /**
+   * Removes every listener added with `addEvaluationSyncStatusListener`.
+   */
+  clearEvaluationSyncStatusListeners: () => void
 }
 
 export class BKTClientImpl implements BKTClient {
@@ -105,6 +132,10 @@ export class BKTClientImpl implements BKTClient {
    */
   scheduleAndFetch(timeoutMillis: number): Promise<void> {
     this.scheduleTasks()
+    // A sync status listener may have destroyed the client while the tasks
+    // started (resetTasks() then set taskScheduler to null). Skip the first
+    // fetch for a destroyed client.
+    if (!this.taskScheduler) return Promise.resolve()
     return this.fetchEvaluations(timeoutMillis)
   }
 
@@ -255,6 +286,32 @@ export class BKTClientImpl implements BKTClient {
 
   clearEvaluationUpdateListeners() {
     this.component.evaluationInteractor().clearUpdateListeners()
+  }
+
+  evaluationSyncStatus(): BKTEvaluationSyncStatus {
+    return this.component.evaluationSyncStatusTracker().getStatus()
+  }
+
+  addEvaluationSyncStatusListener(
+    listener: BKTEvaluationSyncStatusListener,
+  ): string {
+    return this.component.evaluationSyncStatusTracker().addListener(listener)
+  }
+
+  removeEvaluationSyncStatusListener(listenerId: string) {
+    this.component.evaluationSyncStatusTracker().removeListener(listenerId)
+  }
+
+  clearEvaluationSyncStatusListeners() {
+    this.component.evaluationSyncStatusTracker().clearListeners()
+  }
+
+  /**
+   * Sends DESTROYED to the sync status listeners once, then removes them.
+   * Only destroyBKTClient() calls this.
+   */
+  markSyncStatusDestroyed() {
+    this.component.evaluationSyncStatusTracker().markDestroyed()
   }
 
   private getVariationDetails<T extends BKTValue>(
@@ -416,6 +473,10 @@ export const initializeBKTClientInternal = async (
     // new client).
     if (getInstance() === client) {
       clearInstance()
+      // The client is gone, so its sync status must not stay INITIALIZING.
+      // Sends DESTROYED after clearInstance(), so a listener can start a new
+      // client here. The app still gets the error from the rejected promise.
+      client.markSyncStatusDestroyed()
     }
     throw err
   }
@@ -427,13 +488,22 @@ export const initializeBKTClientInternal = async (
   // leak an unstoppable stream and timers. Same identity check the catch block
   // above uses.
   if (getInstance() !== client) return
-  return client.scheduleAndFetch(timeoutMillis)
+  // Tell the sync status how init ended. A failed init (for example the
+  // timeout) moves INITIALIZING to FAILING. The app still gets the same
+  // rejection as before.
+  const syncStatusTracker = component.evaluationSyncStatusTracker()
+  try {
+    await client.scheduleAndFetch(timeoutMillis)
+    syncStatusTracker.finishInitializing(true)
+  } catch (err) {
+    syncStatusTracker.finishInitializing(false)
+    throw err
+  }
 }
 
 export const destroyBKTClient = (): void => {
-  const client = getInstance()
-  if (client) {
-    const clientImpl = client as BKTClientImpl
+  const clientImpl = getInstance() as BKTClientImpl | null
+  if (clientImpl) {
     clientImpl.resetTasks()
     // A fetch already in flight (poll or manual fetchEvaluations()) can
     // still resolve after this point, so clear listeners now rather than
@@ -443,6 +513,11 @@ export const destroyBKTClient = (): void => {
   // Clean up page lifecycle event listeners
   clearPageLifecycleCleanup()
   clearInstance()
+  // Last, after the client is fully destroyed: a listener may start a new
+  // client here. Sends DESTROYED to the sync status listeners once, then
+  // removes them. A request still in flight can no longer change the status
+  // after this.
+  clientImpl?.markSyncStatusDestroyed()
 }
 
 function assetNonBlankString(input: string) {
