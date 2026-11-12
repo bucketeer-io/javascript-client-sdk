@@ -2367,6 +2367,69 @@ suite('BKTClient', () => {
       expect(client.evaluationSyncStatus().state).toBe('DESTROYED')
     })
 
+    test.each([
+      { responseStatus: 200, initEnds: 'resolves' },
+      { responseStatus: 500, initEnds: 'rejects' },
+    ])(
+      'destroy while the first init fetch waits for a $responseStatus response gives DESTROYED once, and init $initEnds',
+      async ({ responseStatus }) => {
+        let requestReceived: () => void
+        const requestStarted = new Promise<void>((resolve) => {
+          requestReceived = resolve
+        })
+        let releaseResponse: () => void
+        const responseReleased = new Promise<void>((resolve) => {
+          releaseResponse = resolve
+        })
+        server.use(
+          http.post(`${config.apiEndpoint}/get_evaluations`, async () => {
+            requestReceived()
+            await responseReleased
+            return responseStatus === 200
+              ? HttpResponse.json({
+                  evaluations: user1Evaluations,
+                  userEvaluationsId: 'user_evaluation_id_value',
+                })
+              : HttpResponse.json(
+                  { error: { code: 500, message: 'request failed' } },
+                  { status: 500 },
+                )
+          }),
+        )
+
+        const initPromise = initializeBKTClientInternal(component, 1000)
+        const client = getBKTClient()
+        assert(client !== null)
+        const states: string[] = []
+        client.addEvaluationSyncStatusListener((status) =>
+          states.push(status.state),
+        )
+
+        // Destroy only after the request reached the server, so init is past
+        // the cache load and waits for the first fetch.
+        await requestStarted
+        destroyBKTClient()
+        expect(states).toEqual(['DESTROYED'])
+
+        releaseResponse!()
+        // Init settles only after finishInitializing() ran, so the checks
+        // below see every listener call that init can make.
+        if (responseStatus === 200) {
+          await initPromise
+        } else {
+          await expect(initPromise).rejects.toThrow(
+            InternalServerErrorException,
+          )
+        }
+
+        expect(states).toEqual(['DESTROYED'])
+        const status = client.evaluationSyncStatus()
+        expect(status.state).toBe('DESTROYED')
+        expect(status.lastSyncedAt).toBeNull()
+        expect(status.lastError).toBeNull()
+      },
+    )
+
     test('a cache load failure at init gives DESTROYED, and the listener can start a new client', async () => {
       respondWith(200)
       vi.spyOn(component.evaluationInteractor(), 'initialize')
