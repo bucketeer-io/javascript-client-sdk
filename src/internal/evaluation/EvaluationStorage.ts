@@ -57,6 +57,9 @@ export interface EvaluationStorage {
   /**
    * Preload the storage from the underlying storage.
    * This is useful to ensure that the storage is ready before any operations.
+   * If the underlying storage cannot be read, the error is logged and the
+   * cache starts with default (empty) data. Throws only when it was already
+   * initialized.
    */
   initialize(): Promise<void>
 

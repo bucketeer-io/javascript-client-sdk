@@ -78,7 +78,10 @@ export class BKTClientImpl implements BKTClient {
   constructor(public component: Component) {}
 
   /**
-   * Fatal init phase: load the evaluation cache. This MUST resolve before
+   * First init phase: load the evaluation cache. Storage read and save
+   * errors do not reject it (EvaluationStorage logs them and keeps the cache
+   * in memory); any other rejection is fatal, see
+   * initializeBKTClientInternal(). This MUST resolve before
    * scheduleAndFetch() runs. scheduleAndFetch() -> scheduleTasks() starts
    * StreamingTask (when enableStreaming), whose start() synchronously opens
    * the first connection and reads the evaluation cache via
