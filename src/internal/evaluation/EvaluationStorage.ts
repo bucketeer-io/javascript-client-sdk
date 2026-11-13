@@ -165,8 +165,8 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     try {
       this.cacheEvaluationEntity = await this.getInternal(this.userId)
     } catch (err) {
-      // The saved data could not be read (storage blocked or full, broken
-      // JSON, an app storageFactory that fails). Start with an empty cache in
+      // The saved data could not be read (storage turned off, broken JSON,
+      // an app storageFactory that fails). Start with an empty cache in
       // memory, the same as a first launch, so the client still works: flags
       // return the app's default values until a fetch fills the cache.
       console.error(

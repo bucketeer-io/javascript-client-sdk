@@ -448,6 +448,34 @@ suite('BKTClient', () => {
           client.stringVariation(evaluation1.featureId, 'default_value'),
         ).toBe('default_value')
       })
+
+      test('updateUserAttributes() resolves and reconnects streaming when the storage write fails', async () => {
+        server.use(
+          http.post<
+            Record<string, never>,
+            GetEvaluationsRequest,
+            GetEvaluationsResponse
+          >(`${config.apiEndpoint}/get_evaluations`, () => {
+            return HttpResponse.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            })
+          }),
+        )
+        await initializeBKTClientInternal(failingComponent, 1000)
+        const client = getBKTClient() as BKTClientImpl
+        assert(client.taskScheduler !== null)
+        const reconnectSpy = vi.spyOn(client.taskScheduler, 'reconnectStreaming')
+
+        await client.updateUserAttributes({ key: 'value' })
+
+        expect(reconnectSpy).toHaveBeenCalledOnce()
+        expect(
+          failingComponent
+            .evaluationInteractor()
+            .getUserAttributesState().userAttributesUpdated,
+        ).toBe(true)
+      })
     })
   })
 

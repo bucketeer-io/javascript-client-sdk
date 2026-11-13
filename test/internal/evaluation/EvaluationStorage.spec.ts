@@ -199,6 +199,37 @@ suite('internal/evaluation/EvaluationStorage', () => {
       expect((await storage.get())?.currentEvaluationsId).toBe('evaluations_id_1')
       expect(errorSpy).toHaveBeenCalledOnce()
     })
+
+    test('update() still lands in memory when the storage write fails', async () => {
+      await evaluationStorage.initialize()
+      vi.spyOn(storage, 'set').mockRejectedValue(new Error('write failed'))
+
+      const result = await evaluationStorage.update(
+        'evaluations_id_2',
+        [evaluation3],
+        [],
+        clock.currentTimeMillis().toString(),
+      )
+
+      expect(result).toStrictEqual({ type: 'landed', shouldNotify: true })
+      expect(evaluationStorage.getByFeatureId(evaluation3.featureId)).toStrictEqual(evaluation3)
+      expect(await storage.get()).toBeNull()
+      expect(errorSpy).toHaveBeenCalledOnce()
+    })
+
+    test('setUserAttributesUpdated() and clearUserAttributesUpdated() resolve and update memory when the storage write fails', async () => {
+      await evaluationStorage.initialize()
+      vi.spyOn(storage, 'set').mockRejectedValue(new Error('write failed'))
+
+      await evaluationStorage.setUserAttributesUpdated()
+      const state = evaluationStorage.getUserAttributesState()
+      expect(state.userAttributesUpdated).toBe(true)
+
+      await evaluationStorage.clearUserAttributesUpdated(state)
+      expect(evaluationStorage.getUserAttributesState().userAttributesUpdated).toBe(false)
+      expect(await storage.get()).toBeNull()
+      expect(errorSpy).toHaveBeenCalledTimes(2)
+    })
   })
 
 
