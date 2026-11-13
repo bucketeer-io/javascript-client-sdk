@@ -23,6 +23,7 @@ import {
   stringToObjectConverter,
 } from '../src/BKTClient'
 import { BKTValue } from '../src/BKTValue'
+import { BKTStorage, createBKTStorage } from '../src/BKTStorage'
 import { BKTConfig, defineBKTConfig } from '../src/BKTConfig'
 import { GetEvaluationsRequest } from '../src/internal/model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../src/internal/model/response/GetEvaluationsResponse'
@@ -354,6 +355,127 @@ suite('BKTClient', () => {
       await expect(firstInitCall).rejects.toThrow('stale storage error')
 
       expect(getBKTClient()).toBe(secondClient)
+    })
+
+    suite('evaluation storage errors keep the client working', () => {
+      // Only the evaluation storage fails, so event tracking keeps working
+      // and its own storage errors do not mix into these tests.
+      const failingEvaluationStorage = <T,>(key: string): BKTStorage<T> =>
+        key.endsWith('_bkt_evaluations')
+          ? {
+              get: () => Promise.reject(new Error('read failed')),
+              set: () => Promise.reject(new Error('write failed')),
+              clear: () => Promise.resolve(),
+            }
+          : createBKTStorage<T>(key)
+
+      let failingComponent: DefaultComponent
+
+      beforeEach(() => {
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+        failingComponent = new DefaultComponent(
+          new TestPlatformModule(),
+          new DataModule(
+            user1,
+            requiredInternalConfig({
+              ...config,
+              storageFactory: failingEvaluationStorage,
+            }),
+          ),
+          new InteractorModule(),
+        )
+      })
+
+      afterEach(() => {
+        vi.restoreAllMocks()
+      })
+
+      test('init resolves, the client stays registered, and the init fetch fills the cache in memory', async () => {
+        server.use(
+          http.post<
+            Record<string, never>,
+            GetEvaluationsRequest,
+            GetEvaluationsResponse
+          >(`${config.apiEndpoint}/get_evaluations`, () => {
+            return HttpResponse.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            })
+          }),
+        )
+
+        const initPromise = initializeBKTClientInternal(failingComponent, 1000)
+        const client = getBKTClient()
+        assert(client !== null)
+        const updateListener = vi.fn()
+        client.addEvaluationUpdateListener(updateListener)
+
+        await initPromise
+
+        expect(getBKTClient()).toBe(client)
+        expect(updateListener).toHaveBeenCalledOnce()
+        expect(
+          client.stringVariation(evaluation1.featureId, 'default_value'),
+        ).toBe(evaluation1.variationValue)
+      })
+
+      test('init rejects only with the init fetch error, and variations return the default value', async () => {
+        server.use(
+          http.post<
+            Record<string, never>,
+            GetEvaluationsRequest,
+            GetEvaluationsResponse
+          >(
+            `${config.apiEndpoint}/get_evaluations`,
+            async () => {
+              await delay(1000)
+              return HttpResponse.json({
+                evaluations: user1Evaluations,
+                userEvaluationsId: 'user_evaluation_id_value',
+              })
+            },
+            { once: true },
+          ),
+        )
+
+        await expect(
+          initializeBKTClientInternal(failingComponent, 500),
+        ).rejects.toThrow(TimeoutException)
+
+        const client = getBKTClient()
+        assert(client !== null)
+        expect(
+          client.stringVariation(evaluation1.featureId, 'default_value'),
+        ).toBe('default_value')
+      })
+
+      test('updateUserAttributes() resolves and reconnects streaming when the storage write fails', async () => {
+        server.use(
+          http.post<
+            Record<string, never>,
+            GetEvaluationsRequest,
+            GetEvaluationsResponse
+          >(`${config.apiEndpoint}/get_evaluations`, () => {
+            return HttpResponse.json({
+              evaluations: user1Evaluations,
+              userEvaluationsId: 'user_evaluation_id_value',
+            })
+          }),
+        )
+        await initializeBKTClientInternal(failingComponent, 1000)
+        const client = getBKTClient() as BKTClientImpl
+        assert(client.taskScheduler !== null)
+        const reconnectSpy = vi.spyOn(client.taskScheduler, 'reconnectStreaming')
+
+        await client.updateUserAttributes({ key: 'value' })
+
+        expect(reconnectSpy).toHaveBeenCalledOnce()
+        expect(
+          failingComponent
+            .evaluationInteractor()
+            .getUserAttributesState().userAttributesUpdated,
+        ).toBe(true)
+      })
     })
   })
 

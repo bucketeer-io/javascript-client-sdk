@@ -57,6 +57,9 @@ export interface EvaluationStorage {
   /**
    * Preload the storage from the underlying storage.
    * This is useful to ensure that the storage is ready before any operations.
+   * If the underlying storage cannot be read, the error is logged and the
+   * cache starts with default (empty) data. Throws only when it was already
+   * initialized.
    */
   initialize(): Promise<void>
 
@@ -162,7 +165,19 @@ export class EvaluationStorageImpl implements EvaluationStorage {
         'Evaluation storage is already initialized. Call clear() to reset.',
       )
     }
-    this.cacheEvaluationEntity = await this.getInternal(this.userId)
+    try {
+      this.cacheEvaluationEntity = await this.getInternal(this.userId)
+    } catch (err) {
+      // The saved data could not be read (storage turned off, broken JSON,
+      // an app storageFactory that fails). Start with an empty cache in
+      // memory, the same as a first launch, so the client still works: flags
+      // return the app's default values until a fetch fills the cache.
+      console.error(
+        'BKTClient: Storage layer error in EvaluationStorage::initialize',
+        err,
+      )
+      this.cacheEvaluationEntity = emptyEntity(this.userId)
+    }
   }
 
   private getCachedEvaluationEntity(): EvaluationEntity {
@@ -177,10 +192,21 @@ export class EvaluationStorageImpl implements EvaluationStorage {
   /**
    * Save the evaluation entity to the storage.
    * Also updates the cached entity.
+   *
+   * The cached entity is updated first, and a storage error is only logged:
+   * the new values are in memory and can be read, so the write still counts
+   * as landed. Only the saved copy for the next page load is missing.
    */
   private async saveAsync(entity: EvaluationEntity): Promise<void> {
     this.cacheEvaluationEntity = entity
-    await this.storage.set(entity)
+    try {
+      await this.storage.set(entity)
+    } catch (err) {
+      console.error(
+        'BKTClient: Storage layer error in EvaluationStorage::saveAsync',
+        err,
+      )
+    }
   }
 
   getByFeatureId(featureId: string): Evaluation | null {
@@ -340,15 +366,17 @@ export class EvaluationStorageImpl implements EvaluationStorage {
     const entity = await this.storage.get()
     if (!entity || entity.userId !== userId) {
       // entity doesn't exist or userId is different
-      return {
-        userId,
-        currentEvaluationsId: null,
-        evaluations: {},
-        evaluatedAt: null,
-        currentFeatureTag: null,
-        userAttributesUpdated: false,
-      }
+      return emptyEntity(userId)
     }
     return entity
   }
 }
+
+const emptyEntity = (userId: string): EvaluationEntity => ({
+  userId,
+  currentEvaluationsId: null,
+  evaluations: {},
+  evaluatedAt: null,
+  currentFeatureTag: null,
+  userAttributesUpdated: false,
+})
