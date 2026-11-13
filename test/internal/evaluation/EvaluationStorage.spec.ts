@@ -133,6 +133,74 @@ suite('internal/evaluation/EvaluationStorage', () => {
     })
   })
 
+  suite('storage errors keep the cache working in memory', () => {
+    let errorSpy: ReturnType<typeof vi.spyOn>
+
+    beforeEach(() => {
+      errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    test('initialize() starts with an empty cache when the storage read fails', async () => {
+      vi.spyOn(storage, 'get').mockRejectedValue(new Error('read failed'))
+
+      await evaluationStorage.initialize()
+
+      expect(await evaluationStorage.getCurrentEvaluationsId()).toBeNull()
+      expect(await evaluationStorage.getEvaluatedAt()).toBeNull()
+      expect(evaluationStorage.getByFeatureId(evaluation1.featureId)).toBeNull()
+      expect(evaluationStorage.getUserAttributesState().userAttributesUpdated).toBe(false)
+      expect(errorSpy).toHaveBeenCalledOnce()
+    })
+
+    test('initialize() still throws when it is called twice, even after a failed read', async () => {
+      vi.spyOn(storage, 'get').mockRejectedValue(new Error('read failed'))
+      await evaluationStorage.initialize()
+
+      await expect(evaluationStorage.initialize()).rejects.toThrow(
+        'Evaluation storage is already initialized. Call clear() to reset.'
+      )
+    })
+
+    test('a write that fails in storage still lands in memory', async () => {
+      await evaluationStorage.initialize()
+      vi.spyOn(storage, 'set').mockRejectedValue(new Error('write failed'))
+
+      const result = await evaluationStorage.deleteAllAndInsert(
+        'evaluations_id_2',
+        [evaluation3],
+        clock.currentTimeMillis().toString(),
+      )
+
+      expect(result).toStrictEqual({ type: 'landed', shouldNotify: true })
+      expect(await evaluationStorage.getCurrentEvaluationsId()).toBe('evaluations_id_2')
+      expect(evaluationStorage.getByFeatureId(evaluation3.featureId)).toStrictEqual(evaluation3)
+      expect(await storage.get()).toBeNull()
+      expect(errorSpy).toHaveBeenCalledOnce()
+    })
+
+    test('updateFeatureTag() resolves and updates memory when the storage write fails', async () => {
+      await storage.set({
+        userId: 'user_id_1',
+        currentEvaluationsId: 'evaluations_id_1',
+        evaluations: { [evaluation1.featureId]: evaluation1 },
+        currentFeatureTag: 'feature_tag_1',
+        evaluatedAt: '1234567890',
+        userAttributesUpdated: false,
+      })
+      await evaluationStorage.initialize()
+      vi.spyOn(storage, 'set').mockRejectedValue(new Error('write failed'))
+
+      expect(await evaluationStorage.updateFeatureTag('feature_tag_2')).toBe(true)
+      expect(await evaluationStorage.getCurrentEvaluationsId()).toBeNull()
+      expect((await storage.get())?.currentEvaluationsId).toBe('evaluations_id_1')
+      expect(errorSpy).toHaveBeenCalledOnce()
+    })
+  })
+
 
   suite('getByFeatureId', () => {
     test('return feature if saved data is present', async () => {

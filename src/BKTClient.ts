@@ -407,7 +407,10 @@ export const initializeBKTClientInternal = async (
   try {
     await client.initializeCache()
   } catch (err) {
-    // Fatal: without a loaded evaluation cache the client can never work.
+    // Storage read and write errors do not reach here: EvaluationStorage logs
+    // them and keeps the cache in memory. This catch is a safety net for any
+    // other failure (for example the storage throwing when it is created).
+    // Without a loaded evaluation cache the client can never work.
     // Remove the singleton so a retry of initializeBKTClient() actually
     // re-initializes instead of silently no-oping on the dead instance — but
     // only if this client is still the registered one (a destroy + re-init may
