@@ -355,12 +355,14 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       ).toBe(true)
     })
 
-    test('a failed storage write keeps userAttributesUpdated set, so the next poll retries the attribute-driven refresh', async () => {
+    test('a write that rejects keeps userAttributesUpdated set, so the next poll retries the attribute-driven refresh', async () => {
       // The server's response to a userAttributesUpdated:true request carries
-      // the re-evaluation the flag asked for. If persisting it fails (e.g.
-      // browser storage quota), the flag must NOT have been cleared yet —
-      // otherwise the next poll sends userAttributesUpdated:false and the
-      // re-evaluation is silently lost. Clear must come after the write.
+      // the re-evaluation the flag asked for. If the write rejects, the flag
+      // must NOT have been cleared yet, otherwise the next poll sends
+      // userAttributesUpdated:false and the re-evaluation is silently lost.
+      // This guards the order (write, then clear). Storage errors no longer
+      // make the write reject (EvaluationStorage logs them), so the write is
+      // mocked to reject here.
       server.use(
         http.post<
           Record<string, never>,
@@ -384,12 +386,10 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       await interactor.setUserAttributesUpdated()
 
       vi.spyOn(evaluationStorage, 'deleteAllAndInsert').mockRejectedValue(
-        new Error('QuotaExceededError'),
+        new Error('write rejected'),
       )
 
-      await expect(interactor.fetch(user1)).rejects.toThrow(
-        'QuotaExceededError',
-      )
+      await expect(interactor.fetch(user1)).rejects.toThrow('write rejected')
 
       expect(
         evaluationStorage.getUserAttributesState().userAttributesUpdated,
