@@ -128,7 +128,18 @@ export class EvaluationInteractor {
   }
 
   private notifyListeners(): void {
-    Object.values(this.updateListeners).forEach((listener) => listener())
+    Object.entries(this.updateListeners).forEach(([id, listener]) => {
+      // A listener can remove another listener, or destroy the client (which
+      // removes all of them). A removed listener must not be called.
+      if (this.updateListeners[id] !== listener) return
+      try {
+        listener()
+      } catch (e) {
+        // App code must not make init, fetchEvaluations() or a poll fail when
+        // the flag values were saved, or stop the other listeners.
+        console.error('EvaluationInteractor: an update listener threw', e)
+      }
+    })
   }
 
   getLatest(featureId: string): Evaluation | null {
