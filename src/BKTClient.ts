@@ -16,6 +16,7 @@ import {
   BKTEvaluationSyncStatus,
   BKTEvaluationSyncStatusListener,
 } from './BKTEvaluationSyncStatus'
+import { IllegalStateException } from './BKTExceptions'
 
 export interface BKTClient {
   booleanVariation: (featureId: string, defaultValue: boolean) => boolean
@@ -496,7 +497,18 @@ export const initializeBKTClientInternal = async (
     await client.scheduleAndFetch(timeoutMillis)
     syncStatusTracker.finishInitializing(true)
   } catch (err) {
-    syncStatusTracker.finishInitializing(false)
+    // A failed fetch saved its error when it was reported: init rejects with
+    // that same object. Any other throw (for example a custom storageFactory
+    // that throws for the event storage) is saved here.
+    const reported = syncStatusTracker.getStatus().lastError?.cause === err
+    syncStatusTracker.finishInitializing(
+      false,
+      reported
+        ? undefined
+        : new IllegalStateException(
+            `failed when initializing: ${err instanceof Error ? err.message : String(err)}`,
+          ),
+    )
     throw err
   }
 }

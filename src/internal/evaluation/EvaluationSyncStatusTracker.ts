@@ -15,8 +15,9 @@ export interface EvaluationSyncStatusTracker {
   addListener(listener: BKTEvaluationSyncStatusListener): string
   removeListener(id: string): void
   clearListeners(): void
-  // Does nothing unless the state is still INITIALIZING.
-  finishInitializing(succeeded: boolean): void
+  // Does nothing unless the state is still INITIALIZING. error: a throw that
+  // was not reported yet, saved as lastError with the change to FAILING.
+  finishInitializing(succeeded: boolean, error?: BKTException): void
   markDestroyed(): void
 }
 
@@ -24,6 +25,8 @@ export interface EvaluationSyncStatusTracker {
 //
 // - INITIALIZING lasts until initializeBKTClient() finishes. Errors during
 //   init update lastError only. A success sets SYNCED at once.
+// - When init fails, lastError says why: a failed fetch saved it when it was
+//   reported, and finishInitializing() saves any other error.
 // - After init, a success sets SYNCED and a failure sets FAILING.
 // - Listeners are called on every state change and on every failure that is
 //   not ignored (see isIgnoredFailure()).
@@ -77,9 +80,11 @@ export class EvaluationSyncStatusTrackerImpl
     this.listeners = {}
   }
 
-  finishInitializing(succeeded: boolean): void {
+  finishInitializing(succeeded: boolean, error?: BKTException): void {
     if (succeeded || this.status.state !== 'INITIALIZING') return
     this.setState('FAILING')
+    // Set together with the state, so listeners get one call with both.
+    if (error) this.setLastError('POLLING', error)
     this.notifyListeners()
   }
 
@@ -109,13 +114,7 @@ export class EvaluationSyncStatusTrackerImpl
     // INITIALIZING keeps its state: finishInitializing() decides it. FAILING
     // stays FAILING, but listeners still get the new error.
     if (this.status.state === 'SYNCED') this.setState('FAILING')
-    this.status = Object.assign({}, this.status, {
-      lastError: {
-        cause: error,
-        occurredAt: this.clock.currentTimeMillis(),
-        source,
-      },
-    })
+    this.setLastError(source, error)
     this.notifyListeners()
   }
 
@@ -147,6 +146,19 @@ export class EvaluationSyncStatusTrackerImpl
     this.status = Object.assign({}, this.status, {
       state,
       changedAt: this.clock.currentTimeMillis(),
+    })
+  }
+
+  private setLastError(
+    source: BKTEvaluationSyncSource,
+    error: BKTException,
+  ): void {
+    this.status = Object.assign({}, this.status, {
+      lastError: {
+        cause: error,
+        occurredAt: this.clock.currentTimeMillis(),
+        source,
+      },
     })
   }
 

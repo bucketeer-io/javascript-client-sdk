@@ -11,6 +11,7 @@ import {
   afterAll,
   vi,
 } from 'vitest'
+import { BKTStorage, InMemoryStorage } from '../src/BKTStorage'
 import {
   BKTClientImpl,
   defaultStringToTypeConverter,
@@ -36,6 +37,7 @@ import {
 
 import { user1 } from './mocks/users'
 import {
+  IllegalStateException,
   InternalServerErrorException,
   ServiceUnavailableException,
   TimeoutException,
@@ -2459,6 +2461,60 @@ suite('BKTClient', () => {
       const current = getBKTClient()
       expect(current).not.toBeNull()
       expect(getDefaultComponent(current!)).toBe(newComponent)
+    })
+
+    // Rule: when initialize fails, the sync status says why (lastError is set).
+    // An error the fetch reported is the same object initialize rejects with.
+    // Any other error is saved wrapped as an IllegalStateException.
+    suite('a failed init gives the reason in lastError', () => {
+      const startInit = (initComponent: DefaultComponent) => {
+        const initPromise = initializeBKTClientInternal(initComponent, 1000)
+        const client = getBKTClient()
+        assert(client !== null)
+        return { initPromise, client }
+      }
+
+      test('a storageFactory that throws for the event storage gives FAILING with the reason', async () => {
+        respondWith(200)
+        const storageError = new Error('event storage unavailable')
+        const throwingConfig = defineBKTConfig({
+          apiKey: 'api_key_value',
+          apiEndpoint: config.apiEndpoint,
+          featureTag: 'feature_tag_value',
+          appVersion: '1.2.3',
+          fetch,
+          storageFactory: <T>(key: string): BKTStorage<T> => {
+            if (key.endsWith('_bkt_events')) {
+              throw storageError
+            }
+            return new InMemoryStorage<T>(key)
+          },
+        })
+        const throwingComponent = new DefaultComponent(
+          new TestPlatformModule(),
+          new DataModule(user1, requiredInternalConfig(throwingConfig)),
+          new InteractorModule(),
+        )
+
+        const { initPromise, client } = startInit(throwingComponent)
+        const listener = vi.fn()
+        client.addEvaluationSyncStatusListener(listener)
+
+        // The app still gets the same error object as before.
+        await expect(initPromise).rejects.toBe(storageError)
+
+        const status = client.evaluationSyncStatus()
+        expect(status.state).toBe('FAILING')
+        // lastError.cause must be a BKTException, so the error is wrapped.
+        expect(status.lastError?.cause).toBeInstanceOf(IllegalStateException)
+        expect(status.lastError?.cause.message).toBe(
+          'failed when initializing: event storage unavailable',
+        )
+        expect(status.lastError?.source).toBe('POLLING')
+        // FAILING and lastError arrive together.
+        expect(listener).toHaveBeenCalledTimes(1)
+        expect(listener).toHaveBeenCalledWith(status)
+      })
     })
   })
 })
