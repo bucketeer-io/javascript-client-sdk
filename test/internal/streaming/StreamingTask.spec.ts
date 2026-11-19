@@ -1,6 +1,17 @@
 import { expect, suite, test, vi, beforeEach, afterEach } from 'vitest'
 
 import { BKTConfig } from '../../../src/BKTConfig'
+import {
+  BadRequestException,
+  IllegalStateException,
+  InternalServerErrorException,
+  NetworkException,
+  ServiceUnavailableException,
+  TimeoutException,
+  UnauthorizedException,
+  UnknownException,
+} from '../../../src/BKTExceptions'
+import { GetEvaluationsResult } from '../../../src/internal/remote/GetEvaluationsResult'
 import { DefaultComponent } from '../../../src/internal/di/Component'
 import { SourceId } from '../../../src/internal/model/SourceId'
 import { EvaluationTask } from '../../../src/internal/scheduler/EvaluationTask'
@@ -839,5 +850,360 @@ suite('internal/streaming/StreamingTask', () => {
     expect(vi.getTimerCount()).toBe(0)
     vi.advanceTimersByTime(30 * 60_000)
     expect(FakeEventSource.instances).toHaveLength(1)
+  })
+
+  suite('evaluation sync status', () => {
+    const putData = JSON.stringify({
+      evaluations: user1Evaluations,
+      userEvaluationsId: 'user_evaluation_id_value',
+    })
+    const pollSuccess: GetEvaluationsResult = {
+      type: 'success',
+      sizeByte: 1,
+      seconds: 1,
+      featureTag: 'feature_tag_value',
+      value: {
+        evaluations: user1Evaluations,
+        userEvaluationsId: 'user_evaluation_id_value',
+      },
+    }
+    const pollFailure: GetEvaluationsResult = {
+      type: 'failure',
+      featureTag: 'feature_tag_value',
+      error: new InternalServerErrorException('Internal Server Error'),
+    }
+
+    function serverErrorData(message: string): string {
+      return JSON.stringify({ code: 'INTERNAL', message })
+    }
+
+    // A polling result as the polling fallback or the init fetch would get it.
+    async function poll(
+      component: DefaultComponent,
+      result: GetEvaluationsResult,
+    ): Promise<void> {
+      vi.spyOn(
+        component.dataModule.apiClient(),
+        'getEvaluations',
+      ).mockResolvedValue(result)
+      await component.evaluationInteractor().fetch(user1)
+    }
+
+    // A client whose init fetch worked, with the stream connecting.
+    async function startAfterSuccessfulInit(): Promise<DefaultComponent> {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const component = buildComponent()
+      await startTask(component)
+      await poll(component, pollSuccess)
+      component.evaluationSyncStatusTracker().finishInitializing(true)
+      return component
+    }
+
+    async function receivePut(): Promise<void> {
+      latest().onopen?.({})
+      latest().emit('put', { data: putData })
+      await vi.advanceTimersByTimeAsync(0)
+    }
+
+    // Backoff delays with jitter mocked to 0. The last attempt happens 121 s
+    // after the first failure, which is past the 120 s limit, so it gives up.
+    function failUntilGiveUp(error: unknown): void {
+      latest().onerror?.(error)
+      for (const delaySeconds of [1, 2, 4, 8, 16, 30, 30, 30]) {
+        vi.advanceTimersByTime(delaySeconds * 1_000)
+        latest().onerror?.(error)
+      }
+    }
+
+    test('a 503 on connect sets FAILING, and a retry that gets a put sets SYNCED', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+
+      latest().onerror?.({ status: 503 })
+
+      expect(tracker.getStatus().state).toBe('FAILING')
+      expect(tracker.getStatus().lastError?.cause).toBeInstanceOf(
+        ServiceUnavailableException,
+      )
+      expect(tracker.getStatus().lastError?.source).toBe('STREAMING')
+
+      vi.advanceTimersByTime(1_000)
+      await receivePut()
+
+      expect(tracker.getStatus().state).toBe('SYNCED')
+    })
+
+    test('a server error event right after the stream opens sets FAILING', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+
+      latest().onopen?.({})
+      latest().emit('error', { data: serverErrorData('evaluation failed') })
+
+      const status = tracker.getStatus()
+      expect(status.state).toBe('FAILING')
+      expect(status.lastError?.cause).toStrictEqual(
+        new InternalServerErrorException('evaluation failed'),
+      )
+      expect(status.lastError?.source).toBe('STREAMING')
+    })
+
+    test('a holdout error after a put sets FAILING with its message, and the next put sets SYNCED', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+      const message = 'holdout snapshot unavailable, retry'
+
+      await receivePut()
+      expect(tracker.getStatus().state).toBe('SYNCED')
+
+      latest().emit('error', { data: serverErrorData(message) })
+      latest().onerror?.({})
+
+      expect(tracker.getStatus().state).toBe('FAILING')
+      expect(tracker.getStatus().lastError?.cause).toStrictEqual(
+        new InternalServerErrorException(message),
+      )
+
+      vi.advanceTimersByTime(1_000)
+      await receivePut()
+
+      expect(tracker.getStatus().state).toBe('SYNCED')
+    })
+
+    test('a failed patch after a put sets FAILING', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+
+      await receivePut()
+      latest().emit('error', { data: serverErrorData('evaluation failed') })
+
+      expect(tracker.getStatus().state).toBe('FAILING')
+    })
+
+    test('the stream opening without a put does not set SYNCED', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const component = buildComponent()
+      await startTask(component)
+      const tracker = component.evaluationSyncStatusTracker()
+      tracker.finishInitializing(false)
+
+      latest().onopen?.({})
+      latest().onmessage?.({ data: undefined })
+
+      expect(tracker.getStatus().state).toBe('FAILING')
+    })
+
+    test('after give-up, a fallback poll sets SYNCED and later stream retry failures do nothing', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+
+      failUntilGiveUp({ status: 503 })
+      expect(evaluationTaskStart).toHaveBeenCalled()
+      await poll(component, pollSuccess)
+      expect(tracker.getStatus().state).toBe('SYNCED')
+
+      const before = tracker.getStatus()
+      const listener = vi.fn()
+      tracker.addListener(listener)
+      vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
+      latest().onerror?.({ status: 503 })
+
+      expect(tracker.getStatus()).toEqual(before)
+      expect(listener).not.toHaveBeenCalled()
+    })
+
+    test('503 until give-up keeps the real error, with no extra listener call at give-up', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+      const listener = vi.fn()
+      tracker.addListener(listener)
+
+      failUntilGiveUp({ status: 503 })
+
+      // One call for each of the 9 failed attempts, none for the give-up.
+      expect(listener).toHaveBeenCalledTimes(9)
+      expect(tracker.getStatus().lastError?.cause).toBeInstanceOf(
+        ServiceUnavailableException,
+      )
+
+      await poll(component, pollSuccess)
+
+      expect(tracker.getStatus().state).toBe('SYNCED')
+      expect(tracker.getStatus().lastError?.cause).toBeInstanceOf(
+        ServiceUnavailableException,
+      )
+    })
+
+    test('with the fallback running, its polls decide the state and stream retry failures do nothing', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+      failUntilGiveUp({ status: 503 })
+      await poll(component, pollSuccess)
+
+      await poll(component, pollFailure)
+      expect(tracker.getStatus().state).toBe('FAILING')
+      expect(tracker.getStatus().lastError?.source).toBe('POLLING')
+
+      const before = tracker.getStatus()
+      vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
+      latest().onerror?.({ status: 503 })
+      expect(tracker.getStatus()).toEqual(before)
+
+      await poll(component, pollSuccess)
+      expect(tracker.getStatus().state).toBe('SYNCED')
+    })
+
+    test('heartbeats move lastSyncedAt without calling listeners', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+      await receivePut()
+      const listener = vi.fn()
+      tracker.addListener(listener)
+
+      vi.advanceTimersByTime(30_000)
+      latest().onmessage?.({ data: undefined })
+
+      expect(tracker.getStatus().lastSyncedAt).toBe(Date.now())
+      expect(listener).not.toHaveBeenCalled()
+    })
+
+    test('starting and stopping the fallback tells the reporter', async () => {
+      const component = await startAfterSuccessfulInit()
+      const setActive = vi.spyOn(
+        component.streamingSyncReporter(),
+        'setPollingFallbackActive',
+      )
+
+      latest().onerror?.({ status: 400 })
+      expect(setActive).toHaveBeenLastCalledWith(true)
+
+      vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
+      latest().onopen?.({})
+      expect(setActive).toHaveBeenLastCalledWith(false)
+    })
+
+    test('after stop(), late data, heartbeats and errors report nothing', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+      const es = latest()
+      await receivePut()
+      task?.stop()
+      const before = tracker.getStatus()
+
+      vi.advanceTimersByTime(30_000)
+      es.emit('error', { data: serverErrorData('evaluation failed') })
+      es.onmessage?.({ data: undefined })
+      es.onerror?.({ status: 503 })
+      es.emit('put', { data: putData })
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(tracker.getStatus()).toEqual(before)
+    })
+
+    test.each([
+      {
+        name: 'HTTP 500',
+        error: { status: 500 },
+        expected: new InternalServerErrorException('Internal Server Error'),
+      },
+      {
+        name: 'HTTP 503',
+        error: { status: 503 },
+        expected: new ServiceUnavailableException('Service Unavailable'),
+      },
+      {
+        name: 'HTTP 400',
+        error: { status: 400 },
+        expected: new BadRequestException('Bad Request'),
+      },
+      {
+        name: 'HTTP 401',
+        error: { status: 401 },
+        expected: new UnauthorizedException('Unauthorized'),
+      },
+      {
+        name: 'HTTP 408',
+        error: { status: 408 },
+        expected: new TimeoutException(0, 'Timeout with status 408'),
+      },
+      {
+        name: 'an HTTP status with no class of its own',
+        error: { status: 429 },
+        expected: new UnknownException('Unknown Error: 429', 429),
+      },
+      {
+        name: 'a network error',
+        error: new TypeError('failed to fetch'),
+        expected: new NetworkException('Network Error: failed to fetch'),
+      },
+    ])('$name gives the matching error', async ({ error, expected }) => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+
+      latest().onerror?.(error)
+
+      expect(tracker.getStatus().lastError?.cause).toStrictEqual(expected)
+      expect(tracker.getStatus().lastError?.source).toBe('STREAMING')
+    })
+
+    test('a watchdog timeout gives TimeoutException with the timeout value', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+
+      vi.advanceTimersByTime(70_000)
+
+      expect(tracker.getStatus().lastError?.cause).toStrictEqual(
+        new TimeoutException(70_000, 'Timeout Error'),
+      )
+    })
+
+    test('a runtime that cannot stream gives IllegalStateException', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      latest().onerror?.({ terminal: true })
+
+      expect(tracker.getStatus().lastError?.cause).toBeInstanceOf(
+        IllegalStateException,
+      )
+    })
+
+    test('a throw while opening the stream gives UnknownException with its message', async () => {
+      const ThrowingEventSource = function () {
+        throw new Error('constructor boom')
+      } as unknown as EventSourceLike
+      const component = buildComponent({ eventSource: ThrowingEventSource })
+
+      await startTask(component)
+
+      const cause = component.evaluationSyncStatusTracker().getStatus()
+        .lastError?.cause
+      expect(cause).toBeInstanceOf(UnknownException)
+      expect(cause?.message).toContain('constructor boom')
+    })
+
+    test('giving up with nothing reported before gives UnknownException that says it stopped after 120 s', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+
+      failUntilGiveUp(new Event('error'))
+
+      const cause = tracker.getStatus().lastError?.cause
+      expect(cause).toBeInstanceOf(UnknownException)
+      expect(cause?.message).toContain('120')
+    })
+
+    test('a server error event with an unreadable payload uses the raw text', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+
+      latest().onopen?.({})
+      latest().emit('error', { data: 'not json' })
+
+      expect(tracker.getStatus().lastError?.cause).toStrictEqual(
+        new InternalServerErrorException('not json'),
+      )
+    })
   })
 })

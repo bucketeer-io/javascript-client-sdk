@@ -1,13 +1,27 @@
+import {
+  BKTException,
+  IllegalStateException,
+  InternalServerErrorException,
+  NetworkException,
+  TimeoutException,
+  UnknownException,
+} from '../../BKTExceptions'
 import { Component } from '../di/Component'
 import { UserAttributesState } from '../evaluation/EvaluationStorage'
 import { requiredInternalConfig } from '../InternalConfig'
 import { StreamEvaluationsRequest } from '../model/request/StreamEvaluationsRequest'
 import { GetEvaluationsResponse } from '../model/response/GetEvaluationsResponse'
+import { statusToBKTException } from '../remote/toBKTException'
 import { EvaluationTask } from '../scheduler/EvaluationTask'
 import { ScheduledTask } from '../scheduler/ScheduledTask'
 import { FetchEventSource } from './FetchEventSource'
 import { EventSourceLike, EventSourceLikeInit } from './EventSourceLike'
-import { StreamConnection, StreamConnectionErrorInfo } from './StreamConnection'
+import {
+  StreamAttemptFailure,
+  StreamConnection,
+  StreamConnectionErrorInfo,
+  UNHEALTHY_FALLBACK_TIMEOUT_MILLIS,
+} from './StreamConnection'
 
 const STREAM_EVALUATIONS_PATH = '/v1/gateway/stream_evaluations'
 const RECOVERY_INTERVAL_MILLIS = 5 * 60_000
@@ -140,6 +154,14 @@ export class StreamingTask implements ScheduledTask {
         // on the missing GetEvaluationsResponse shape.
         error: (data) => {
           console.error('StreamingTask: server reported a stream error', data)
+          // A real server failure, before or after a put: the backend sends
+          // it when an evaluation fails, then closes the stream.
+          this.component
+            .streamingSyncReporter()
+            .reportFailure(
+              'STREAMING',
+              new InternalServerErrorException(this.serverErrorMessage(data)),
+            )
         },
       },
       // Defensive fallback for a message that matched none of the named
@@ -159,6 +181,16 @@ export class StreamingTask implements ScheduledTask {
           this.clearUserAttributesUpdated()
         },
         onError: (info) => this.handleError(info),
+        // StreamConnection reports raw facts. This task turns them into the
+        // error the app sees.
+        onAttemptFailed: (failure) => {
+          this.component
+            .streamingSyncReporter()
+            .reportFailure('STREAMING', this.toStreamError(failure))
+        },
+        onAlive: () => {
+          this.component.streamingSyncReporter().reportStreamingAlive()
+        },
       },
     })
     this.connection.start()
@@ -266,6 +298,42 @@ export class StreamingTask implements ScheduledTask {
     }
   }
 
+  // Gives the same error types polling uses, with messages like polling's
+  // where the two can match.
+  private toStreamError(failure: StreamAttemptFailure): BKTException {
+    switch (failure.kind) {
+      case 'httpStatus':
+        return statusToBKTException(failure.status)
+      case 'network':
+        return new NetworkException(`Network Error: ${failure.cause.message}`)
+      case 'timeout':
+        return new TimeoutException(failure.timeoutMillis, 'Timeout Error')
+      case 'unsupported':
+        return new IllegalStateException(
+          'Streaming stopped: this runtime\'s fetch cannot stream',
+        )
+      case 'setupFailed':
+        return new UnknownException(
+          `Failed to open the stream: ${failure.cause instanceof Error ? failure.cause.message : String(failure.cause)}`,
+        )
+      case 'gaveUp':
+        return new UnknownException(
+          `The stream stopped after ${UNHEALTHY_FALLBACK_TIMEOUT_MILLIS / 1000} s with no working connection`,
+        )
+    }
+  }
+
+  // The backend sends { code, message } as JSON. Falls back to the raw text, so
+  // an unexpected payload is still shown to the app.
+  private serverErrorMessage(data: string): string {
+    try {
+      const message: unknown = JSON.parse(data)?.message
+      return typeof message === 'string' ? message : data
+    } catch {
+      return data
+    }
+  }
+
   private async handleData(data: string): Promise<void> {
     if (!this.running) return // guard: data may arrive after stop()
     let parsed: unknown
@@ -295,6 +363,9 @@ export class StreamingTask implements ScheduledTask {
       // its own, without needing to check start()'s signature.
       const immediately = true
       this.fallbackTask.start(immediately) // fetch immediately instead of waiting a full pollingInterval
+      // While the fallback runs, its polls decide the sync status, and
+      // stream retry failures are ignored.
+      this.component.streamingSyncReporter().setPollingFallbackActive(true)
     }
   }
 
@@ -314,6 +385,7 @@ export class StreamingTask implements ScheduledTask {
   private stopFallback(): void {
     this.fallbackTask?.stop()
     this.fallbackTask = null
+    this.component.streamingSyncReporter().setPollingFallbackActive(false)
     clearTimeout(this.recoveryTimer)
     this.recoveryTimer = undefined
   }

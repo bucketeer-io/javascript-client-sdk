@@ -30,6 +30,13 @@ export type {
 } from './BKTValue'
 export type { BKTEvaluationDetails } from './BKTEvaluationDetails'
 export type {
+  BKTEvaluationSyncError,
+  BKTEvaluationSyncSource,
+  BKTEvaluationSyncState,
+  BKTEvaluationSyncStatus,
+  BKTEvaluationSyncStatusListener,
+} from './BKTEvaluationSyncStatus'
+export type {
   EventSourceLike,
   EventSourceLikeInit,
   EventSourceInstance,
