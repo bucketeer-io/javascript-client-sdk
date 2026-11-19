@@ -166,6 +166,41 @@ suite('BKTClient', () => {
       expect(evaluation).toBeNull()
     })
 
+    test('an update listener that throws is logged, and init resolves and calls the next listener', async () => {
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () =>
+          HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          }),
+        ),
+      )
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      try {
+        const listenerError = new Error('app listener failed')
+        const nextListener = vi.fn()
+
+        const initPromise = initializeBKTClientInternal(component, 1000)
+        const client = getBKTClient()
+        assert(client !== null)
+        client.addEvaluationUpdateListener(() => {
+          throw listenerError
+        })
+        client.addEvaluationUpdateListener(nextListener)
+
+        await initPromise
+        expect(nextListener).toHaveBeenCalledTimes(1)
+        expect(consoleError).toHaveBeenCalledWith(
+          'EvaluationInteractor: an update listener threw',
+          listenerError,
+        )
+      } finally {
+        consoleError.mockRestore()
+      }
+    })
+
     test('second call should immediately resolves without api request', async () => {
       server.use(
         http.post<
@@ -2028,6 +2063,29 @@ suite('BKTClient', () => {
           getDefaultComponent(client).evaluationInteractor().updateListeners,
         ),
       ).toHaveLength(0)
+    })
+
+    test('an update listener that destroys the client stops the other update listeners in the same call', async () => {
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () =>
+          HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          }),
+        ),
+      )
+      const nextListener = vi.fn()
+
+      const initPromise = initializeBKTClientInternal(component, 1000)
+      const client = getBKTClient()
+      assert(client !== null)
+      client.addEvaluationUpdateListener(() => destroyBKTClient())
+      client.addEvaluationUpdateListener(nextListener)
+      await initPromise
+
+      // The first listener ran and destroyed the client.
+      expect(getBKTClient()).toBeNull()
+      expect(nextListener).not.toHaveBeenCalled()
     })
 
     // A manual fetchEvaluations() call can already be waiting on the network
