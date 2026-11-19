@@ -1005,4 +1005,101 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       expect(stored?.userAttributesUpdated).toBe(false)
     })
   })
+
+  suite('sync result reporting', () => {
+    let reporter: {
+      reportSuccess: ReturnType<typeof vi.fn>
+      reportFailure: ReturnType<typeof vi.fn>
+    }
+    let reportingInteractor: EvaluationInteractor
+
+    beforeEach(async () => {
+      reporter = { reportSuccess: vi.fn(), reportFailure: vi.fn() }
+      reportingInteractor = new EvaluationInteractor(
+        'feature_tag_value',
+        component.dataModule.apiClient(),
+        evaluationStorage,
+        component.platformModule.idGenerator(),
+        reporter,
+      )
+      await reportingInteractor.initialize()
+    })
+
+    const respondWithSuccess = () => {
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () =>
+          HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          }),
+        ),
+      )
+    }
+
+    test('fetch() success reports a polling success', async () => {
+      respondWithSuccess()
+
+      await reportingInteractor.fetch(user1)
+
+      expect(reporter.reportSuccess).toHaveBeenCalledTimes(1)
+      expect(reporter.reportSuccess).toHaveBeenCalledWith('POLLING')
+      expect(reporter.reportFailure).not.toHaveBeenCalled()
+    })
+
+    test('fetch() success is reported when the storage write is skipped as stale', async () => {
+      respondWithSuccess()
+      vi.spyOn(evaluationStorage, 'update').mockResolvedValue({
+        type: 'skippedStale',
+      })
+
+      await reportingInteractor.fetch(user1)
+
+      expect(reporter.reportSuccess).toHaveBeenCalledWith('POLLING')
+    })
+
+    test('a storage write failure after a successful fetch() is not reported as a server failure', async () => {
+      respondWithSuccess()
+      vi.spyOn(evaluationStorage, 'update').mockRejectedValue(
+        new Error('storage failed'),
+      )
+
+      await expect(reportingInteractor.fetch(user1)).rejects.toThrow(
+        'storage failed',
+      )
+
+      expect(reporter.reportSuccess).toHaveBeenCalledWith('POLLING')
+      expect(reporter.reportFailure).not.toHaveBeenCalled()
+    })
+
+    test('fetch() failure reports a polling failure with the same error it returns', async () => {
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () =>
+          HttpResponse.json(
+            { error: { code: 500, message: 'Internal Server Error' } },
+            { status: 500 },
+          ),
+        ),
+      )
+
+      const result = await reportingInteractor.fetch(user1)
+
+      assert(result.type === 'failure')
+      expect(reporter.reportFailure).toHaveBeenCalledTimes(1)
+      expect(reporter.reportFailure).toHaveBeenCalledWith(
+        'POLLING',
+        result.error,
+      )
+      expect(reporter.reportSuccess).not.toHaveBeenCalled()
+    })
+
+    test('applyEvaluationsResponse() reports a streaming success', async () => {
+      await reportingInteractor.applyEvaluationsResponse({
+        evaluations: user1Evaluations,
+        userEvaluationsId: 'user_evaluation_id_value',
+      })
+
+      expect(reporter.reportSuccess).toHaveBeenCalledTimes(1)
+      expect(reporter.reportSuccess).toHaveBeenCalledWith('STREAMING')
+    })
+  })
 })
