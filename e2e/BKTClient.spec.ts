@@ -245,6 +245,37 @@ suite('e2e/BKTClientTest', () => {
       expect(golangEvaluationDetails.variationValue).not.toStrictEqual('')
     })
   })
+
+  suite('evaluation sync status', () => {
+    test('a successful init gives SYNCED, also to a listener added before the await', async () => {
+      config = defineBKTConfig({
+        apiEndpoint: import.meta.env.VITE_BKT_API_ENDPOINT,
+        apiKey: import.meta.env.VITE_BKT_API_KEY,
+        featureTag: 'javascript',
+        appVersion: '1.2.3',
+        fetch: fetchLike,
+        storageKeyPrefix: 'sync-status',
+      })
+      user = defineBKTUser({ id: USER_ID })
+
+      // The client exists as soon as initializeBKTClient() starts, so the app
+      // can add its listener before awaiting and hear how init ended.
+      const initPromise = initializeBKTClient(config, user)
+      const client = getBKTClient()
+      assert(client != null)
+      const states: string[] = []
+      client.addEvaluationSyncStatusListener((status) => {
+        states.push(status.state)
+      })
+      await initPromise
+
+      const status = client.evaluationSyncStatus()
+      expect(status.state).toBe('SYNCED')
+      expect(status.lastSyncedAt).not.toBeNull()
+      expect(status.lastError).toBeNull()
+      expect(states).toEqual(['SYNCED'])
+    })
+  })
 })
 
 const getDefaultComponent = (client: BKTClient): DefaultComponent => {
