@@ -7,7 +7,10 @@
 // `addEventListener('message', ...)`; any injected implementation should do
 // the same.
 //
-// Injection note: the message/onmessage channel always counts as proof of
+// Injection note: liveness here only keeps the connection from being retried
+// by the watchdog. It never proves that the stream works: only valid
+// evaluations do (see "alive" and "working" above StreamConnection).
+// The message/onmessage channel always counts as proof of
 // liveness, data or not — the built-in FetchEventSource emits a bare
 // onmessage({ data: undefined }) tick for every received chunk, so even SSE
 // comment heartbeats (": ping") keep the stream alive. Any other (named) event

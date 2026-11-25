@@ -522,6 +522,241 @@ suite('internal/streaming/StreamingTask', () => {
     expect(evaluationTaskStart).toHaveBeenCalledWith(true)
   })
 
+  test('a stream that answers every connection with only a server error event gives up and starts the polling fallback', async () => {
+    // Context: what the server sends here.
+    // When an evaluation fails, the server answers the stream request with
+    // HTTP 200, then one `event: error` with "evaluation failed", then it
+    // ends the stream. This test repeats that answer on every connection,
+    // so the stream receives no put.
+    //
+    // Expected SDK behavior: after 120 s with no working connection, the
+    // stream gives up and starts the polling fallback, the same as for any
+    // other connection that keeps failing.
+    //
+    // How the 120 s window works: StreamConnection resets its give-up
+    // window each time the stream shows it is alive. On these connections
+    // two signals arrive:
+    //   1. FetchEventSource sends an empty message for every chunk it reads
+    //      (a liveness tick), before it reads the events in the chunk.
+    //   2. The `error` event, which carries data.
+    // Neither signal may reset the window here, or the window never
+    // reaches 120 s.
+    //
+    // This test uses the built-in FetchEventSource with a fake fetch,
+    // instead of FakeEventSource, because only FetchEventSource sends the
+    // liveness tick.
+
+    // Arrange (step 1): a fake fetch. Each call is one connection, and gets
+    // the same bytes the server sends: 200, one error event, then the end of
+    // the stream (the reader gets done).
+    const errorOnlyStream = () => ({
+      ok: true,
+      status: 200,
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(
+            new TextEncoder().encode(
+              'event: error\ndata: {"code":"INTERNAL","message":"evaluation failed"}\n\n',
+            ),
+          )
+          controller.close()
+        },
+      }),
+    })
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(errorOnlyStream()),
+    ) as unknown as FetchLike
+    // StreamingTask logs each server error event. Silenced to keep the test
+    // output clean.
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    // Arrange (step 2): start the task. eventSource: undefined makes
+    // StreamingTask use the built-in FetchEventSource with the fake fetch
+    // above.
+    await startTask(
+      buildComponent({ eventSource: undefined, fetch: fetchImpl }),
+    )
+
+    // Act (step 3): advance 3 minutes. Expected timeline (backoff jitter
+    // mocked to 0 in beforeEach, so retries come 1, 2, 4, 8, 16, 30, 30, 30 s
+    // apart):
+    //   0 s    first connection: 200, error, end of stream. The window
+    //          starts.
+    //   121 s  a connection ends and the window is past 120 s: give-up, and
+    //          the polling fallback starts.
+    // advanceTimersByTimeAsync, not advanceTimersByTime: FetchEventSource
+    // reads the stream with promises, which must run between the timers.
+    await vi.advanceTimersByTimeAsync(3 * 60_000)
+
+    // Assert (step 4): the stream gave up and started the polling fallback,
+    // which fetches at once (true). EvaluationTask.start is mocked in
+    // beforeEach, so the fallback makes no request here.
+    expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+  })
+
+  // The tests below use the built-in FetchEventSource with a fake fetch, like
+  // the test above, so every connection gets real server bytes, including the
+  // per-chunk liveness tick. They cover answers where the stream must NOT
+  // give up early, so a fix for the error-only answers cannot go too far.
+  suite('server answers where the stream keeps going', () => {
+    const encoder = new TextEncoder()
+    const putEvent = `event: put\ndata: ${JSON.stringify({
+      evaluations: user1Evaluations,
+      userEvaluationsId: 'user_evaluation_id_value',
+    })}\n\n`
+    const errorEvent =
+      'event: error\ndata: {"code":"INTERNAL","message":"evaluation failed"}\n\n'
+    const heartbeat = ':\n\n'
+
+    // One stream connection: a 200 answer whose body the test writes to and
+    // ends, like the server does.
+    interface FakeConnection {
+      send: (text: string) => void
+      end: () => void
+    }
+
+    // A fake fetch. Each call is one connection. answer() decides, by
+    // connection number (0 = first), what that connection gets. It returns
+    // either an HTTP status for a failed try, or nothing to keep a 200 open.
+    function fakeServer(
+      answer: (connection: FakeConnection, index: number) => number | void,
+    ) {
+      const connections: FakeConnection[] = []
+      const fetchImpl = vi.fn(() => {
+        let controller!: ReadableStreamDefaultController<Uint8Array>
+        const body = new ReadableStream<Uint8Array>({
+          start(c) {
+            controller = c
+          },
+        })
+        const connection: FakeConnection = {
+          send: (text) => controller.enqueue(encoder.encode(text)),
+          end: () => controller.close(),
+        }
+        connections.push(connection)
+        const status = answer(connection, connections.length - 1)
+        return Promise.resolve(
+          status === undefined
+            ? { ok: true, status: 200, body }
+            : { ok: false, status, body: null },
+        )
+      }) as unknown as FetchLike
+      return { fetchImpl, connections }
+    }
+
+    async function startWith(fetchImpl: FetchLike): Promise<void> {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const component = buildComponent({
+        eventSource: undefined,
+        fetch: fetchImpl,
+      })
+      // The put's storage write is not what these tests check.
+      vi.spyOn(
+        component.evaluationInteractor(),
+        'applyEvaluationsResponse',
+      ).mockResolvedValue(undefined)
+      await startTask(component)
+    }
+
+    test('a put then an error on every connection (holdout snapshot missing) does not give up', async () => {
+      // Context: when the server evaluates without its holdout snapshot, it
+      // sends the put, then `event: error` "holdout snapshot unavailable,
+      // retry", then ends the stream, so the next connection gets a full
+      // evaluation. Each connection still delivers current evaluations, so
+      // the stream works and must not give up.
+
+      // Arrange (step 1): every connection gets 200, a put, an error, then
+      // the end of the stream.
+      const server = fakeServer((connection) => {
+        connection.send(putEvent)
+        connection.send(errorEvent)
+        connection.end()
+      })
+      await startWith(server.fetchImpl)
+
+      // Act (step 2): advance 3 minutes, well past the 120 s give-up window.
+      // The backoff grows to 30 s, so about 10 connections happen.
+      await vi.advanceTimersByTimeAsync(3 * 60_000)
+
+      // Assert (step 3): the put on each connection counts as a working
+      // stream, so the stream did not give up and no polling fallback started.
+      expect(evaluationTaskStart).not.toHaveBeenCalled()
+    })
+
+    test('a failed patch after a long working connection retries with backoff instead of giving up at once', async () => {
+      // Context: the window starts with a failed try. The next connection
+      // works for 5 minutes (a put, then heartbeats). Then a patch fails, so
+      // the server sends `event: error` and ends the stream. The 5 working
+      // minutes must count: the stream retries as after any single drop,
+      // and does not treat the window as running since the first failure.
+
+      // Arrange (step 1): connection 0 fails with 503 (the window starts).
+      // Connection 1 gets a put and stays open; the test drives it below.
+      // Later connections get a put and stay open.
+      const server = fakeServer((connection, index) => {
+        if (index === 0) return 503
+        connection.send(putEvent)
+      })
+      await startWith(server.fetchImpl)
+
+      // Act (step 2): the first retry comes after 1 s (jitter mocked to 0).
+      await vi.advanceTimersByTimeAsync(1_000)
+
+      // Act (step 3): connection 1 works for 5 minutes. A heartbeat every
+      // 30 s keeps the 70 s watchdog from tripping.
+      for (let i = 0; i < 10; i++) {
+        await vi.advanceTimersByTimeAsync(30_000)
+        server.connections[1].send(heartbeat)
+      }
+
+      // Act (step 4): a patch fails: error event, then the end of the stream.
+      // The connection was open for more than 60 s, so the backoff was
+      // reset and the next retry comes after 1 s.
+      server.connections[1].send(errorEvent)
+      server.connections[1].end()
+      await vi.advanceTimersByTimeAsync(2_000)
+
+      // Assert (step 5): no give-up, so no polling fallback started.
+      expect(evaluationTaskStart).not.toHaveBeenCalled()
+      // Assert (step 6): the stream retried: a third connection was opened.
+      expect(server.fetchImpl).toHaveBeenCalledTimes(3)
+    })
+
+    test('a put after failed tries restarts the give-up window from the put', async () => {
+      // Context: tries fail with 503, then one connection delivers a put and
+      // ends, then tries fail again. The put proves the stream worked, so the
+      // 120 s give-up window must start again after it, not from the first
+      // failure.
+
+      // Arrange (step 1): connection 7 (at 91 s, backoff 1, 2, 4, 8, 16, 30,
+      // 30 s with jitter mocked to 0) gets a put and then the end of the
+      // stream. Every other connection fails with 503.
+      const server = fakeServer((connection, index) => {
+        if (index !== 7) return 503
+        connection.send(putEvent)
+        connection.end()
+      })
+      await startWith(server.fetchImpl)
+
+      // Act (step 2): advance to 200 s. Counted from the first failure (0 s),
+      // the window would have given up at 121 s. Counted from the put
+      // (91 s), it gives up only after 211 s.
+      await vi.advanceTimersByTimeAsync(200_000)
+
+      // Assert (step 3): the put restarted the window, so no give-up yet.
+      expect(evaluationTaskStart).not.toHaveBeenCalled()
+
+      // Act (step 4): advance to 250 s. The retries after the put come at
+      // 121, 151, 181, 211 and 241 s. At 241 s the window from the put is
+      // 150 s, so the stream gives up.
+      await vi.advanceTimersByTimeAsync(50_000)
+
+      // Assert (step 5): the window still ends: failures after the put lead
+      // to a give-up and the polling fallback.
+      expect(evaluationTaskStart).toHaveBeenCalledWith(true)
+    })
+  })
+
   test('a synchronously throwing eventSource constructor starts the polling fallback', async () => {
     // Arrange: an injected transport that fails before it can even open.
     // openConnection() wraps `new eventSource(...)` in try/catch specifically

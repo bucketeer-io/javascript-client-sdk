@@ -10,8 +10,9 @@ import { isRecoverableStatus, isTerminalStatus } from './httpStatus'
 
 // Must be > the backend heartbeat interval so a healthy stream never false-trips.
 const WATCHDOG_TIMEOUT_MILLIS = 70_000
-// Max duration of an unhealthy period before giving up and letting the caller
-// fall back to polling. Applies whether or not the stream ever opened.
+// Max time with no working stream (no markWorking() since the first failure)
+// before giving up and letting the caller fall back to polling. Applies
+// whether or not the stream ever opened.
 const UNHEALTHY_FALLBACK_TIMEOUT_MILLIS = 120_000
 // A connection open this long counts as proven-stable: forgive prior failures so
 // the next drop backs off from scratch instead of continuing to escalate.
@@ -49,13 +50,29 @@ export interface StreamConnectionOptions {
   callbacks: StreamConnectionCallbacks
 }
 
+// The stream is healthy only when it is both alive and working:
+//
+//   alive   = bytes are arriving (any chunk, a heartbeat, an event with
+//             data). markAlive() feeds only the watchdog: a connection with
+//             no bytes for WATCHDOG_TIMEOUT_MILLIS is retried.
+//   working = the stream delivers valid evaluations. Only the caller can tell
+//             (it checks the payload), so it calls markWorking(). Only that
+//             clears the give-up window: with no markWorking() for
+//             UNHEALTHY_FALLBACK_TIMEOUT_MILLIS after the first failure,
+//             this class gives up (onError) and the caller falls back to
+//             polling.
+//
+// Alive never implies working. The server sends an `error` event as bytes
+// right before it ends the stream, so a connection can be alive and still
+// fail every time. In the names and comments below, "unhealthy" means "not
+// working".
 export class StreamConnection {
   private es: EventSourceInstance | null = null
   private watchdog: ReturnType<typeof setTimeout> | undefined
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined
   private backoffResetTimer: ReturnType<typeof setTimeout> | undefined
   private readonly backoff = new Backoff()
-  private unhealthySince = 0 // 0 = healthy
+  private notWorkingSince = 0 // 0 = the stream works
   private active = false
 
   constructor(private readonly options: StreamConnectionOptions) {}
@@ -66,12 +83,13 @@ export class StreamConnection {
   }
 
   // External reconnect (e.g. attribute change) — fresh request, reset backoff.
-  // Deliberately does NOT clear unhealthySince: an already-unhealthy connection
+  // Deliberately does NOT clear notWorkingSince: an already-unhealthy connection
   // must keep its UNHEALTHY_FALLBACK_TIMEOUT_MILLIS give-up deadline, or an app
   // calling updateUserAttributes() more often than that window would postpone
   // the polling fallback forever while the stream endpoint stays down. A
-  // healthy connection already has unhealthySince === 0, and markHealthy()
-  // keeps clearing it on real liveness, so this only affects the unhealthy case.
+  // healthy connection already has notWorkingSince === 0, and markWorking()
+  // clears it when the stream delivers evaluations, so this only affects the
+  // unhealthy case.
   reconnect(): void {
     if (!this.active) return
     this.backoff.reset()
@@ -117,41 +135,39 @@ export class StreamConnection {
       this.options.callbacks.onOpen()
     }
 
-    // 'message' is not a name the backend chooses — it's the SSE/EventSource web
-    // standard's reserved event type for a block with no `event:` line (see
-    // EventSourceLike.ts). It is wired here UNCONDITIONALLY — not gated behind
-    // the caller supplying onUnhandledMessage — because FetchEventSource's
-    // per-chunk liveness tick always fires through onmessage, with or without
-    // data, even for a chunk containing nothing but the backend's heartbeat
-    // comment. That tick alone proves the connection is delivering bytes, so it
-    // always counts as healthy, data or not. This unconditional wiring is what
-    // makes liveness tracking a structural guarantee instead of something a
-    // caller can opt out of by editing a map.
+    // Every handler below only marks the connection alive (see "alive" and
+    // "working" above the class). Whether the stream works is told by the
+    // caller through markWorking().
+
+    // 'message' is not a name the backend chooses: it is the SSE/EventSource
+    // web standard's reserved event type for a block with no `event:` line
+    // (see EventSourceLike.ts). It is wired here UNCONDITIONALLY, not gated
+    // behind the caller supplying onUnhandledMessage, because
+    // FetchEventSource's per-chunk liveness tick always fires through
+    // onmessage, with or without data, even for a chunk containing nothing
+    // but the backend's heartbeat comment. That tick proves the connection
+    // is delivering bytes, so it always feeds the watchdog.
     es.onmessage = (ev) => {
       if (this.es !== es) return // stale instance — already replaced
-      this.markHealthy()
+      this.markAlive()
       if (ev?.data !== undefined) this.options.onUnhandledMessage?.(ev.data)
     }
 
-    // Wire every caller-named event (e.g. 'put', 'patch', 'error') — never
-    // 'message', which is reserved for the unconditional channel above. Unlike
-    // 'message', a named event only proves liveness if it actually carries data:
+    // Wire every caller-named event (e.g. 'put', 'patch', 'error'), never
+    // 'message', which is reserved for the channel above:
     //
-    //   named event WITH data    → mark HEALTHY, deliver to the handler
-    //     (e.g. the backend sends `event: error` + a data payload — real bytes
-    //      arrived, so it counts, even though the payload itself reports a
-    //      failure)
-    //   named event with NO data → do NOT mark healthy
-    //     (e.g. a native EventSource's connection-error 'error' event carries no
-    //      data — that's a failure signal, not proof the stream is working;
-    //      counting it would let a repeatedly failing connection mask itself as
-    //      healthy forever)
+    //   named event WITH data    → bytes arrived: feed the watchdog, deliver
+    //     to the handler. Needed for an injected native EventSource, which
+    //     sends no per-chunk tick.
+    //   named event with NO data → ignored
+    //     (e.g. a native EventSource's connection-error 'error' event carries
+    //      no data: a failure signal, not bytes from the server)
     Object.entries(this.options.events).forEach(([name, handler]) => {
       if (name === 'message') return // reserved for the channel above
       const wrapped = (ev: MessageEventLike) => {
         if (this.es !== es) return // stale instance — already replaced
         if (ev?.data !== undefined) {
-          this.markHealthy()
+          this.markAlive()
           handler(ev.data)
         }
       }
@@ -187,10 +203,10 @@ export class StreamConnection {
     this.closeEventSource()
     if (!this.active) return
     const now = Date.now()
-    if (this.unhealthySince === 0) {
-      this.unhealthySince = now
+    if (this.notWorkingSince === 0) {
+      this.notWorkingSince = now
     }
-    if (now - this.unhealthySince > UNHEALTHY_FALLBACK_TIMEOUT_MILLIS) {
+    if (now - this.notWorkingSince > UNHEALTHY_FALLBACK_TIMEOUT_MILLIS) {
       this.options.callbacks.onError({ terminal: false })
       return
     }
@@ -199,10 +215,18 @@ export class StreamConnection {
     this.reconnectTimer = setTimeout(() => this.openConnection(), delay)
   }
 
-  // A liveness signal: the message channel (any tick, data or not), or a
-  // named event that actually carried data.
-  private markHealthy(): void {
-    this.unhealthySince = 0
+  // The caller got valid evaluations from this stream: the stream works, so
+  // the give-up window is cleared. Heartbeats after that need not clear it
+  // again: it stays 0 until a connection ends.
+  // The caller decides when the stream works, but the window it clears is
+  // stored and checked here, because only this class sees every connection
+  // end.
+  markWorking(): void {
+    this.notWorkingSince = 0
+  }
+
+  // Bytes arrived: the connection is alive. Feeds only the watchdog.
+  private markAlive(): void {
     this.resetWatchdog()
   }
 
