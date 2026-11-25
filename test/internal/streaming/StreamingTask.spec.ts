@@ -533,14 +533,13 @@ suite('internal/streaming/StreamingTask', () => {
     // stream gives up and starts the polling fallback, the same as for any
     // other connection that keeps failing.
     //
-    // How the 120 s window works: StreamConnection resets its give-up
-    // window each time the stream shows it is alive. On these connections
-    // two signals arrive:
+    // How the 120 s window works: only valid evaluations (markWorking())
+    // clear StreamConnection's give-up window. Other bytes only keep the
+    // connection alive. On these connections two kinds of bytes arrive:
     //   1. FetchEventSource sends an empty message for every chunk it reads
     //      (a liveness tick), before it reads the events in the chunk.
     //   2. The `error` event, which carries data.
-    // Neither signal may reset the window here, or the window never
-    // reaches 120 s.
+    // Neither may clear the window, or the window never reaches 120 s.
     //
     // This test uses the built-in FetchEventSource with a fake fetch,
     // instead of FakeEventSource, because only FetchEventSource sends the
