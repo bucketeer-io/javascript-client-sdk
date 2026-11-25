@@ -617,9 +617,9 @@ suite('internal/streaming/StreamingTask', () => {
 
     // A fake fetch. Each call is one connection. answer() decides, by
     // connection number (0 = first), what that connection gets. It returns
-    // either an HTTP status for a failed try, or nothing to keep a 200 open.
+    // either an HTTP status for a failed try, or undefined for a 200 answer.
     function fakeServer(
-      answer: (connection: FakeConnection, index: number) => number | void,
+      answer: (connection: FakeConnection, index: number) => number | undefined,
     ) {
       const connections: FakeConnection[] = []
       const fetchImpl = vi.fn(() => {
@@ -671,6 +671,7 @@ suite('internal/streaming/StreamingTask', () => {
         connection.send(putEvent)
         connection.send(errorEvent)
         connection.end()
+        return undefined
       })
       await startWith(server.fetchImpl)
 
@@ -696,6 +697,7 @@ suite('internal/streaming/StreamingTask', () => {
       const server = fakeServer((connection, index) => {
         if (index === 0) return 503
         connection.send(putEvent)
+        return undefined
       })
       await startWith(server.fetchImpl)
 
@@ -735,6 +737,7 @@ suite('internal/streaming/StreamingTask', () => {
         if (index !== 7) return 503
         connection.send(putEvent)
         connection.end()
+        return undefined
       })
       await startWith(server.fetchImpl)
 
