@@ -288,25 +288,25 @@ suite('internal/streaming/StreamConnection — health model', () => {
     expect(onError).toHaveBeenCalledTimes(1)
   })
 
-  test('an event received between drops restarts the unhealthy window', () => {
-    startConnection()
+  test('markWorking() between drops restarts the give-up window', () => {
+    const conn = startConnection()
     latest().onopen?.({})
     latest().onerror?.({}) // t=0: unhealthy clock starts
     vi.advanceTimersByTime(1_000)
     latest().onerror?.({})
     vi.advanceTimersByTime(2_000) // t=3s: instance #3
 
-    // Data arrives → healthy again, window cleared.
-    latest().onmessage?.({ data: undefined })
+    // The caller got valid evaluations: the stream works, window cleared.
+    conn.markWorking()
     latest().onerror?.({}) // t=3s: NEW unhealthy window starts here
 
     // Same escalation as before; at t=121s only 118s of THIS window have
-    // elapsed, so the give-up that would fire without the event must not.
+    // elapsed, so the give-up that would fire without markWorking() must not.
     for (const delaySeconds of [4, 8, 16, 30, 30, 30]) {
       vi.advanceTimersByTime(delaySeconds * 1_000)
       latest().onerror?.({})
     }
-    // t=121s — without the healthy event this would have given up already.
+    // t=121s: without markWorking() this would have given up already.
     expect(onError).not.toHaveBeenCalled()
 
     vi.advanceTimersByTime(30_000) // t=151s: 148s into the restarted window
@@ -447,10 +447,11 @@ suite('internal/streaming/StreamConnection — health model', () => {
 
   test('a reconnect whose connection recovers and delivers data clears the unhealthy window — a recovered stream does not fall back', () => {
     // Companion to the give-up case above. Preserving the unhealthy clock
-    // across reconnect() must not prevent a genuine recovery: once real bytes
-    // arrive on a reopened connection (markHealthy), the give-up horizon is
-    // forgotten, so the stream keeps running instead of falling back — even
-    // though more than 120s have passed since the first failure.
+    // across reconnect() must not prevent a genuine recovery: once the caller
+    // gets valid evaluations on a reopened connection (markWorking()), the
+    // give-up horizon is forgotten, so the stream keeps running instead of
+    // falling back, even though more than 120s have passed since the first
+    // failure.
     const conn = startConnection()
 
     // Down for two attribute-driven reconnect cycles (well into the window).
@@ -460,10 +461,10 @@ suite('internal/streaming/StreamConnection — health model', () => {
     latest().onerror?.({ status: 500 })
     conn.reconnect()
 
-    // t=120: this reconnect's connection actually opens and delivers a byte.
+    // t=120: this reconnect's connection opens and delivers evaluations.
     vi.advanceTimersByTime(60_000)
     latest().onopen?.({})
-    latest().onmessage?.({ data: undefined }) // liveness → clears the window
+    conn.markWorking() // valid evaluations → clears the window
     expect(onOpen).toHaveBeenCalled()
 
     // Stay alive well past the original 120s horizon; a fed watchdog keeps it up.
@@ -476,6 +477,12 @@ suite('internal/streaming/StreamConnection — health model', () => {
     expect(onError).not.toHaveBeenCalled()
     expect(FakeEventSource.instances).toHaveLength(3)
     expect(latest().closed).toBe(false)
+
+    // t=360: a single drop. The window was cleared at t=120, so this starts
+    // a new window and retries. Counted from the first failure (t=0) it
+    // would be 360s and give up at once.
+    latest().onerror?.({})
+    expect(onError).not.toHaveBeenCalled()
   })
 
   test('events and errors from a stale (replaced) EventSource instance are ignored', () => {

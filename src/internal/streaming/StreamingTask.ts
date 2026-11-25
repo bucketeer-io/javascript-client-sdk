@@ -84,8 +84,8 @@ export class StreamingTask implements ScheduledTask {
     } else {
       // Currently on polling fallback (or idle after a terminal error) — jump
       // straight back to streaming. No stopFallback() here: the poller keeps
-      // running until onOpen proves the new stream actually works (onOpen
-      // calls stopFallback() itself) — otherwise there'd be a polling gap for
+      // running until the reopened stream connects (onOpen calls
+      // stopFallback() itself), otherwise there'd be a polling gap for
       // however long this attempt takes to open or fail.
       this.openStream()
     }
@@ -280,6 +280,12 @@ export class StreamingTask implements ScheduledTask {
     // reaching deleteAllAndInsert()/update() with garbage.
     if (!isGetEvaluationsResponseShape(parsed)) return
     const response = parsed
+    // Valid evaluations arrived, so the stream works. This is the only signal
+    // that clears StreamConnection's give-up window: other bytes, such as a
+    // server error event, only keep the connection alive. Runs before the
+    // first await, while this.connection is still the connection that
+    // delivered the data.
+    this.connection?.markWorking()
     // shouldNotify is re-checked after the awaited storage write: a stop()/
     // destroy racing that write must not fire update listeners into
     // torn-down app code (the write itself may land — unused cached data).
@@ -302,8 +308,8 @@ export class StreamingTask implements ScheduledTask {
     clearTimeout(this.recoveryTimer)
     this.recoveryTimer = setTimeout(() => {
       if (!this.running) return
-      // No stopFallback() here: the poller keeps running until onOpen proves
-      // the reopened stream actually works — otherwise every 5-minute
+      // No stopFallback() here: the poller keeps running until the reopened
+      // stream connects (onOpen), otherwise every 5-minute
       // recovery attempt would open a polling gap for as long as it takes to
       // open or fail (see openStream()'s onOpen callback and its own
       // defensive clearTimeout(this.recoveryTimer) at entry).
