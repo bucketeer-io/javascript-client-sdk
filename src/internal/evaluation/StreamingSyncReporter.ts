@@ -1,4 +1,5 @@
-// What StreamingTask needs: report the stream facts only it knows.
+// What StreamingTask needs: the stream facts only it knows, and the success
+// report that polling also uses.
 //
 // The stream never reports a failure to the sync status. This is a product
 // decision. When the stream gives up, StreamingTask starts the polling
@@ -11,8 +12,11 @@
 // after the poller's retries. Why the stream stopped is not a sync status
 // question.
 export interface StreamingSyncReporter {
-  // A put or patch arrived with a valid payload.
-  reportStreamSuccess(): void
+  // A put or patch arrived with a valid payload: the stream works. Calls no
+  // listener. SYNCED is sent by reportSuccess(), after the values are saved.
+  markStreamWorking(): void
+  // The values of a valid put or patch are saved: sends SYNCED, like polling.
+  reportSuccess(): void
   // A connection try failed, the server sent an error event, or the stream
   // gave up. Reports nothing: stream bytes stop moving lastSyncedAt until the
   // next put/patch, and polling failures count again.

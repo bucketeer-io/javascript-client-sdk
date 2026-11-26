@@ -303,16 +303,26 @@ export class StreamingTask implements ScheduledTask {
     // first await, while this.connection is still the connection that
     // delivered the data.
     this.connection?.markWorking()
-    // Reported before the storage write, in the order the stream delivered
-    // it. A server error event that arrives while the write runs then marks
-    // the stream as not working after this success, not before it.
-    this.component.streamingSyncReporter().reportStreamSuccess()
+    // The stream success is split in two, on purpose:
+    // 1. Here, before the save: the stream is marked as working. A server
+    //    error event can arrive while the values are being saved, and it must
+    //    come after this, so the stream ends as "not working" (the error came
+    //    last).
+    // 2. After the save: SYNCED is sent, like polling does, so a SYNCED
+    //    listener reads the new values.
+    // Tests: "a put sets SYNCED only after its values are saved" and "a
+    // server error event during the storage write of a put still marks the
+    // stream as not working".
+    this.component.streamingSyncReporter().markStreamWorking()
     // shouldNotify is re-checked after the awaited storage write: a stop()/
     // destroy racing that write must not fire update listeners into
     // torn-down app code (the write itself may land — unused cached data).
     await this.component
       .evaluationInteractor()
       .applyEvaluationsResponse(response, () => this.running)
+    // Like polling: a stop() or destroy during the save sends no SYNCED.
+    if (!this.running) return
+    this.component.streamingSyncReporter().reportSuccess()
   }
 
   private startFallback(): void {

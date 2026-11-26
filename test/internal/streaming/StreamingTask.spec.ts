@@ -1338,9 +1338,9 @@ suite('internal/streaming/StreamingTask', () => {
       expect(tracker.getStatus()).toEqual(before)
     })
 
-    // On purpose: SYNCED is sent when a valid put arrives, before its values
-    // are saved (see the comment above reportStreamSuccess() in handleData()).
-    test('a put sets SYNCED before its values are saved', async () => {
+    // Like polling, SYNCED is sent only after the values are saved, so a
+    // SYNCED listener reads the new values (see the comment in handleData()).
+    test('a put sets SYNCED only after its values are saved', async () => {
       const component = buildComponent()
       await startTask(component)
       const tracker = component.evaluationSyncStatusTracker()
@@ -1358,15 +1358,64 @@ suite('internal/streaming/StreamingTask', () => {
 
       latest().onopen?.({})
       latest().emit('put', { data: putData })
+      await vi.advanceTimersByTimeAsync(0)
 
-      // The save is not finished, and the state is already SYNCED.
-      expect(tracker.getStatus().state).toBe('SYNCED')
+      // The save is not finished: no SYNCED yet.
+      expect(tracker.getStatus().state).toBe('INITIALIZING')
+
       finishSave()
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(tracker.getStatus().state).toBe('SYNCED')
     })
 
-    // The stream success is reported before the storage write, in the order
-    // the stream delivered it. If it were reported after the write, the late
-    // success would mark the stream as working again, after the error.
+    test('stop() during the save of a put sends no SYNCED', async () => {
+      const component = buildComponent()
+      const t = await startTask(component)
+      const tracker = component.evaluationSyncStatusTracker()
+      let finishSave: () => void = () => {}
+      vi.spyOn(
+        component.evaluationInteractor(),
+        'applyEvaluationsResponse',
+      ).mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            finishSave = resolve
+          }),
+      )
+
+      latest().onopen?.({})
+      latest().emit('put', { data: putData })
+      t.stop()
+      finishSave()
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(tracker.getStatus().state).toBe('INITIALIZING')
+    })
+
+    // Until #359 makes storage errors only logged, a save that throws ends
+    // handleData() before SYNCED, the same as a polling save that throws.
+    test('a put whose save throws sends no SYNCED', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const component = buildComponent()
+      await startTask(component)
+      const tracker = component.evaluationSyncStatusTracker()
+      vi.spyOn(
+        component.evaluationInteractor(),
+        'applyEvaluationsResponse',
+      ).mockRejectedValue(new Error('storage full'))
+
+      latest().onopen?.({})
+      latest().emit('put', { data: putData })
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(tracker.getStatus().state).toBe('INITIALIZING')
+    })
+
+    // The stream is marked as working when the put arrives, before the save.
+    // So a server error event during the save comes after it, and the stream
+    // ends as "not working". If the mark were set after the save, it would
+    // come after the error and mark the stream as working again by mistake.
     test('a server error event during the storage write of a put still marks the stream as not working', async () => {
       const component = await startAfterSuccessfulInit()
       const tracker = component.evaluationSyncStatusTracker()

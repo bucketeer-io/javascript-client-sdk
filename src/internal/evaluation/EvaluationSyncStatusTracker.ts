@@ -108,9 +108,8 @@ export class EvaluationSyncStatusTrackerImpl
     if (changed) this.notifyListeners()
   }
 
-  reportStreamSuccess(): void {
+  markStreamWorking(): void {
     this.streamWorking = true
-    this.reportSuccess()
   }
 
   reportFailure(error: BKTException): void {

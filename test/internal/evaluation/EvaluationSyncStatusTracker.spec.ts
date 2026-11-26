@@ -80,7 +80,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
     test('a success sets SYNCED at once and sets lastSyncedAt', () => {
       const syncedAt = moveToSeconds(START_SECONDS + 1)
 
-      tracker.reportStreamSuccess()
+      tracker.reportSuccess()
 
       const status = tracker.getStatus()
       expect(status.state).toBe('SYNCED')
@@ -140,7 +140,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
     })
 
     test('an init error changes nothing when a success already set SYNCED', () => {
-      tracker.reportStreamSuccess()
+      tracker.reportSuccess()
       const before = tracker.getStatus()
       const listener = vi.fn()
       tracker.addListener(listener)
@@ -239,9 +239,23 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
     test('a streaming success ends a polling failure', () => {
       makeFailing()
 
-      tracker.reportStreamSuccess()
+      tracker.markStreamWorking()
+      tracker.reportSuccess()
 
       expect(tracker.getStatus().state).toBe('SYNCED')
+    })
+
+    test('markStreamWorking() calls no listener and does not change the status', () => {
+      makeFailing()
+      const before = tracker.getStatus()
+      const listener = vi.fn()
+      tracker.addListener(listener)
+
+      moveToSeconds(START_SECONDS + 10)
+      tracker.markStreamWorking()
+
+      expect(tracker.getStatus()).toEqual(before)
+      expect(listener).not.toHaveBeenCalled()
     })
   })
 
@@ -269,9 +283,9 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
   })
 
   suite('polling failures while the stream works', () => {
-    test('a polling failure changes nothing after a streaming success', () => {
+    test('a polling failure changes nothing while the stream works', () => {
       makeSynced()
-      tracker.reportStreamSuccess()
+      tracker.markStreamWorking()
       const before = tracker.getStatus()
       const listener = vi.fn()
       tracker.addListener(listener)
@@ -285,7 +299,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
 
     test('polling failures count again after the stream is marked as not working', () => {
       makeSynced()
-      tracker.reportStreamSuccess()
+      tracker.markStreamWorking()
       tracker.markStreamNotWorking()
 
       const failedAt = moveToSeconds(START_SECONDS + 10)
@@ -300,7 +314,8 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
 
   suite('reportStreamingAlive', () => {
     test('while the stream works, it updates lastSyncedAt only and calls no listener', () => {
-      tracker.reportStreamSuccess()
+      tracker.markStreamWorking()
+      tracker.reportSuccess()
       const changedAtBefore = tracker.getStatus().changedAt
       const listener = vi.fn()
       tracker.addListener(listener)
@@ -325,7 +340,8 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
     })
 
     test('after the stream is marked as not working, it changes nothing and calls no listener', () => {
-      tracker.reportStreamSuccess()
+      tracker.markStreamWorking()
+      tracker.reportSuccess()
       const listener = vi.fn()
       tracker.addListener(listener)
       tracker.markStreamNotWorking()
@@ -357,7 +373,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       moveToSeconds(START_SECONDS + 20)
       tracker.reportFailure(serverError)
       tracker.reportSuccess()
-      tracker.reportStreamSuccess()
+      tracker.markStreamWorking()
       tracker.reportStreamingAlive()
       tracker.finishInitializing(false)
 
