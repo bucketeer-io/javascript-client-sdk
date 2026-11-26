@@ -1338,6 +1338,41 @@ suite('internal/streaming/StreamingTask', () => {
       expect(tracker.getStatus()).toEqual(before)
     })
 
+    // The stream success is reported before the storage write, in the order
+    // the stream delivered it. If it were reported after the write, the late
+    // success would mark the stream as working again, after the error.
+    test('a server error event during the storage write of a put still marks the stream as not working', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+      // The storage write stays open until the test ends it.
+      let finishWrite: () => void = () => {}
+      vi.spyOn(
+        component.evaluationInteractor(),
+        'applyEvaluationsResponse',
+      ).mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            finishWrite = resolve
+          }),
+      )
+
+      latest().onopen?.({})
+      latest().emit('put', { data: putData })
+      latest().emit('error', { data: serverErrorData('evaluation failed') })
+      finishWrite()
+      await vi.advanceTimersByTimeAsync(0)
+
+      // Heartbeats do not move lastSyncedAt: the stream is not working.
+      const before = tracker.getStatus()
+      vi.advanceTimersByTime(30_000)
+      latest().onmessage?.({ data: undefined })
+      expect(tracker.getStatus()).toEqual(before)
+
+      // Polling failures count again: the stream is not working.
+      component.pollingSyncReporter().reportFailure(pollError)
+      expect(tracker.getStatus().state).toBe('FAILING')
+    })
+
     test('the stream opening without a put does not set SYNCED', async () => {
       vi.spyOn(console, 'error').mockImplementation(() => {})
       const component = buildComponent()
