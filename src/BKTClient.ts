@@ -501,9 +501,10 @@ export const initializeBKTClientInternal = async (
   } catch (err) {
     // An SDK exception is the failed request (for example the timeout). It is
     // only the first try, so it is not reported: the state stays INITIALIZING
-    // until the poller or the stream reports after its retries. Any other
-    // throw (for example a custom storageFactory that throws for the event
-    // storage) is not related to the request and sets FAILING at once.
+    // until a sync succeeds, or the poller reports a failure after its
+    // retries. Any other throw (for example a custom storageFactory that
+    // throws for the event storage) is not related to the request and sets
+    // FAILING at once.
     syncStatusTracker.finishInitializing(
       false,
       isBKTException(err)
