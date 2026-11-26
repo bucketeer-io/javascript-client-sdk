@@ -1338,6 +1338,32 @@ suite('internal/streaming/StreamingTask', () => {
       expect(tracker.getStatus()).toEqual(before)
     })
 
+    // On purpose: SYNCED is sent when a valid put arrives, before its values
+    // are saved (see the comment above reportStreamSuccess() in handleData()).
+    test('a put sets SYNCED before its values are saved', async () => {
+      const component = buildComponent()
+      await startTask(component)
+      const tracker = component.evaluationSyncStatusTracker()
+      // The save stays open until the test ends it.
+      let finishSave: () => void = () => {}
+      vi.spyOn(
+        component.evaluationInteractor(),
+        'applyEvaluationsResponse',
+      ).mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            finishSave = resolve
+          }),
+      )
+
+      latest().onopen?.({})
+      latest().emit('put', { data: putData })
+
+      // The save is not finished, and the state is already SYNCED.
+      expect(tracker.getStatus().state).toBe('SYNCED')
+      finishSave()
+    })
+
     // The stream success is reported before the storage write, in the order
     // the stream delivered it. If it were reported after the write, the late
     // success would mark the stream as working again, after the error.
