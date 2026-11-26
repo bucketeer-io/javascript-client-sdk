@@ -45,6 +45,7 @@ export interface BKTEvaluationSyncStatus {
   /**
    * Epoch milliseconds of the last time the SDK confirmed the flag values are
    * current. `null` means never.
+   * With streaming, stream heartbeats also move it while the stream is healthy.
    */
   readonly lastSyncedAt: number | null
   /** The last error. It is kept after recovery. `null` means no error yet. */

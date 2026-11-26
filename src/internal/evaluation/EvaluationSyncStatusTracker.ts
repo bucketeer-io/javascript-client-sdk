@@ -172,8 +172,18 @@ export class EvaluationSyncStatusTrackerImpl
     this.streamWorking = false
   }
 
-  // Stream bytes prove the values are current only while the stream works:
-  // the server would send a patch if a flag changed.
+  // The rule: while the stream is healthy (a valid put or patch arrived, and
+  // no error since), any stream bytes (data or a heartbeat) move
+  // lastSyncedAt: the server would send a patch if a flag changed.
+  // Cases:
+  // - A heartbeat after a put: moves it.
+  // - Bytes after a failed try or a server error event: do not move it
+  //   (markStreamNotWorking()), until the next put or patch.
+  // - The first bytes of a new connection, after a healthy one ended with no
+  //   error (a server restart, or the reconnect of updateUserAttributes()):
+  //   they move it, even if this connection then sends only an error event.
+  //   The stream counts as healthy until that error arrives, a moment later.
+  //   This is on purpose: lastSyncedAt is not meant to be exact to the second.
   reportStreamingAlive(): void {
     if (this.isDestroyed() || !this.streamWorking) return
     this.updateLastSyncedAt()

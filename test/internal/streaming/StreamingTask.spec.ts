@@ -1230,6 +1230,86 @@ suite('internal/streaming/StreamingTask', () => {
       expect(tracker.getStatus().lastSyncedAt).toBe(Date.now())
     })
 
+    test('a stream that answers every connection with only a server error event gives up and sets FAILING', async () => {
+      // Context: what the server sends here.
+      // When the first evaluation fails, the server answers the stream request
+      // with HTTP 200, then one `event: error` with "evaluation failed", then it
+      // ends the stream. This test repeats that answer on every connection,
+      // so the stream receives no put. Polling evaluates the same way, so the
+      // same answer is expected from it at that time.
+      //
+      // Expected SDK behavior: after 120 s with no working connection, the
+      // stream gives up and starts the polling fallback, and the sync status
+      // becomes FAILING.
+      //
+      // How the 120 s window works: only valid evaluations (markWorking())
+      // clear StreamConnection's give-up window. Other bytes only keep the
+      // connection alive (markAlive() feeds the watchdog). On these
+      // connections two kinds of bytes arrive:
+      //   1. FetchEventSource sends an empty message for every chunk it reads
+      //      (a liveness tick), before it reads the events in the chunk.
+      //   2. The `error` event, which carries data.
+      // Neither may clear the window, or the window never reaches 120 s.
+      //
+      // This test uses the built-in FetchEventSource with a fake fetch,
+      // instead of FakeEventSource, because only FetchEventSource sends the
+      // liveness tick.
+
+      // Step 1: a fake fetch. Each call is one connection, and gets the same
+      // bytes the server sends: 200, one error event, then the end of the
+      // stream (the reader gets done).
+      const errorOnlyStream = () => ({
+        ok: true,
+        status: 200,
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(
+              new TextEncoder().encode(
+                `event: error\ndata: ${serverErrorData('evaluation failed')}\n\n`,
+              ),
+            )
+            controller.close()
+          },
+        }),
+      })
+      const fetchImpl = vi.fn(() =>
+        Promise.resolve(errorOnlyStream()),
+      ) as unknown as FetchLike
+      // StreamingTask logs each server error event. Silenced to keep the
+      // test output clean.
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      // Step 2: a client whose init fetch worked, so the status is SYNCED
+      // before the error answers start. eventSource: undefined makes
+      // StreamingTask use the built-in FetchEventSource with the fake fetch
+      // above.
+      const component = buildComponent({
+        eventSource: undefined,
+        fetch: fetchImpl,
+      })
+      await startTask(component)
+      await poll(component, pollSuccess)
+      component.evaluationSyncStatusTracker().finishInitializing(true)
+
+      // Step 3: advance 3 minutes. Expected timeline (backoff jitter mocked
+      // to 0, so retries come 1, 2, 4, 8, 16, 30, 30, 30 s apart):
+      //   0 s    first connection: 200, error, closed. The window starts.
+      //   121 s  a connection closes and the window is past 120 s: give-up.
+      //          The polling fallback starts, and the sync status waits 10 s.
+      //   131 s  the wait ends: FAILING.
+      // advanceTimersByTimeAsync, not advanceTimersByTime: FetchEventSource
+      // reads the stream with promises, which must run between the timers.
+      await vi.advanceTimersByTimeAsync(3 * 60_000)
+
+      // Step 4: the sync status is FAILING. The source is STREAMING because
+      // the mocked fallback reports nothing, so only the stream give-up can
+      // set FAILING. The error itself is not checked here: which error the
+      // give-up reports is a separate choice.
+      const status = component.evaluationSyncStatusTracker().getStatus()
+      expect(status.state).toBe('FAILING')
+      expect(status.lastError?.source).toBe('STREAMING')
+    })
+
     test('a server error event right after the stream opens changes nothing and calls no listener', async () => {
       const component = await startAfterSuccessfulInit()
       const tracker = component.evaluationSyncStatusTracker()

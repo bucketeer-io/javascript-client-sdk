@@ -159,10 +159,10 @@ export class StreamingTask implements ScheduledTask {
           console.error('StreamingTask: server reported a stream error', data)
           // A real server failure, before or after a put: the backend sends
           // it when an evaluation fails, then closes the stream. Saved, but
-          // in practice never the one reported: the event carries data, so
-          // StreamConnection counts the connection as healthy, and a later
-          // failed try (or its "gave up" failure) always replaces this one
-          // before the give-up.
+          // in practice never the one reported. After a put the stream
+          // works, so it does not give up. With no put, StreamConnection
+          // does not know about this failure, so a later failed try or the
+          // give-up's own "gave up" failure replaces this one.
           this.saveFailure(
             new InternalServerErrorException(this.serverErrorMessage(data)),
           )

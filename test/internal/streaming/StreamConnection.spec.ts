@@ -719,18 +719,44 @@ suite('internal/streaming/StreamConnection: failure reporting', () => {
     expect(onAttemptFailed).toHaveBeenCalledWith({ kind: 'gaveUp' })
   })
 
-  test('after bytes arrive, a later give-up with no new reported failure reports gaveUp', () => {
-    startConnection()
+  test('after valid evaluations arrive, a later give-up with no new reported failure reports gaveUp', () => {
+    const conn = startConnection()
     latest().onerror?.({ status: 503 })
     vi.advanceTimersByTime(1_000)
     latest().onopen?.({})
-    latest().onmessage?.({ data: undefined })
+    conn.markWorking()
     onAttemptFailed.mockClear()
 
     failUntilGiveUp(new Event('error'))
 
     expect(onAttemptFailed).toHaveBeenCalledTimes(1)
     expect(onAttemptFailed).toHaveBeenCalledWith({ kind: 'gaveUp' })
+  })
+
+  // Only markWorking() starts a new period with no failure reported. Bytes
+  // alone must not, or the give-up would replace the 503 with gaveUp, an
+  // error with no details. A named event with data is what a server `error`
+  // event is to this class.
+  test.each([
+    {
+      name: 'a liveness tick',
+      sendBytes: () => latest().onmessage?.({ data: undefined }),
+    },
+    {
+      name: 'a named event with data',
+      sendBytes: () => latest().emit('put', { data: '{}' }),
+    },
+  ])('after $name with no valid evaluations, the give-up adds no report, so the 503 is kept', ({ sendBytes }) => {
+    startConnection()
+    latest().onerror?.({ status: 503 })
+    vi.advanceTimersByTime(1_000)
+    latest().onopen?.({})
+    sendBytes()
+    onAttemptFailed.mockClear()
+
+    failUntilGiveUp(new Event('error'))
+
+    expect(onAttemptFailed).not.toHaveBeenCalled()
   })
 
   test('onAlive is called for a data event and a heartbeat tick, not for a named event with no data', () => {
