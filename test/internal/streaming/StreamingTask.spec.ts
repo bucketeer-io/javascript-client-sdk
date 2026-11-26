@@ -1303,8 +1303,8 @@ suite('internal/streaming/StreamingTask', () => {
 
       // Step 4: the sync status is FAILING. The source is STREAMING because
       // the mocked fallback reports nothing, so only the stream give-up can
-      // set FAILING. The error itself is not checked here: which error the
-      // give-up reports is a separate choice.
+      // set FAILING. The error itself is checked in "error-only answers until
+      // the give-up give FAILING with the server error".
       const status = component.evaluationSyncStatusTracker().getStatus()
       expect(status.state).toBe('FAILING')
       expect(status.lastError?.source).toBe('STREAMING')
@@ -1632,19 +1632,17 @@ suite('internal/streaming/StreamingTask', () => {
 
     test.each([
       {
-        name: 'the last failed try',
+        name: 'the later failed try',
         error: { status: 503 },
         expected: new ServiceUnavailableException('Service Unavailable'),
       },
       {
-        name: '"stopped after 120 s" when no try had details',
+        name: 'the server error when later tries had no details',
         error: new Event('error'),
-        expected: new UnknownException(
-          'The stream stopped after 120 s with no working connection',
-        ),
+        expected: new InternalServerErrorException('evaluation failed'),
       },
     ])(
-      'after a server error event, the give-up reports $name, not the server error',
+      'after a server error event, the give-up reports the last real error: $name',
       async ({ error, expected }) => {
         const component = await startAfterSuccessfulInit()
         const tracker = component.evaluationSyncStatusTracker()
@@ -1657,5 +1655,46 @@ suite('internal/streaming/StreamingTask', () => {
         expect(tracker.getStatus().lastError?.source).toBe('STREAMING')
       },
     )
+
+    test('error-only answers until the give-up give FAILING with the server error', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+
+      // Each connection gets what the server sends when the first evaluation
+      // fails: 200, one error event, then the end of the stream. Backoff
+      // jitter is mocked to 0, so the last connection ends 121 s after the
+      // first one, past the 120 s limit.
+      for (const delaySeconds of [0, 1, 2, 4, 8, 16, 30, 30, 30]) {
+        vi.advanceTimersByTime(delaySeconds * 1_000)
+        latest().onopen?.({})
+        latest().emit('error', { data: serverErrorData('evaluation failed') })
+        latest().onerror?.({})
+      }
+      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
+
+      const status = tracker.getStatus()
+      expect(status.state).toBe('FAILING')
+      expect(status.lastError?.cause).toStrictEqual(
+        new InternalServerErrorException('evaluation failed'),
+      )
+    })
+
+    test('a server error before a put is not reported at a later give-up', async () => {
+      const component = await startAfterSuccessfulInit()
+      const tracker = component.evaluationSyncStatusTracker()
+      latest().onopen?.({})
+      latest().emit('error', { data: serverErrorData('evaluation failed') })
+      latest().onerror?.({})
+      vi.advanceTimersByTime(1_000)
+      await receivePut()
+
+      giveUpWith(new Event('error'))
+
+      expect(tracker.getStatus().lastError?.cause).toStrictEqual(
+        new UnknownException(
+          'The stream stopped after 120 s with no working connection',
+        ),
+      )
+    })
   })
 })

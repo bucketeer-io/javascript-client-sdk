@@ -158,11 +158,10 @@ export class StreamingTask implements ScheduledTask {
         error: (data) => {
           console.error('StreamingTask: server reported a stream error', data)
           // A real server failure, before or after a put: the backend sends
-          // it when an evaluation fails, then closes the stream. Saved, but
-          // in practice never the one reported. After a put the stream
-          // works, so it does not give up. With no put, StreamConnection
-          // does not know about this failure, so a later failed try or the
-          // give-up's own "gave up" failure replaces this one.
+          // it when an evaluation fails, then closes the stream.
+          // StreamConnection does not know about it, so it is saved here. A
+          // later failed try replaces it. If the stream gives up with no
+          // newer real error, this is the one reported (see onAttemptFailed).
           this.saveFailure(
             new InternalServerErrorException(this.serverErrorMessage(data)),
           )
@@ -187,8 +186,16 @@ export class StreamingTask implements ScheduledTask {
         onError: (info) => this.handleError(info),
         // StreamConnection reports raw facts. This task turns them into the
         // error the app sees. A failed try is retried, so it is only saved.
+        // At the give-up, the last real error is kept, like the HTTP 499
+        // retry that gives the last error when its retries run out. The
+        // "stopped after 120 s" error is used only when no real error was
+        // saved since the last valid evaluations.
         onAttemptFailed: (failure) => {
-          this.saveFailure(this.toStreamError(failure))
+          this.saveFailure(
+            failure.kind === 'gaveUp' && this.lastFailure
+              ? this.lastFailure
+              : this.toStreamError(failure),
+          )
         },
         onAlive: () => {
           this.component.streamingSyncReporter().reportStreamingAlive()
@@ -369,6 +376,9 @@ export class StreamingTask implements ScheduledTask {
     // first await, while this.connection is still the connection that
     // delivered the data.
     this.connection?.markWorking()
+    // An error saved before this point is no longer the last real error: a
+    // later give-up must not report it.
+    this.lastFailure = null
     // Reported before the storage write, in the order the stream delivered
     // it. A server error event that arrives while the write runs then marks
     // the stream as not working after this success, not before it.
