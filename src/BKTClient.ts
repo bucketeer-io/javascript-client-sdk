@@ -492,12 +492,9 @@ export const initializeBKTClientInternal = async (
   // leak an unstoppable stream and timers. Same identity check the catch block
   // above uses.
   if (getInstance() !== client) return
-  // Tell the sync status how init ended. The app still gets the same
-  // rejection as before.
-  const syncStatusTracker = component.evaluationSyncStatusTracker()
+  // The app still gets the same rejection as before.
   try {
     await client.scheduleAndFetch(timeoutMillis)
-    syncStatusTracker.finishInitializing(true)
   } catch (err) {
     // An SDK exception is the failed request (for example the timeout). It is
     // only the first try, so it is not reported: the state stays INITIALIZING
@@ -505,12 +502,13 @@ export const initializeBKTClientInternal = async (
     // retries. Any other throw (for example a custom storageFactory that
     // throws for the event storage) is not related to the request and sets
     // FAILING at once.
-    syncStatusTracker.finishInitializing(
-      false,
-      isBKTException(err)
-        ? undefined
-        : asIllegalStateException(err, 'failed when initializing'),
-    )
+    if (!isBKTException(err)) {
+      component
+        .evaluationSyncStatusTracker()
+        .reportInitError(
+          asIllegalStateException(err, 'failed when initializing'),
+        )
+    }
     throw err
   }
 }

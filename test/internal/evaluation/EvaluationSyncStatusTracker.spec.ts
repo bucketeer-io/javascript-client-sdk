@@ -40,7 +40,6 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
   // The state after a successful init in polling mode.
   function makeSynced(): void {
     tracker.reportSuccess()
-    tracker.finishInitializing(true)
   }
 
   // FAILING after a successful init: the poller used up its retries.
@@ -59,7 +58,9 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       })
     })
 
-    test('a failure updates lastError and calls listeners, but the state stays INITIALIZING', () => {
+    // A flow reports a failure only after its retries, so a failure during
+    // init is a real result: FAILING at once, like after init.
+    test('a reported failure during init sets FAILING at once', () => {
       const listener = vi.fn()
       tracker.addListener(listener)
 
@@ -67,8 +68,8 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       tracker.reportFailure(unavailable)
 
       const status = tracker.getStatus()
-      expect(status.state).toBe('INITIALIZING')
-      expect(status.changedAt).toBe(START_MILLIS)
+      expect(status.state).toBe('FAILING')
+      expect(status.changedAt).toBe(failedAt)
       expect(status.lastError).toEqual({
         cause: unavailable,
         occurredAt: failedAt,
@@ -89,44 +90,13 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
     })
   })
 
-  suite('finishInitializing', () => {
-    test('a failed init request keeps INITIALIZING and calls no listener', () => {
-      const listener = vi.fn()
-      tracker.addListener(listener)
-      const before = tracker.getStatus()
-
-      moveToSeconds(START_SECONDS + 5)
-      tracker.finishInitializing(false)
-
-      expect(tracker.getStatus()).toEqual(before)
-      expect(listener).not.toHaveBeenCalled()
-    })
-
-    test('after a failed init request, a failure report moves INITIALIZING to FAILING', () => {
-      tracker.finishInitializing(false)
-      const listener = vi.fn()
-      tracker.addListener(listener)
-
-      const failedAt = moveToSeconds(START_SECONDS + 300)
-      tracker.reportFailure(unavailable)
-
-      const status = tracker.getStatus()
-      expect(status.state).toBe('FAILING')
-      expect(status.changedAt).toBe(failedAt)
-      expect(status.lastError).toEqual({
-        cause: unavailable,
-        occurredAt: failedAt,
-      })
-      expect(listener).toHaveBeenCalledTimes(1)
-      expect(listener).toHaveBeenCalledWith(status)
-    })
-
+  suite('reportInitError', () => {
     test('an init error not related to the request sets FAILING with that error and calls the listener once', () => {
       const listener = vi.fn()
       tracker.addListener(listener)
 
       const finishedAt = moveToSeconds(START_SECONDS + 5)
-      tracker.finishInitializing(false, serverError)
+      tracker.reportInitError(serverError)
 
       const status = tracker.getStatus()
       expect(status.state).toBe('FAILING')
@@ -145,19 +115,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       const listener = vi.fn()
       tracker.addListener(listener)
 
-      tracker.finishInitializing(false, serverError)
-
-      expect(tracker.getStatus()).toEqual(before)
-      expect(listener).not.toHaveBeenCalled()
-    })
-
-    test('a successful init changes nothing when a success already set SYNCED', () => {
-      tracker.reportSuccess()
-      const before = tracker.getStatus()
-      const listener = vi.fn()
-      tracker.addListener(listener)
-
-      tracker.finishInitializing(true)
+      tracker.reportInitError(serverError)
 
       expect(tracker.getStatus()).toEqual(before)
       expect(listener).not.toHaveBeenCalled()
@@ -375,7 +333,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       tracker.reportSuccess()
       tracker.markStreamWorking()
       tracker.reportStreamingAlive()
-      tracker.finishInitializing(false)
+      tracker.reportInitError(serverError)
 
       expect(tracker.getStatus()).toEqual(status)
       expect(listener).toHaveBeenCalledTimes(1)

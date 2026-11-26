@@ -14,22 +14,23 @@ export interface EvaluationSyncStatusTracker {
   addListener(listener: BKTEvaluationSyncStatusListener): string
   removeListener(id: string): void
   clearListeners(): void
-  // Marks init as finished. A failed init request passes no error: the state
-  // stays INITIALIZING until a sync succeeds, or the poller reports a failure
-  // after its retries. error: an init error not related to the request, which
-  // sets FAILING at once (only while the state is still INITIALIZING).
-  finishInitializing(succeeded: boolean, error?: BKTException): void
+  // An init error not related to the request (for example a custom
+  // storageFactory that throws). It sets FAILING at once, only while the state
+  // is still INITIALIZING. A failed init request is not reported here: the
+  // state stays INITIALIZING until a sync succeeds, or the poller reports a
+  // failure after its retries.
+  reportInitError(error: BKTException): void
   markDestroyed(): void
 }
 
 // Holds the one sync status of the client and calls its listeners.
 //
 // - INITIALIZING lasts until the first sync result. A success sets SYNCED at
-//   once. A failure reported before init finishes updates lastError only.
-// - Only polling reports failures, after its retries. A reported failure sets
-//   FAILING. The stream reports only successes (see StreamingSyncReporter).
+//   once. A reported failure sets FAILING at once, also before init ends.
+// - Only polling reports failures, after its retries. The stream reports only
+//   successes (see StreamingSyncReporter).
 // - An init error not related to the request sets FAILING at once, through
-//   finishInitializing().
+//   reportInitError().
 // - Listeners are called on every state change and on every failure that is
 //   not ignored (see reportFailure()).
 // - A change to lastSyncedAt alone calls no listener, or every stream
@@ -46,8 +47,6 @@ export class EvaluationSyncStatusTrackerImpl
   private listeners: Record<string, BKTEvaluationSyncStatusListener> = {}
   // true from a stream put/patch until the stream is marked as not working.
   private streamWorking = false
-  // Lets a failure reported after init move INITIALIZING to FAILING.
-  private initFinished = false
 
   constructor(
     private readonly clock: Clock,
@@ -83,9 +82,8 @@ export class EvaluationSyncStatusTrackerImpl
     this.listeners = {}
   }
 
-  finishInitializing(succeeded: boolean, error?: BKTException): void {
-    this.initFinished = true
-    if (succeeded || !error || this.status.state !== 'INITIALIZING') return
+  reportInitError(error: BKTException): void {
+    if (this.status.state !== 'INITIALIZING') return
     this.setState('FAILING')
     // Set together with the state, so listeners get one call with both.
     this.setLastError(error, this.clock.currentTimeMillis())
@@ -147,12 +145,9 @@ export class EvaluationSyncStatusTrackerImpl
   }
 
   private applyFailure(error: BKTException, occurredAt: number): void {
-    // Before init finishes, INITIALIZING keeps its state. FAILING stays
-    // FAILING, but listeners still get the new error.
-    const state = this.status.state
-    if (state === 'SYNCED' || (state === 'INITIALIZING' && this.initFinished)) {
-      this.setState('FAILING')
-    }
+    // SYNCED or INITIALIZING becomes FAILING. FAILING stays FAILING, but
+    // listeners still get the new error.
+    if (this.status.state !== 'FAILING') this.setState('FAILING')
     this.setLastError(error, occurredAt)
     this.notifyListeners()
   }

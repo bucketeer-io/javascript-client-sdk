@@ -2220,6 +2220,24 @@ suite('BKTClient', () => {
       expect(listener).not.toHaveBeenCalled()
     })
 
+    // A flow that used up its retries (here the polling fallback, after the
+    // stream failed at start) can report a failure before the init request
+    // ends. A failed init request reports nothing, so FAILING stays.
+    test('a polling failure reported before a failed init request ends keeps FAILING', async () => {
+      respondWith(503)
+
+      const initPromise = initializeBKTClientInternal(component, 1000)
+      const client = getBKTClient()
+      assert(client !== null)
+      const pollError = new InternalServerErrorException('Internal Server Error')
+      component.pollingSyncReporter().reportFailure(pollError)
+      await expect(initPromise).rejects.toThrow(ServiceUnavailableException)
+
+      const status = client.evaluationSyncStatus()
+      expect(status.state).toBe('FAILING')
+      expect(status.lastError?.cause).toBe(pollError)
+    })
+
     test('a failed fetchEvaluations() changes nothing and still throws as before', async () => {
       const client = await initializedClient()
       const before = client.evaluationSyncStatus()
@@ -2419,8 +2437,8 @@ suite('BKTClient', () => {
         expect(states).toEqual(['DESTROYED'])
 
         releaseResponse!()
-        // Init settles only after finishInitializing() ran, so the checks
-        // below see every listener call that init can make.
+        // Init settles last, so the checks below see every listener call that
+        // init can make.
         if (responseStatus === 200) {
           await initPromise
         } else {

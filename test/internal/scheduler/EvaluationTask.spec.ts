@@ -553,7 +553,7 @@ suite('internal/scheduler/EventTask', () => {
       await vi.advanceTimersByTimeAsync(0)
 
       const status = noRetry.evaluationSyncStatusTracker().getStatus()
-      expect(status.state).toBe('INITIALIZING')
+      expect(status.state).toBe('FAILING')
       expect(status.lastSyncedAt).toBeNull()
       expect(status.lastError?.cause).toStrictEqual(
         new IllegalStateException('failed when polling: storage failed'),
@@ -598,11 +598,10 @@ suite('internal/scheduler/EventTask', () => {
       expect(listener).toHaveBeenCalledTimes(2)
     })
 
-    test('after a failed init request, the report moves INITIALIZING to FAILING', async () => {
+    test('a failed poll with no retry left moves INITIALIZING to FAILING', async () => {
       respondWith500()
       const noRetry = await noRetryComponent()
       const tracker = noRetry.evaluationSyncStatusTracker()
-      tracker.finishInitializing(false)
       task = new EvaluationTask(noRetry)
       task.start()
 

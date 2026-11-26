@@ -1121,7 +1121,6 @@ suite('internal/streaming/StreamingTask', () => {
       const component = buildComponent()
       await startTask(component)
       await poll(component, pollSuccess)
-      component.evaluationSyncStatusTracker().finishInitializing(true)
       return component
     }
 
@@ -1264,7 +1263,6 @@ suite('internal/streaming/StreamingTask', () => {
       })
       await startTask(component)
       await poll(component, pollSuccess)
-      component.evaluationSyncStatusTracker().finishInitializing(true)
 
       // Step 3: advance 3 minutes. Expected timeline (backoff jitter mocked
       // to 0, so retries come 1, 2, 4, 8, 16, 30, 30, 30 s apart):
@@ -1453,7 +1451,6 @@ suite('internal/streaming/StreamingTask', () => {
       const component = buildComponent()
       await startTask(component)
       const tracker = component.evaluationSyncStatusTracker()
-      tracker.finishInitializing(false)
 
       latest().onopen?.({})
       latest().onmessage?.({ data: undefined })
