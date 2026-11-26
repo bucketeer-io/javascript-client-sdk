@@ -1,17 +1,24 @@
 import { BKTClientImpl } from '../../BKTClient'
 import { asIllegalStateException, isBKTException } from '../../BKTExceptions'
 import { Component } from '../di/Component'
+import { EvaluationSyncReporter } from '../evaluation/EvaluationSyncReporter'
 import { ScheduledTask } from './ScheduledTask'
 
 const RETRY_POLLING_INTERVAL = 1_000 * 60 // 1 minute
 const MAX_RETRY_COUNT = 5
 
 export class EvaluationTask implements ScheduledTask {
+  // Read once here: the rest of this class reports the sync status through
+  // this field, not through the component.
+  private readonly syncReporter: EvaluationSyncReporter
+
   constructor(
     private component: Component,
     private retryPollingInterval = RETRY_POLLING_INTERVAL,
     private maxRetryCount = MAX_RETRY_COUNT,
-  ) {}
+  ) {
+    this.syncReporter = component.pollingSyncReporter()
+  }
 
   private timerId?: ReturnType<typeof setTimeout>
   private retryCount = 0
@@ -30,7 +37,7 @@ export class EvaluationTask implements ScheduledTask {
     try {
       await BKTClientImpl.fetchEvaluationsInternal(this.component)
       if (!this.running) return // guard: stop() may have run while this was in flight
-      this.component.pollingSyncReporter().reportSuccess()
+      this.syncReporter.reportSuccess()
       // A listener may have destroyed the client (stop() ran).
       if (!this.running) return
 
@@ -55,7 +62,7 @@ export class EvaluationTask implements ScheduledTask {
         const cause = isBKTException(error)
           ? error
           : asIllegalStateException(error, 'failed when polling')
-        this.component.pollingSyncReporter().reportFailure(cause)
+        this.syncReporter.reportFailure(cause)
         // A listener may have destroyed the client (stop() ran).
         if (!this.running) return
         // we already retried enough, let's get back to daily job

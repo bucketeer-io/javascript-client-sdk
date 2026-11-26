@@ -1,4 +1,5 @@
 import { Component } from '../di/Component'
+import { StreamingSyncReporter } from '../evaluation/StreamingSyncReporter'
 import { UserAttributesState } from '../evaluation/EvaluationStorage'
 import { requiredInternalConfig } from '../InternalConfig'
 import { StreamEvaluationsRequest } from '../model/request/StreamEvaluationsRequest'
@@ -59,7 +60,13 @@ export class StreamingTask implements ScheduledTask {
   // previous instance's terminal error.
   private terminalFailure = false
 
-  constructor(private readonly component: Component) {}
+  // Read once here: the rest of this class reports the sync status through
+  // this field, not through the component.
+  private readonly syncReporter: StreamingSyncReporter
+
+  constructor(private readonly component: Component) {
+    this.syncReporter = component.streamingSyncReporter()
+  }
 
   isRunning(): boolean {
     return this.running
@@ -143,7 +150,7 @@ export class StreamingTask implements ScheduledTask {
           // The backend sends it when an evaluation fails, then closes the
           // stream. StreamConnection does not know about it, so it is marked
           // here. Nothing is reported (see StreamingSyncReporter).
-          this.component.streamingSyncReporter().markStreamNotWorking()
+          this.syncReporter.markStreamNotWorking()
         },
       },
       // Defensive fallback for a message that matched none of the named
@@ -166,10 +173,10 @@ export class StreamingTask implements ScheduledTask {
         // A failed try is retried, so nothing is reported (see
         // StreamingSyncReporter).
         onAttemptFailed: () => {
-          this.component.streamingSyncReporter().markStreamNotWorking()
+          this.syncReporter.markStreamNotWorking()
         },
         onAlive: () => {
-          this.component.streamingSyncReporter().reportStreamingAlive()
+          this.syncReporter.reportStreamingAlive()
         },
       },
     })
@@ -263,7 +270,7 @@ export class StreamingTask implements ScheduledTask {
     // only marked as not working, so the fallback's polling failures count,
     // even when no failed try marked it before (for example a stream that
     // got a put, then ended with no details until the give-up).
-    this.component.streamingSyncReporter().markStreamNotWorking()
+    this.syncReporter.markStreamNotWorking()
     this.startFallback()
     if (info.terminal) {
       // Remembered so reconnect() (e.g. a later updateUserAttributes() call)
@@ -313,7 +320,7 @@ export class StreamingTask implements ScheduledTask {
     // Tests: "a put sets SYNCED only after its values are saved" and "a
     // server error event during the storage write of a put still marks the
     // stream as not working".
-    this.component.streamingSyncReporter().markStreamWorking()
+    this.syncReporter.markStreamWorking()
     // shouldNotify is re-checked after the awaited storage write: a stop()/
     // destroy racing that write must not fire update listeners into
     // torn-down app code (the write itself may land — unused cached data).
@@ -322,7 +329,7 @@ export class StreamingTask implements ScheduledTask {
       .applyEvaluationsResponse(response, () => this.running)
     // Like polling: a stop() or destroy during the save sends no SYNCED.
     if (!this.running) return
-    this.component.streamingSyncReporter().reportSuccess()
+    this.syncReporter.reportSuccess()
   }
 
   private startFallback(): void {
