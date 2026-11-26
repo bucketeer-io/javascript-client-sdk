@@ -243,7 +243,7 @@ export class BKTClientImpl implements BKTClient {
   // failure here is one try, and the poller reports after its retries.
   async fetchEvaluations(timeoutMillis?: number): Promise<void> {
     await BKTClientImpl.fetchEvaluationsInternal(this.component, timeoutMillis)
-    this.component.pollingSyncReporter().reportSuccess('POLLING')
+    this.component.pollingSyncReporter().reportSuccess()
   }
 
   async flush(): Promise<void> {

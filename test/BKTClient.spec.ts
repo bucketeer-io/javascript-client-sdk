@@ -2516,7 +2516,6 @@ suite('BKTClient', () => {
         expect(status.lastError?.cause.message).toBe(
           'failed when initializing: event storage unavailable',
         )
-        expect(status.lastError?.source).toBe('POLLING')
         // FAILING and lastError arrive together.
         expect(listener).toHaveBeenCalledTimes(1)
         expect(listener).toHaveBeenCalledWith(status)

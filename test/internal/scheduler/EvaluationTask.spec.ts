@@ -581,7 +581,6 @@ suite('internal/scheduler/EventTask', () => {
       expect(tracker.getStatus().lastError?.cause).toBeInstanceOf(
         InternalServerErrorException,
       )
-      expect(tracker.getStatus().lastError?.source).toBe('POLLING')
     })
 
     test('with no retries, every failed poll is reported', async () => {

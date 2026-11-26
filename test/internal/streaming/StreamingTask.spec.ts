@@ -1,16 +1,7 @@
 import { expect, suite, test, vi, beforeEach, afterEach } from 'vitest'
 
 import { BKTConfig } from '../../../src/BKTConfig'
-import {
-  BadRequestException,
-  IllegalStateException,
-  InternalServerErrorException,
-  NetworkException,
-  ServiceUnavailableException,
-  TimeoutException,
-  UnauthorizedException,
-  UnknownException,
-} from '../../../src/BKTExceptions'
+import { InternalServerErrorException } from '../../../src/BKTExceptions'
 import { GetEvaluationsResult } from '../../../src/internal/remote/GetEvaluationsResult'
 import { DefaultComponent } from '../../../src/internal/di/Component'
 import { SourceId } from '../../../src/internal/model/SourceId'
@@ -30,8 +21,6 @@ import { user1 } from '../../mocks/users'
 import { user1Evaluations } from '../../mocks/evaluations'
 
 const RECOVERY_INTERVAL_MILLIS = 5 * 60_000
-// How long the sync status waits before it applies a stream give-up.
-const STREAM_WAIT_MILLIS = 10_000
 
 class FakeEventSource implements EventSourceInstance {
   static instances: FakeEventSource[] = []
@@ -495,9 +484,6 @@ suite('internal/streaming/StreamingTask', () => {
     await startTask(buildComponent())
 
     latest().onerror?.({ status: 401 })
-    // Lets the sync status wait for the give-up end, so only this task's
-    // timers are counted.
-    vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
 
     expect(evaluationTaskStart).toHaveBeenCalledWith(true)
     // No recovery timer pending — streaming is not retried for terminal errors.
@@ -1030,9 +1016,6 @@ suite('internal/streaming/StreamingTask', () => {
 
     latest().onerror?.({ status: 402 }) // unclassified 4xx → fallback + recovery
     expect(evaluationTaskStart).toHaveBeenCalledWith(true)
-    // Lets the sync status wait for the give-up end, so only this task's
-    // timers are counted.
-    vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
 
     t.reconnect()
 
@@ -1088,9 +1071,6 @@ suite('internal/streaming/StreamingTask', () => {
     const t = await startTask(buildComponent())
 
     latest().onerror?.({ status: 402 }) // unclassified 4xx → fallback + recovery
-    // Lets the sync status wait for the give-up end, so only this task's
-    // timers are counted.
-    vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
     t.stop()
 
     expect(t.isRunning()).toBe(false)
@@ -1132,7 +1112,7 @@ suite('internal/streaming/StreamingTask', () => {
         'getEvaluations',
       ).mockResolvedValue(result)
       await component.evaluationInteractor().fetch(user1)
-      component.pollingSyncReporter().reportSuccess('POLLING')
+      component.pollingSyncReporter().reportSuccess()
     }
 
     // A client whose init fetch worked, with the stream connecting.
@@ -1159,12 +1139,6 @@ suite('internal/streaming/StreamingTask', () => {
         vi.advanceTimersByTime(delaySeconds * 1_000)
         latest().onerror?.(error)
       }
-    }
-
-    // Fails until the stream gives up, then lets the sync status wait end.
-    function giveUpWith(error: unknown): void {
-      failUntilGiveUp(error)
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
     }
 
     test('a put sets SYNCED with one listener call', async () => {
@@ -1230,7 +1204,7 @@ suite('internal/streaming/StreamingTask', () => {
       expect(tracker.getStatus().lastSyncedAt).toBe(Date.now())
     })
 
-    test('a stream that answers every connection with only a server error event gives up and sets FAILING', async () => {
+    test('a stream that answers every connection with only a server error event gives up, and the status stays SYNCED until the fallback polls fail', async () => {
       // Context: what the server sends here.
       // When the first evaluation fails, the server answers the stream request
       // with HTTP 200, then one `event: error` with "evaluation failed", then it
@@ -1239,8 +1213,9 @@ suite('internal/streaming/StreamingTask', () => {
       // same answer is expected from it at that time.
       //
       // Expected SDK behavior: after 120 s with no working connection, the
-      // stream gives up and starts the polling fallback, and the sync status
-      // becomes FAILING.
+      // stream gives up and starts the polling fallback. The give-up does not
+      // change the sync status (see StreamingSyncReporter): it becomes
+      // FAILING only when the fallback polls fail after their retries.
       //
       // How the 120 s window works: only valid evaluations (markWorking())
       // clear StreamConnection's give-up window. Other bytes only keep the
@@ -1295,19 +1270,23 @@ suite('internal/streaming/StreamingTask', () => {
       // to 0, so retries come 1, 2, 4, 8, 16, 30, 30, 30 s apart):
       //   0 s    first connection: 200, error, closed. The window starts.
       //   121 s  a connection closes and the window is past 120 s: give-up.
-      //          The polling fallback starts, and the sync status waits 10 s.
-      //   131 s  the wait ends: FAILING.
+      //          The polling fallback starts. The sync status stays SYNCED.
       // advanceTimersByTimeAsync, not advanceTimersByTime: FetchEventSource
       // reads the stream with promises, which must run between the timers.
       await vi.advanceTimersByTimeAsync(3 * 60_000)
 
-      // Step 4: the sync status is FAILING. The source is STREAMING because
-      // the mocked fallback reports nothing, so only the stream give-up can
-      // set FAILING. The error itself is checked in "error-only answers until
-      // the give-up give FAILING with the server error".
-      const status = component.evaluationSyncStatusTracker().getStatus()
-      expect(status.state).toBe('FAILING')
-      expect(status.lastError?.source).toBe('STREAMING')
+      // Step 4: the stream gave up (the fallback started), and the sync
+      // status is still SYNCED.
+      const tracker = component.evaluationSyncStatusTracker()
+      expect(evaluationTaskStart).toHaveBeenCalled()
+      expect(tracker.getStatus().state).toBe('SYNCED')
+
+      // Step 5: the fallback poller used up its retries (the poller is
+      // mocked, so its report is made here). Now the state is FAILING, with
+      // the polling error.
+      component.pollingSyncReporter().reportFailure(pollError)
+      expect(tracker.getStatus().state).toBe('FAILING')
+      expect(tracker.getStatus().lastError?.cause).toBe(pollError)
     })
 
     test('a server error event right after the stream opens changes nothing and calls no listener', async () => {
@@ -1319,7 +1298,6 @@ suite('internal/streaming/StreamingTask', () => {
 
       latest().onopen?.({})
       latest().emit('error', { data: serverErrorData('evaluation failed') })
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
 
       expect(tracker.getStatus()).toEqual(before)
       expect(listener).not.toHaveBeenCalled()
@@ -1392,7 +1370,7 @@ suite('internal/streaming/StreamingTask', () => {
       expect(listener).not.toHaveBeenCalled()
     })
 
-    test('503 until give-up gives FAILING with the 503 error once, after the wait', async () => {
+    test('503 until give-up changes nothing, and the fallback poll that fails after its retries gives FAILING with the polling error', async () => {
       const component = await startAfterSuccessfulInit()
       const tracker = component.evaluationSyncStatusTracker()
       const before = tracker.getStatus()
@@ -1400,32 +1378,25 @@ suite('internal/streaming/StreamingTask', () => {
       tracker.addListener(listener)
 
       failUntilGiveUp({ status: 503 })
-      const gaveUpAt = Date.now()
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS - 1)
+      vi.advanceTimersByTime(60_000)
 
+      expect(evaluationTaskStart).toHaveBeenCalled()
       expect(tracker.getStatus()).toEqual(before)
       expect(listener).not.toHaveBeenCalled()
 
-      vi.advanceTimersByTime(1)
+      // The fallback poller used up its retries.
+      component.pollingSyncReporter().reportFailure(pollError)
 
       const status = tracker.getStatus()
       expect(status.state).toBe('FAILING')
       expect(status.lastError).toEqual({
-        cause: new ServiceUnavailableException('Service Unavailable'),
-        occurredAt: gaveUpAt,
-        source: 'STREAMING',
+        cause: pollError,
+        occurredAt: Date.now(),
       })
       expect(listener).toHaveBeenCalledTimes(1)
-
-      await poll(component, pollSuccess)
-
-      expect(tracker.getStatus().state).toBe('SYNCED')
-      expect(tracker.getStatus().lastError?.cause).toBeInstanceOf(
-        ServiceUnavailableException,
-      )
     })
 
-    test('when the first fallback poll succeeds during the wait, the state stays SYNCED with no listener call', async () => {
+    test('when the first fallback poll succeeds after a give-up, the state stays SYNCED with no listener call', async () => {
       const component = await startAfterSuccessfulInit()
       const tracker = component.evaluationSyncStatusTracker()
       const listener = vi.fn()
@@ -1433,7 +1404,6 @@ suite('internal/streaming/StreamingTask', () => {
 
       failUntilGiveUp({ status: 503 })
       await poll(component, pollSuccess)
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
 
       expect(tracker.getStatus().state).toBe('SYNCED')
       expect(tracker.getStatus().lastError).toBeNull()
@@ -1471,9 +1441,8 @@ suite('internal/streaming/StreamingTask', () => {
       await poll(component, pollSuccess)
 
       // The fallback poller used up its retries.
-      component.pollingSyncReporter().reportFailure('POLLING', pollError)
+      component.pollingSyncReporter().reportFailure(pollError)
       expect(tracker.getStatus().state).toBe('FAILING')
-      expect(tracker.getStatus().lastError?.source).toBe('POLLING')
 
       const before = tracker.getStatus()
       vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
@@ -1498,21 +1467,6 @@ suite('internal/streaming/StreamingTask', () => {
       expect(listener).not.toHaveBeenCalled()
     })
 
-    test('starting and stopping the fallback tells the reporter', async () => {
-      const component = await startAfterSuccessfulInit()
-      const setActive = vi.spyOn(
-        component.streamingSyncReporter(),
-        'setPollingFallbackActive',
-      )
-
-      latest().onerror?.({ status: 400 })
-      expect(setActive).toHaveBeenLastCalledWith(true)
-
-      vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
-      latest().onopen?.({})
-      expect(setActive).toHaveBeenLastCalledWith(false)
-    })
-
     test('after stop(), late data, heartbeats and errors report nothing', async () => {
       const component = await startAfterSuccessfulInit()
       const tracker = component.evaluationSyncStatusTracker()
@@ -1532,131 +1486,103 @@ suite('internal/streaming/StreamingTask', () => {
     })
 
     test.each([
-      {
-        name: 'HTTP 500',
-        error: { status: 500 },
-        expected: new InternalServerErrorException('Internal Server Error'),
-      },
-      {
-        name: 'HTTP 503',
-        error: { status: 503 },
-        expected: new ServiceUnavailableException('Service Unavailable'),
-      },
-      {
-        name: 'HTTP 400',
-        error: { status: 400 },
-        expected: new BadRequestException('Bad Request'),
-      },
-      {
-        name: 'HTTP 401',
-        error: { status: 401 },
-        expected: new UnauthorizedException('Unauthorized'),
-      },
-      {
-        name: 'HTTP 408',
-        error: { status: 408 },
-        expected: new TimeoutException(0, 'Timeout with status 408'),
-      },
+      { name: 'HTTP 500', fail: () => failUntilGiveUp({ status: 500 }) },
+      { name: 'HTTP 503', fail: () => failUntilGiveUp({ status: 503 }) },
+      { name: 'HTTP 400', fail: () => failUntilGiveUp({ status: 400 }) },
+      { name: 'HTTP 401', fail: () => failUntilGiveUp({ status: 401 }) },
+      { name: 'HTTP 408', fail: () => failUntilGiveUp({ status: 408 }) },
       {
         name: 'an HTTP status with no class of its own',
-        error: { status: 429 },
-        expected: new UnknownException('Unknown Error: 429', 429),
+        fail: () => failUntilGiveUp({ status: 429 }),
       },
       {
         name: 'a network error',
-        error: new TypeError('failed to fetch'),
-        expected: new NetworkException('Network Error: failed to fetch'),
+        fail: () => failUntilGiveUp(new TypeError('failed to fetch')),
       },
-    ])('$name: the give-up gives its error', async ({ error, expected }) => {
+      {
+        name: 'a runtime that cannot stream',
+        fail: () => failUntilGiveUp({ terminal: true }),
+      },
+      {
+        name: 'errors with no details',
+        fail: () => failUntilGiveUp(new Event('error')),
+      },
+      {
+        // Silent connections: the watchdog trips at 70 s, 141 s and 213 s.
+        // The last one is past the 120 s limit, so the stream gives up there.
+        name: 'watchdog timeouts',
+        fail: () => vi.advanceTimersByTime(213_000),
+      },
+    ])('$name: the give-up starts the fallback and changes nothing in the sync status', async ({ fail }) => {
       const component = await startAfterSuccessfulInit()
       const tracker = component.evaluationSyncStatusTracker()
       vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const before = tracker.getStatus()
+      const listener = vi.fn()
+      tracker.addListener(listener)
 
-      giveUpWith(error)
+      fail()
+      // Long after the give-up: no report is waiting to be applied.
+      vi.advanceTimersByTime(60_000)
 
-      expect(tracker.getStatus().lastError?.cause).toStrictEqual(expected)
-      expect(tracker.getStatus().lastError?.source).toBe('STREAMING')
+      expect(evaluationTaskStart).toHaveBeenCalled()
+      expect(tracker.getStatus()).toEqual(before)
+      expect(listener).not.toHaveBeenCalled()
     })
 
-    test('a watchdog timeout gives TimeoutException with the timeout value at give-up', async () => {
-      const component = await startAfterSuccessfulInit()
-      const tracker = component.evaluationSyncStatusTracker()
-
-      // Silent connections: the watchdog trips at 70 s, 141 s and 213 s. The
-      // last one is past the 120 s limit, so the stream gives up there.
-      vi.advanceTimersByTime(213_000 + STREAM_WAIT_MILLIS)
-
-      expect(tracker.getStatus().lastError?.cause).toStrictEqual(
-        new TimeoutException(70_000, 'Timeout Error'),
-      )
-    })
-
-    test('a runtime that cannot stream gives IllegalStateException', async () => {
-      const component = await startAfterSuccessfulInit()
-      const tracker = component.evaluationSyncStatusTracker()
-      vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-      latest().onerror?.({ terminal: true })
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
-
-      expect(tracker.getStatus().lastError?.cause).toBeInstanceOf(
-        IllegalStateException,
-      )
-    })
-
-    test('a throw while opening the stream gives UnknownException with its message', async () => {
+    test('a throw while opening the stream starts the fallback and changes nothing in the sync status', async () => {
       const ThrowingEventSource = function () {
         throw new Error('constructor boom')
       } as unknown as EventSourceLike
       const component = buildComponent({ eventSource: ThrowingEventSource })
+      const before = component.evaluationSyncStatusTracker().getStatus()
 
       await startTask(component)
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
+      vi.advanceTimersByTime(60_000)
 
-      const cause = component.evaluationSyncStatusTracker().getStatus()
-        .lastError?.cause
-      expect(cause).toBeInstanceOf(UnknownException)
-      expect(cause?.message).toContain('constructor boom')
+      expect(evaluationTaskStart).toHaveBeenCalled()
+      expect(component.evaluationSyncStatusTracker().getStatus()).toEqual(
+        before,
+      )
     })
 
-    test('giving up with nothing reported before gives UnknownException that says it stopped after 120 s', async () => {
+    // The stream is marked as not working at every give-up, so the polling
+    // failures of the fallback count. Here no failed try did it before: a
+    // put set the stream as working, and the tries that followed had no
+    // details.
+    test('after a give-up with no failure details, a fallback poll failure after its retries gives FAILING', async () => {
       const component = await startAfterSuccessfulInit()
       const tracker = component.evaluationSyncStatusTracker()
+      await receivePut()
 
-      giveUpWith(new Event('error'))
+      failUntilGiveUp(new Event('error'))
+      component.pollingSyncReporter().reportFailure(pollError)
 
-      const cause = tracker.getStatus().lastError?.cause
-      expect(cause).toBeInstanceOf(UnknownException)
-      expect(cause?.message).toContain('120')
+      expect(tracker.getStatus().state).toBe('FAILING')
+      expect(tracker.getStatus().lastError?.cause).toBe(pollError)
     })
 
     test.each([
-      {
-        name: 'the later failed try',
-        error: { status: 503 },
-        expected: new ServiceUnavailableException('Service Unavailable'),
-      },
-      {
-        name: 'the server error when later tries had no details',
-        error: new Event('error'),
-        expected: new InternalServerErrorException('evaluation failed'),
-      },
+      { name: 'a later failed try', error: { status: 503 } },
+      { name: 'later tries with no details', error: new Event('error') },
     ])(
-      'after a server error event, the give-up reports the last real error: $name',
-      async ({ error, expected }) => {
+      'after a server error event, a give-up after $name changes nothing in the sync status',
+      async ({ error }) => {
         const component = await startAfterSuccessfulInit()
         const tracker = component.evaluationSyncStatusTracker()
         await receivePut()
+        const before = tracker.getStatus()
 
         latest().emit('error', { data: serverErrorData('evaluation failed') })
-        giveUpWith(error)
+        failUntilGiveUp(error)
+        vi.advanceTimersByTime(60_000)
 
-        expect(tracker.getStatus().lastError?.cause).toStrictEqual(expected)
-        expect(tracker.getStatus().lastError?.source).toBe('STREAMING')
+        expect(evaluationTaskStart).toHaveBeenCalled()
+        expect(tracker.getStatus()).toEqual(before)
       },
     )
 
-    test('error-only answers until the give-up give FAILING with the server error', async () => {
+    test('after error-only answers until the give-up, a fallback poll failure gives FAILING with the polling error, not the server error', async () => {
       const component = await startAfterSuccessfulInit()
       const tracker = component.evaluationSyncStatusTracker()
 
@@ -1670,31 +1596,35 @@ suite('internal/streaming/StreamingTask', () => {
         latest().emit('error', { data: serverErrorData('evaluation failed') })
         latest().onerror?.({})
       }
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
+      expect(evaluationTaskStart).toHaveBeenCalled()
+      expect(tracker.getStatus().state).toBe('SYNCED')
 
-      const status = tracker.getStatus()
-      expect(status.state).toBe('FAILING')
-      expect(status.lastError?.cause).toStrictEqual(
-        new InternalServerErrorException('evaluation failed'),
-      )
+      component.pollingSyncReporter().reportFailure(pollError)
+
+      expect(tracker.getStatus().state).toBe('FAILING')
+      expect(tracker.getStatus().lastError?.cause).toBe(pollError)
     })
 
-    test('a server error before a put is not reported at a later give-up', async () => {
-      const component = await startAfterSuccessfulInit()
-      const tracker = component.evaluationSyncStatusTracker()
-      latest().onopen?.({})
-      latest().emit('error', { data: serverErrorData('evaluation failed') })
-      latest().onerror?.({})
-      vi.advanceTimersByTime(1_000)
-      await receivePut()
+    // markWorking() runs only after the payload checks in handleData(). If it
+    // ran before them, a stream that sends only bad payloads would clear the
+    // give-up window on every connection and never fall back to polling.
+    test.each([
+      { name: 'invalid JSON', data: '{not json' },
+      { name: 'the wrong shape', data: '{"userEvaluationsId":"x"}' },
+    ])(
+      'connections that send only a put with $name still give up and start the polling fallback',
+      async ({ data }) => {
+        await startAfterSuccessfulInit()
 
-      giveUpWith(new Event('error'))
+        for (const delaySeconds of [0, 1, 2, 4, 8, 16, 30, 30, 30]) {
+          vi.advanceTimersByTime(delaySeconds * 1_000)
+          latest().onopen?.({})
+          latest().emit('put', { data })
+          latest().onerror?.({})
+        }
 
-      expect(tracker.getStatus().lastError?.cause).toStrictEqual(
-        new UnknownException(
-          'The stream stopped after 120 s with no working connection',
-        ),
-      )
-    })
+        expect(evaluationTaskStart).toHaveBeenCalled()
+      },
+    )
   })
 })

@@ -31,7 +31,6 @@ export type {
 export type { BKTEvaluationDetails } from './BKTEvaluationDetails'
 export type {
   BKTEvaluationSyncError,
-  BKTEvaluationSyncSource,
   BKTEvaluationSyncState,
   BKTEvaluationSyncStatus,
   BKTEvaluationSyncStatusListener,

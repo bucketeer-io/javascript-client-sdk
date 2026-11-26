@@ -609,79 +609,48 @@ suite('internal/streaming/StreamConnection: failure reporting', () => {
     expect(onError).toHaveBeenCalledWith({ terminal: false })
   }
 
-  function reportedKinds(): string[] {
-    return onAttemptFailed.mock.calls.map(([failure]) => failure.kind)
-  }
-
   test.each([
-    {
-      name: 'a retried 5xx',
-      error: { status: 503 },
-      expected: { kind: 'httpStatus', status: 503 },
-    },
+    { name: 'a retried 5xx', fail: () => latest().onerror?.({ status: 503 }) },
     {
       name: 'a 4xx that is not retried',
-      error: { status: 400 },
-      expected: { kind: 'httpStatus', status: 400 },
+      fail: () => latest().onerror?.({ status: 400 }),
     },
-    {
-      name: 'a terminal 401',
-      error: { status: 401 },
-      expected: { kind: 'httpStatus', status: 401 },
-    },
+    { name: 'a terminal 401', fail: () => latest().onerror?.({ status: 401 }) },
     {
       name: 'a runtime that cannot stream',
-      error: { terminal: true },
-      expected: { kind: 'unsupported' },
+      fail: () => latest().onerror?.({ terminal: true }),
     },
-  ])('$name is reported as $expected.kind', ({ error, expected }) => {
+    {
+      name: 'an Error from the event source',
+      fail: () => latest().onerror?.(new TypeError('failed to fetch')),
+    },
+    {
+      name: 'a watchdog timeout',
+      fail: () => vi.advanceTimersByTime(WATCHDOG_TIMEOUT_MILLIS),
+    },
+  ])('$name calls onAttemptFailed once', ({ fail }) => {
     startConnection()
 
-    latest().onerror?.(error)
+    fail()
 
     expect(onAttemptFailed).toHaveBeenCalledTimes(1)
-    expect(onAttemptFailed).toHaveBeenCalledWith(expected)
   })
 
-  test('an Error from the event source is reported as a network failure', () => {
-    startConnection()
-    const cause = new TypeError('failed to fetch')
-
-    latest().onerror?.(cause)
-
-    expect(onAttemptFailed).toHaveBeenCalledTimes(1)
-    expect(onAttemptFailed).toHaveBeenCalledWith({ kind: 'network', cause })
-  })
-
-  test('a watchdog timeout is reported with its timeout value', () => {
-    startConnection()
-
-    vi.advanceTimersByTime(WATCHDOG_TIMEOUT_MILLIS)
-
-    expect(onAttemptFailed).toHaveBeenCalledTimes(1)
-    expect(onAttemptFailed).toHaveBeenCalledWith({
-      kind: 'timeout',
-      timeoutMillis: WATCHDOG_TIMEOUT_MILLIS,
-    })
-  })
-
-  test('a throwing event source constructor is reported as a setup failure', () => {
-    const cause = new Error('constructor boom')
+  test('a throwing event source constructor calls onAttemptFailed once, then onError', () => {
     const ThrowingEventSource = function () {
-      throw cause
+      throw new Error('constructor boom')
     } as unknown as EventSourceLike
 
     startConnection(ThrowingEventSource)
 
     expect(onAttemptFailed).toHaveBeenCalledTimes(1)
-    expect(onAttemptFailed).toHaveBeenCalledWith({ kind: 'setupFailed', cause })
     expect(onError).toHaveBeenCalledWith({ terminal: false })
   })
 
   test.each([
     { name: 'a normal end of the stream', error: {} },
     { name: 'a native Event with no details', error: new Event('error') },
-  ])('$name is not reported', ({ error }) => {
+  ])('$name does not call onAttemptFailed', ({ error }) => {
     startConnection()
 
     latest().onerror?.(error)
@@ -689,16 +658,40 @@ suite('internal/streaming/StreamConnection: failure reporting', () => {
     expect(onAttemptFailed).not.toHaveBeenCalled()
   })
 
-  test('giving up after repeated 503 errors adds no report, so the real error is kept', () => {
-    startConnection()
+  // The give-up itself calls only onError: the caller marks the stream as
+  // not working there. onAttemptFailed is called only for the failed tries.
+  test.each([
+    {
+      name: 'repeated 503 errors',
+      giveUp: () => failUntilGiveUp({ status: 503 }),
+      failedTries: 9,
+    },
+    {
+      name: 'errors with no details',
+      giveUp: () => failUntilGiveUp(new Event('error')),
+      failedTries: 0,
+    },
+    {
+      name: 'valid evaluations, then errors with no details',
+      giveUp: (conn: StreamConnection) => {
+        latest().onerror?.({ status: 503 })
+        vi.advanceTimersByTime(1_000)
+        latest().onopen?.({})
+        conn.markWorking()
+        onAttemptFailed.mockClear()
+        failUntilGiveUp(new Event('error'))
+      },
+      failedTries: 0,
+    },
+  ])('a give-up after $name calls onError, and onAttemptFailed only for the failed tries', ({ giveUp, failedTries }) => {
+    const conn = startConnection()
 
-    failUntilGiveUp({ status: 503 })
+    giveUp(conn)
 
-    expect(onAttemptFailed.mock.calls.length).toBeGreaterThan(0)
-    expect(new Set(reportedKinds())).toEqual(new Set(['httpStatus']))
+    expect(onAttemptFailed).toHaveBeenCalledTimes(failedTries)
   })
 
-  test('giving up after repeated watchdog timeouts adds no report, so the timeout is kept', () => {
+  test('a give-up after repeated watchdog timeouts calls onError, and onAttemptFailed only for the timeouts', () => {
     startConnection()
 
     // Each attempt waits for the watchdog, then a short backoff: the 3rd timeout
@@ -706,37 +699,12 @@ suite('internal/streaming/StreamConnection: failure reporting', () => {
     vi.advanceTimersByTime(3 * WATCHDOG_TIMEOUT_MILLIS + 10_000)
 
     expect(onError).toHaveBeenCalledTimes(1)
-    expect(onAttemptFailed.mock.calls.length).toBeGreaterThan(0)
-    expect(new Set(reportedKinds())).toEqual(new Set(['timeout']))
+    expect(onAttemptFailed).toHaveBeenCalledTimes(3)
   })
 
-  test('giving up after errors with no details reports one gaveUp failure', () => {
-    startConnection()
-
-    failUntilGiveUp(new Event('error'))
-
-    expect(onAttemptFailed).toHaveBeenCalledTimes(1)
-    expect(onAttemptFailed).toHaveBeenCalledWith({ kind: 'gaveUp' })
-  })
-
-  test('after valid evaluations arrive, a later give-up with no new reported failure reports gaveUp', () => {
-    const conn = startConnection()
-    latest().onerror?.({ status: 503 })
-    vi.advanceTimersByTime(1_000)
-    latest().onopen?.({})
-    conn.markWorking()
-    onAttemptFailed.mockClear()
-
-    failUntilGiveUp(new Event('error'))
-
-    expect(onAttemptFailed).toHaveBeenCalledTimes(1)
-    expect(onAttemptFailed).toHaveBeenCalledWith({ kind: 'gaveUp' })
-  })
-
-  // Only markWorking() starts a new period with no failure reported. Bytes
-  // alone must not, or the give-up would replace the 503 with gaveUp, an
-  // error with no details. A named event with data is what a server `error`
-  // event is to this class.
+  // Only markWorking() clears the give-up window. Bytes alone must not, or
+  // a stream that sends only bytes (a server `error` event is a named event
+  // with data to this class) would never give up.
   test.each([
     {
       name: 'a liveness tick',
@@ -746,17 +714,21 @@ suite('internal/streaming/StreamConnection: failure reporting', () => {
       name: 'a named event with data',
       sendBytes: () => latest().emit('put', { data: '{}' }),
     },
-  ])('after $name with no valid evaluations, the give-up adds no report, so the 503 is kept', ({ sendBytes }) => {
+  ])('after $name with no valid evaluations, the stream still gives up 120 s after the first failure', ({ sendBytes }) => {
     startConnection()
-    latest().onerror?.({ status: 503 })
+    latest().onerror?.({ status: 503 }) // t=0: the give-up window starts
     vi.advanceTimersByTime(1_000)
     latest().onopen?.({})
     sendBytes()
-    onAttemptFailed.mockClear()
 
-    failUntilGiveUp(new Event('error'))
+    for (const delaySeconds of [0, 2, 4, 8, 16, 30, 30, 30]) {
+      vi.advanceTimersByTime(delaySeconds * 1_000)
+      latest().onerror?.({})
+    }
 
-    expect(onAttemptFailed).not.toHaveBeenCalled()
+    // t=121 s: past the window counted from t=0.
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenCalledWith({ terminal: false })
   })
 
   test('onAlive is called for a data event and a heartbeat tick, not for a named event with no data', () => {

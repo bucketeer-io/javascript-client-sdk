@@ -30,7 +30,7 @@ export class EvaluationTask implements ScheduledTask {
     try {
       await BKTClientImpl.fetchEvaluationsInternal(this.component)
       if (!this.running) return // guard: stop() may have run while this was in flight
-      this.component.pollingSyncReporter().reportSuccess('POLLING')
+      this.component.pollingSyncReporter().reportSuccess()
       // A listener may have destroyed the client (stop() ran).
       if (!this.running) return
 
@@ -55,7 +55,7 @@ export class EvaluationTask implements ScheduledTask {
         const cause = isBKTException(error)
           ? error
           : asIllegalStateException(error, 'failed when polling')
-        this.component.pollingSyncReporter().reportFailure('POLLING', cause)
+        this.component.pollingSyncReporter().reportFailure(cause)
         // A listener may have destroyed the client (stop() ran).
         if (!this.running) return
         // we already retried enough, let's get back to daily job

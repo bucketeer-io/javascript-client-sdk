@@ -14,8 +14,6 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
   const serverError = new InternalServerErrorException('Internal Server Error')
   const unavailable = new ServiceUnavailableException('Service Unavailable')
   const networkError = new NetworkException('Network Error: down')
-  // How long a stream give-up waits before it is applied.
-  const STREAM_WAIT_MILLIS = 10_000
 
   let clock: FakeClock
   let tracker: EvaluationSyncStatusTrackerImpl
@@ -41,14 +39,14 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
 
   // The state after a successful init in polling mode.
   function makeSynced(): void {
-    tracker.reportSuccess('POLLING')
+    tracker.reportSuccess()
     tracker.finishInitializing(true)
   }
 
   // FAILING after a successful init: the poller used up its retries.
   function makeFailing(): void {
     makeSynced()
-    tracker.reportFailure('POLLING', serverError)
+    tracker.reportFailure(serverError)
   }
 
   suite('during init', () => {
@@ -66,7 +64,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       tracker.addListener(listener)
 
       const failedAt = moveToSeconds(START_SECONDS + 1)
-      tracker.reportFailure('POLLING', unavailable)
+      tracker.reportFailure(unavailable)
 
       const status = tracker.getStatus()
       expect(status.state).toBe('INITIALIZING')
@@ -74,7 +72,6 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       expect(status.lastError).toEqual({
         cause: unavailable,
         occurredAt: failedAt,
-        source: 'POLLING',
       })
       expect(listener).toHaveBeenCalledTimes(1)
       expect(listener).toHaveBeenCalledWith(status)
@@ -83,7 +80,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
     test('a success sets SYNCED at once and sets lastSyncedAt', () => {
       const syncedAt = moveToSeconds(START_SECONDS + 1)
 
-      tracker.reportSuccess('STREAMING')
+      tracker.reportStreamSuccess()
 
       const status = tracker.getStatus()
       expect(status.state).toBe('SYNCED')
@@ -111,7 +108,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       tracker.addListener(listener)
 
       const failedAt = moveToSeconds(START_SECONDS + 300)
-      tracker.reportFailure('POLLING', unavailable)
+      tracker.reportFailure(unavailable)
 
       const status = tracker.getStatus()
       expect(status.state).toBe('FAILING')
@@ -119,7 +116,6 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       expect(status.lastError).toEqual({
         cause: unavailable,
         occurredAt: failedAt,
-        source: 'POLLING',
       })
       expect(listener).toHaveBeenCalledTimes(1)
       expect(listener).toHaveBeenCalledWith(status)
@@ -138,14 +134,13 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       expect(status.lastError).toEqual({
         cause: serverError,
         occurredAt: finishedAt,
-        source: 'POLLING',
       })
       expect(listener).toHaveBeenCalledTimes(1)
       expect(listener).toHaveBeenCalledWith(status)
     })
 
     test('an init error changes nothing when a success already set SYNCED', () => {
-      tracker.reportSuccess('STREAMING')
+      tracker.reportStreamSuccess()
       const before = tracker.getStatus()
       const listener = vi.fn()
       tracker.addListener(listener)
@@ -157,7 +152,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
     })
 
     test('a successful init changes nothing when a success already set SYNCED', () => {
-      tracker.reportSuccess('POLLING')
+      tracker.reportSuccess()
       const before = tracker.getStatus()
       const listener = vi.fn()
       tracker.addListener(listener)
@@ -176,7 +171,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       tracker.addListener(listener)
 
       const failedAt = moveToSeconds(START_SECONDS + 10)
-      tracker.reportFailure('POLLING', serverError)
+      tracker.reportFailure(serverError)
 
       const status = tracker.getStatus()
       expect(status.state).toBe('FAILING')
@@ -184,7 +179,6 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       expect(status.lastError).toEqual({
         cause: serverError,
         occurredAt: failedAt,
-        source: 'POLLING',
       })
       expect(listener).toHaveBeenCalledTimes(1)
       expect(listener).toHaveBeenCalledWith(status)
@@ -193,12 +187,12 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
     test('FAILING to FAILING calls the listener with the new error and keeps changedAt', () => {
       makeSynced()
       const firstFailureAt = moveToSeconds(START_SECONDS + 10)
-      tracker.reportFailure('POLLING', serverError)
+      tracker.reportFailure(serverError)
       const listener = vi.fn()
       tracker.addListener(listener)
 
       const secondFailureAt = moveToSeconds(START_SECONDS + 20)
-      tracker.reportFailure('POLLING', unavailable)
+      tracker.reportFailure(unavailable)
 
       const status = tracker.getStatus()
       expect(status.state).toBe('FAILING')
@@ -206,7 +200,6 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       expect(status.lastError).toEqual({
         cause: unavailable,
         occurredAt: secondFailureAt,
-        source: 'POLLING',
       })
       expect(listener).toHaveBeenCalledTimes(1)
     })
@@ -218,7 +211,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       tracker.addListener(listener)
 
       const syncedAt = moveToSeconds(START_SECONDS + 10)
-      tracker.reportSuccess('POLLING')
+      tracker.reportSuccess()
 
       const status = tracker.getStatus()
       expect(status.state).toBe('SYNCED')
@@ -235,7 +228,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       tracker.addListener(listener)
 
       const syncedAt = moveToSeconds(START_SECONDS + 10)
-      tracker.reportSuccess('POLLING')
+      tracker.reportSuccess()
 
       const status = tracker.getStatus()
       expect(status.lastSyncedAt).toBe(syncedAt)
@@ -243,159 +236,48 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       expect(listener).not.toHaveBeenCalled()
     })
 
-    test('a success from either source ends a failure from the other source', () => {
-      makeSynced()
+    test('a streaming success ends a polling failure', () => {
+      makeFailing()
 
-      tracker.reportFailure('POLLING', serverError)
-      tracker.reportSuccess('STREAMING')
-      expect(tracker.getStatus().state).toBe('SYNCED')
+      tracker.reportStreamSuccess()
 
-      tracker.reportFailure('STREAMING', unavailable)
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
-      expect(tracker.getStatus().state).toBe('FAILING')
-      tracker.reportSuccess('POLLING')
       expect(tracker.getStatus().state).toBe('SYNCED')
     })
   })
 
-  suite('stream give-up waits before it is applied', () => {
-    test('nothing changes until the wait ends, then FAILING with the stream error and one listener call', () => {
+  // The stream never reports a failure (see StreamingSyncReporter). After a
+  // stream give-up, only polling results decide the state, with no wait.
+  suite('only polling reports failures', () => {
+    test('a polling failure sets FAILING at once, with no wait', () => {
       makeSynced()
-      const before = tracker.getStatus()
       const listener = vi.fn()
       tracker.addListener(listener)
 
-      const gaveUpAt = moveToSeconds(START_SECONDS + 120)
-      tracker.reportFailure('STREAMING', unavailable)
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS - 1)
-
-      expect(tracker.getStatus()).toEqual(before)
-      expect(listener).not.toHaveBeenCalled()
-
-      const appliedAt = moveToSeconds(START_SECONDS + 130)
-      vi.advanceTimersByTime(1)
+      const failedAt = moveToSeconds(START_SECONDS + 120)
+      tracker.reportFailure(unavailable)
 
       const status = tracker.getStatus()
       expect(status.state).toBe('FAILING')
-      // changedAt: when the state changed (after the wait). occurredAt: when
-      // the stream gave up.
-      expect(status.changedAt).toBe(appliedAt)
+      expect(status.changedAt).toBe(failedAt)
       expect(status.lastError).toEqual({
         cause: unavailable,
-        occurredAt: gaveUpAt,
-        source: 'STREAMING',
+        occurredAt: failedAt,
       })
       expect(listener).toHaveBeenCalledTimes(1)
       expect(listener).toHaveBeenCalledWith(status)
-    })
-
-    test('it is still applied when the polling fallback starts during the wait', () => {
-      makeSynced()
-
-      tracker.reportFailure('STREAMING', unavailable)
-      tracker.setPollingFallbackActive(true)
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
-
-      expect(tracker.getStatus().state).toBe('FAILING')
-      expect(tracker.getStatus().lastError?.cause).toBe(unavailable)
-    })
-
-    test('a success during the wait cancels it', () => {
-      makeSynced()
-      const listener = vi.fn()
-      tracker.addListener(listener)
-
-      tracker.reportFailure('STREAMING', unavailable)
-      tracker.setPollingFallbackActive(true)
-      tracker.reportSuccess('POLLING')
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
-
-      expect(tracker.getStatus().state).toBe('SYNCED')
-      expect(tracker.getStatus().lastError).toBeNull()
-      expect(listener).not.toHaveBeenCalled()
-    })
-
-    test('a polling failure during the 10 s stream give-up wait cancels the wait and applies the stream error at once', () => {
-      makeSynced()
-      const listener = vi.fn()
-      tracker.addListener(listener)
-
-      const gaveUpAt = moveToSeconds(START_SECONDS + 120)
-      tracker.reportFailure('STREAMING', unavailable)
-      tracker.setPollingFallbackActive(true)
-      const pollFailedAt = moveToSeconds(START_SECONDS + 121)
-      tracker.reportFailure('POLLING', serverError)
-
-      const status = tracker.getStatus()
-      expect(status.state).toBe('FAILING')
-      expect(status.changedAt).toBe(pollFailedAt)
-      expect(status.lastError).toEqual({
-        cause: unavailable,
-        occurredAt: gaveUpAt,
-        source: 'STREAMING',
-      })
-      expect(listener).toHaveBeenCalledTimes(1)
-
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
-      expect(listener).toHaveBeenCalledTimes(1)
-
-      tracker.reportFailure('POLLING', networkError)
-      expect(tracker.getStatus().lastError?.source).toBe('POLLING')
-    })
-
-    test('destroy during the wait cancels it', () => {
-      makeSynced()
-      const listener = vi.fn()
-      tracker.addListener(listener)
-
-      tracker.reportFailure('STREAMING', unavailable)
-      tracker.markDestroyed()
-      const destroyed = tracker.getStatus()
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
-
-      expect(tracker.getStatus()).toEqual(destroyed)
-      expect(listener).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  suite('stream failures while the polling fallback runs', () => {
-    test('a streaming failure changes nothing and calls no listener', () => {
-      makeSynced()
-      tracker.setPollingFallbackActive(true)
-      const before = tracker.getStatus()
-      const listener = vi.fn()
-      tracker.addListener(listener)
-
-      moveToSeconds(START_SECONDS + 10)
-      tracker.reportFailure('STREAMING', unavailable)
-
-      expect(tracker.getStatus()).toEqual(before)
-      expect(listener).not.toHaveBeenCalled()
-    })
-
-    test('streaming failures count again after the fallback stops', () => {
-      makeSynced()
-      tracker.setPollingFallbackActive(true)
-      tracker.setPollingFallbackActive(false)
-
-      tracker.reportFailure('STREAMING', unavailable)
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
-
-      expect(tracker.getStatus().state).toBe('FAILING')
-      expect(tracker.getStatus().lastError?.source).toBe('STREAMING')
     })
   })
 
   suite('polling failures while the stream works', () => {
     test('a polling failure changes nothing after a streaming success', () => {
       makeSynced()
-      tracker.reportSuccess('STREAMING')
+      tracker.reportStreamSuccess()
       const before = tracker.getStatus()
       const listener = vi.fn()
       tracker.addListener(listener)
 
       moveToSeconds(START_SECONDS + 10)
-      tracker.reportFailure('POLLING', networkError)
+      tracker.reportFailure(networkError)
 
       expect(tracker.getStatus()).toEqual(before)
       expect(listener).not.toHaveBeenCalled()
@@ -403,41 +285,22 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
 
     test('polling failures count again after the stream is marked as not working', () => {
       makeSynced()
-      tracker.reportSuccess('STREAMING')
+      tracker.reportStreamSuccess()
       tracker.markStreamNotWorking()
 
       const failedAt = moveToSeconds(START_SECONDS + 10)
-      tracker.reportFailure('POLLING', networkError)
+      tracker.reportFailure(networkError)
 
       expect(tracker.getStatus().lastError).toEqual({
         cause: networkError,
         occurredAt: failedAt,
-        source: 'POLLING',
-      })
-    })
-
-    test('polling failures count again after a streaming failure', () => {
-      makeSynced()
-      tracker.reportSuccess('STREAMING')
-      tracker.reportFailure('STREAMING', unavailable)
-      // Past the 10 s stream give-up wait: a polling failure during it would
-      // apply the stream error instead.
-      vi.advanceTimersByTime(STREAM_WAIT_MILLIS)
-
-      const failedAt = moveToSeconds(START_SECONDS + 10)
-      tracker.reportFailure('POLLING', networkError)
-
-      expect(tracker.getStatus().lastError).toEqual({
-        cause: networkError,
-        occurredAt: failedAt,
-        source: 'POLLING',
       })
     })
   })
 
   suite('reportStreamingAlive', () => {
     test('while the stream works, it updates lastSyncedAt only and calls no listener', () => {
-      tracker.reportSuccess('STREAMING')
+      tracker.reportStreamSuccess()
       const changedAtBefore = tracker.getStatus().changedAt
       const listener = vi.fn()
       tracker.addListener(listener)
@@ -462,7 +325,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
     })
 
     test('after the stream is marked as not working, it changes nothing and calls no listener', () => {
-      tracker.reportSuccess('STREAMING')
+      tracker.reportStreamSuccess()
       const listener = vi.fn()
       tracker.addListener(listener)
       tracker.markStreamNotWorking()
@@ -473,17 +336,6 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
 
       expect(tracker.getStatus()).toEqual(before)
       expect(listener).not.toHaveBeenCalled()
-    })
-
-    test('after a stream failure, it changes nothing', () => {
-      tracker.reportSuccess('STREAMING')
-      tracker.reportFailure('STREAMING', unavailable)
-      const before = tracker.getStatus()
-
-      moveToSeconds(START_SECONDS + 30)
-      tracker.reportStreamingAlive()
-
-      expect(tracker.getStatus()).toEqual(before)
     })
   })
 
@@ -503,8 +355,9 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       expect(listener).toHaveBeenCalledWith(status)
 
       moveToSeconds(START_SECONDS + 20)
-      tracker.reportFailure('POLLING', serverError)
-      tracker.reportSuccess('POLLING')
+      tracker.reportFailure(serverError)
+      tracker.reportSuccess()
+      tracker.reportStreamSuccess()
       tracker.reportStreamingAlive()
       tracker.finishInitializing(false)
 
@@ -532,7 +385,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       tracker.addListener(kept)
 
       tracker.removeListener(id)
-      tracker.reportFailure('POLLING', serverError)
+      tracker.reportFailure(serverError)
 
       expect(removed).not.toHaveBeenCalled()
       expect(kept).toHaveBeenCalledTimes(1)
@@ -545,7 +398,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       tracker.addListener(second)
 
       tracker.clearListeners()
-      tracker.reportFailure('POLLING', serverError)
+      tracker.reportFailure(serverError)
 
       expect(first).not.toHaveBeenCalled()
       expect(second).not.toHaveBeenCalled()
@@ -562,7 +415,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
         calls.push(`B:${status.state}`)
       })
 
-      tracker.reportFailure('POLLING', serverError)
+      tracker.reportFailure(serverError)
 
       expect(calls).toEqual(['A:FAILING', 'A:DESTROYED', 'B:DESTROYED'])
     })
@@ -573,7 +426,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       tracker.addListener(() => tracker.removeListener(removedId))
       removedId = tracker.addListener(removed)
 
-      tracker.reportFailure('POLLING', serverError)
+      tracker.reportFailure(serverError)
 
       expect(removed).not.toHaveBeenCalled()
     })
@@ -588,9 +441,7 @@ suite('internal/evaluation/EvaluationSyncStatusTracker', () => {
       })
       tracker.addListener(next)
 
-      expect(() =>
-        tracker.reportFailure('POLLING', serverError),
-      ).not.toThrow()
+      expect(() => tracker.reportFailure(serverError)).not.toThrow()
 
       expect(next).toHaveBeenCalledTimes(1)
       expect(consoleError).toHaveBeenCalled()
