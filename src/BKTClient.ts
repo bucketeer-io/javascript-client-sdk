@@ -502,6 +502,12 @@ export const initializeBKTClientInternal = async (
     // retries. Any other throw (for example a custom storageFactory that
     // throws for the event storage) is not related to the request and sets
     // FAILING at once.
+    // Checking the type is enough to tell them apart: only the first fetch
+    // throws SDK exceptions here. Task startup throws none (a stream open
+    // error is caught in StreamConnection), and app code that runs during
+    // startup (storageFactory, an injected EventSource) cannot create one:
+    // the SDK exception classes are not exported, and isBKTException()
+    // checks with instanceof.
     if (!isBKTException(err)) {
       component
         .evaluationSyncStatusTracker()
