@@ -1,4 +1,5 @@
 import { BKTClientImpl } from '../../BKTClient'
+import { asIllegalStateException, isBKTException } from '../../BKTExceptions'
 import { Component } from '../di/Component'
 import { ScheduledTask } from './ScheduledTask'
 
@@ -29,11 +30,14 @@ export class EvaluationTask implements ScheduledTask {
     try {
       await BKTClientImpl.fetchEvaluationsInternal(this.component)
       if (!this.running) return // guard: stop() may have run while this was in flight
+      this.component.pollingSyncReporter().reportSuccess('POLLING')
+      // A listener may have destroyed the client (stop() ran).
+      if (!this.running) return
 
       // success
       this.retryCount = 0
       this.reschedule(this.component.config().pollingInterval)
-    } catch {
+    } catch (error) {
       if (!this.running) return // guard: stop() may have run while this was in flight
 
       // error
@@ -46,6 +50,14 @@ export class EvaluationTask implements ScheduledTask {
         this.retryCount++
         this.reschedule(this.retryPollingInterval)
       } else {
+        // No retry is left (or none is used with a short pollingInterval):
+        // only now does the sync status get the failure.
+        const cause = isBKTException(error)
+          ? error
+          : asIllegalStateException(error, 'failed when polling')
+        this.component.pollingSyncReporter().reportFailure('POLLING', cause)
+        // A listener may have destroyed the client (stop() ran).
+        if (!this.running) return
         // we already retried enough, let's get back to daily job
         this.retryCount = 0
         this.reschedule(pollingInterval)

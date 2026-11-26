@@ -123,3 +123,15 @@ export type BKTException =
   | InvalidHttpMethodException
   | PayloadTooLargeException
   | RedirectRequestException
+
+export const isBKTException = (error: unknown): error is BKTException =>
+  error instanceof BKTBaseException
+
+// Wraps an error that is not an SDK exception, and says where it happened.
+export const asIllegalStateException = (
+  error: unknown,
+  context: string,
+): IllegalStateException => {
+  const message = error instanceof Error ? error.message : String(error)
+  return new IllegalStateException(`${context}: ${message}`)
+}

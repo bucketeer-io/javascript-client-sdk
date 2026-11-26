@@ -41,6 +41,21 @@ export const toBKTException = async (
   const { message = responseText } = errorBody?.error ?? {}
 
   const status = response.status
+  return statusToBKTException(
+    status,
+    message,
+    `Unknown Error: ${status} ${response.statusText}, ${responseText} ,${JSON.stringify(errorBody)}`,
+  )
+}
+
+// Maps an HTTP status to a BKTException. Polling (toBKTException) and
+// streaming both use it, so the same status always gives the same class.
+export const statusToBKTException = (
+  status: number,
+  message?: string,
+  // The message for a status with no class of its own.
+  unknownMessage?: string,
+): BKTException => {
   switch (true) {
     case status >= 300 && status < 400:
       return new RedirectRequestException(status, message ?? 'Redirect Request')
@@ -70,7 +85,7 @@ export const toBKTException = async (
       return new ServiceUnavailableException(message ?? 'Service Unavailable')
     default:
       return new UnknownException(
-        `Unknown Error: ${status} ${response.statusText}, ${responseText} ,${JSON.stringify(errorBody)}`,
+        unknownMessage ?? `Unknown Error: ${status}`,
         status,
       )
   }

@@ -11,6 +11,7 @@ const RECONNECT_STREAMING_DEBOUNCE_MILLIS = 200
 export class TaskScheduler {
   private schedulers: ScheduledTask[]
   private reconnectStreamingTimer: ReturnType<typeof setTimeout> | undefined
+  private stopped = false
 
   constructor(private component: Component) {
     const mainTask = this.component.config().enableStreaming
@@ -20,10 +21,17 @@ export class TaskScheduler {
   }
 
   start() {
-    this.schedulers.forEach((scheduler) => scheduler.start())
+    for (const scheduler of this.schedulers) {
+      // App code that runs while a task starts (for example an injected
+      // EventSource) may call destroyBKTClient(). Start no more tasks after
+      // that, or they would keep running with no owner to stop them.
+      if (this.stopped) return
+      scheduler.start()
+    }
   }
 
   stop() {
+    this.stopped = true
     this.schedulers.forEach((scheduler) => scheduler.stop())
     clearTimeout(this.reconnectStreamingTimer)
     this.reconnectStreamingTimer = undefined

@@ -1005,4 +1005,39 @@ suite('internal/evaluation/EvaluationInteractor', () => {
       expect(stored?.userAttributesUpdated).toBe(false)
     })
   })
+
+  suite('sync status', () => {
+    beforeEach(async () => {
+      await interactor.initialize()
+    })
+
+    test('a successful fetch() does not change the sync status', async () => {
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () =>
+          HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          }),
+        ),
+      )
+
+      const result = await interactor.fetch(user1)
+
+      assert(result.type === 'success')
+      expect(component.evaluationSyncStatusTracker().getStatus().state).toBe(
+        'INITIALIZING',
+      )
+    })
+
+    test('applyEvaluationsResponse() does not change the sync status', async () => {
+      await interactor.applyEvaluationsResponse({
+        evaluations: user1Evaluations,
+        userEvaluationsId: 'user_evaluation_id_value',
+      })
+
+      expect(component.evaluationSyncStatusTracker().getStatus().state).toBe(
+        'INITIALIZING',
+      )
+    })
+  })
 })

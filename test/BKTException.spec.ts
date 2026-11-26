@@ -1,12 +1,15 @@
 import { suite, test, expect } from 'vitest'
 import {
   toBKTException,
+  statusToBKTException,
   addTimeoutValueIfNeeded,
 } from '../src/internal/remote/toBKTException'
 import {
+  asIllegalStateException,
   BadRequestException,
   ClientClosedRequestException,
   ForbiddenException,
+  IllegalStateException,
   InternalServerErrorException,
   InvalidHttpMethodException,
   NotFoundException,
@@ -153,5 +156,81 @@ suite('BKTException', () => {
   ])('addTimeoutValueIfNeeded', ({ timeouts, inputError, expectedError }) => {
     const result = addTimeoutValueIfNeeded(inputError, timeouts)
     expect(result, 'error should match').toStrictEqual(expectedError)
+  })
+
+  test.each([
+    { status: 400, expected: new BadRequestException('Bad Request') },
+    { status: 401, expected: new UnauthorizedException('Unauthorized') },
+    { status: 403, expected: new ForbiddenException('Forbidden') },
+    { status: 404, expected: new NotFoundException('Feature Not Found') },
+    {
+      status: 405,
+      expected: new InvalidHttpMethodException('Invalid HTTP Method'),
+    },
+    {
+      status: 408,
+      expected: new TimeoutException(0, 'Timeout with status 408'),
+    },
+    { status: 413, expected: new PayloadTooLargeException('Payload Too Large') },
+    {
+      status: 499,
+      expected: new ClientClosedRequestException('Client Closed Request'),
+    },
+    {
+      status: 500,
+      expected: new InternalServerErrorException('Internal Server Error'),
+    },
+    {
+      status: 501,
+      expected: new UnknownException('Unknown Error: 501', 501),
+    },
+    {
+      status: 502,
+      expected: new ServiceUnavailableException('Service Unavailable'),
+    },
+    {
+      status: 503,
+      expected: new ServiceUnavailableException('Service Unavailable'),
+    },
+    {
+      status: 504,
+      expected: new ServiceUnavailableException('Service Unavailable'),
+    },
+    {
+      status: 429,
+      expected: new UnknownException('Unknown Error: 429', 429),
+    },
+  ])('statusToBKTException $status', ({ status, expected }) => {
+    expect(statusToBKTException(status)).toStrictEqual(expected)
+  })
+
+  test('statusToBKTException uses the given message', () => {
+    expect(statusToBKTException(500, 'server text')).toStrictEqual(
+      new InternalServerErrorException('server text'),
+    )
+  })
+
+  test('statusToBKTException uses unknownMessage for a status with no class of its own', () => {
+    expect(statusToBKTException(505, undefined, 'full details')).toStrictEqual(
+      new UnknownException('full details', 505),
+    )
+  })
+
+  suite('asIllegalStateException', () => {
+    test('wraps an Error with its message and the given context', () => {
+      expect(
+        asIllegalStateException(new Error('disk full'), 'failed when polling'),
+      ).toStrictEqual(
+        new IllegalStateException('failed when polling: disk full'),
+      )
+    })
+
+    test('wraps a thrown value that is not an Error with its text', () => {
+      expect(
+        asIllegalStateException('oops', 'failed when initializing'),
+      ).toStrictEqual(
+        new IllegalStateException('failed when initializing: oops'),
+      )
+    })
   })
 })
