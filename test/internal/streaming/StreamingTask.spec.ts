@@ -1402,7 +1402,7 @@ suite('internal/streaming/StreamingTask', () => {
     // - A new fallback starts only after a give-up, and the backend's outage
     //   answers (500, 503, or an error event then close) are retried, not a
     //   give-up.
-    test('the save of a put never ends with SYNCED over a newer fallback failure, because no fallback poll runs during the save', async () => {
+    test('an older stream save cannot overwrite a newer fallback failure with SYNCED, because no fallback poll runs during the save', async () => {
       // The real poller, not the spies from beforeEach.
       evaluationTaskStart.mockRestore()
       evaluationTaskStop.mockRestore()
