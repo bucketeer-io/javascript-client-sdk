@@ -4,9 +4,11 @@ import {
   addTimeoutValueIfNeeded,
 } from '../src/internal/remote/toBKTException'
 import {
+  asIllegalStateException,
   BadRequestException,
   ClientClosedRequestException,
   ForbiddenException,
+  IllegalStateException,
   InternalServerErrorException,
   InvalidHttpMethodException,
   NotFoundException,
@@ -153,5 +155,23 @@ suite('BKTException', () => {
   ])('addTimeoutValueIfNeeded', ({ timeouts, inputError, expectedError }) => {
     const result = addTimeoutValueIfNeeded(inputError, timeouts)
     expect(result, 'error should match').toStrictEqual(expectedError)
+  })
+
+  suite('asIllegalStateException', () => {
+    test('wraps an Error with its message and the given context', () => {
+      expect(
+        asIllegalStateException(new Error('disk full'), 'failed when polling'),
+      ).toStrictEqual(
+        new IllegalStateException('failed when polling: disk full'),
+      )
+    })
+
+    test('wraps a thrown value that is not an Error with its text', () => {
+      expect(
+        asIllegalStateException('oops', 'failed when initializing'),
+      ).toStrictEqual(
+        new IllegalStateException('failed when initializing: oops'),
+      )
+    })
   })
 })

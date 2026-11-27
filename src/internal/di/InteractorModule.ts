@@ -1,6 +1,7 @@
 import { Clock } from '../Clock'
 import { EvaluationInteractor } from '../evaluation/EvaluationInteractor'
 import { EvaluationStorage } from '../evaluation/EvaluationStorage'
+import { EvaluationSyncStatusTrackerImpl } from '../evaluation/EvaluationSyncStatusTracker'
 import { EventInteractor } from '../event/EventInteractor'
 import { EventStorage } from '../event/EventStorage'
 import { IdGenerator } from '../IdGenerator'
@@ -20,6 +21,13 @@ export class InteractorModule {
       evaluationStorage,
       idGenerator,
     )
+  }
+
+  evaluationSyncStatusTracker(
+    clock: Clock,
+    idGenerator: IdGenerator,
+  ): EvaluationSyncStatusTrackerImpl {
+    return new EvaluationSyncStatusTrackerImpl(clock, idGenerator)
   }
 
   eventInteractor(

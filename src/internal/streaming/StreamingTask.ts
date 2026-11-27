@@ -1,4 +1,5 @@
 import { Component } from '../di/Component'
+import { StreamingSyncReporter } from '../evaluation/StreamingSyncReporter'
 import { UserAttributesState } from '../evaluation/EvaluationStorage'
 import { requiredInternalConfig } from '../InternalConfig'
 import { StreamEvaluationsRequest } from '../model/request/StreamEvaluationsRequest'
@@ -59,7 +60,13 @@ export class StreamingTask implements ScheduledTask {
   // previous instance's terminal error.
   private terminalFailure = false
 
-  constructor(private readonly component: Component) {}
+  // Read once here: the rest of this class reports the sync status through
+  // this field, not through the component.
+  private readonly syncReporter: StreamingSyncReporter
+
+  constructor(private readonly component: Component) {
+    this.syncReporter = component.streamingSyncReporter()
+  }
 
   isRunning(): boolean {
     return this.running
@@ -84,8 +91,8 @@ export class StreamingTask implements ScheduledTask {
     } else {
       // Currently on polling fallback (or idle after a terminal error) — jump
       // straight back to streaming. No stopFallback() here: the poller keeps
-      // running until the reopened stream connects (onOpen calls
-      // stopFallback() itself), otherwise there'd be a polling gap for
+      // running until the reopened stream delivers flag values (handleData()
+      // calls stopFallback() itself), otherwise there'd be a polling gap for
       // however long this attempt takes to open or fail.
       this.openStream()
     }
@@ -140,6 +147,10 @@ export class StreamingTask implements ScheduledTask {
         // on the missing GetEvaluationsResponse shape.
         error: (data) => {
           console.error('StreamingTask: server reported a stream error', data)
+          // The backend sends it when an evaluation fails, then closes the
+          // stream. StreamConnection does not know about it, so it is marked
+          // here. Nothing is reported (see StreamingSyncReporter).
+          this.syncReporter.markStreamNotWorking()
         },
       },
       // Defensive fallback for a message that matched none of the named
@@ -155,10 +166,22 @@ export class StreamingTask implements ScheduledTask {
       },
       callbacks: {
         onOpen: () => {
-          this.stopFallback()
+          // The fallback keeps running until the stream delivers flag values
+          // (see handleData()). The backend answers 200 before it evaluates,
+          // so a stream that opens can still fail right after. Stopping the
+          // fallback here would throw away its retry count on every recovery
+          // try, and its failures would never be reported.
           this.clearUserAttributesUpdated()
         },
         onError: (info) => this.handleError(info),
+        // A failed try is retried, so nothing is reported (see
+        // StreamingSyncReporter).
+        onAttemptFailed: () => {
+          this.syncReporter.markStreamNotWorking()
+        },
+        onAlive: () => {
+          this.syncReporter.reportStreamingAlive()
+        },
       },
     })
     this.connection.start()
@@ -247,6 +270,11 @@ export class StreamingTask implements ScheduledTask {
     if (!this.running) return
     this.connection?.stop()
     this.connection = null
+    // No sync status report here: see StreamingSyncReporter. The stream is
+    // only marked as not working, so the fallback's polling failures count,
+    // even when no failed try marked it before (for example a stream that
+    // got a put, then ended with no details until the give-up).
+    this.syncReporter.markStreamNotWorking()
     this.startFallback()
     if (info.terminal) {
       // Remembered so reconnect() (e.g. a later updateUserAttributes() call)
@@ -286,12 +314,29 @@ export class StreamingTask implements ScheduledTask {
     // first await, while this.connection is still the connection that
     // delivered the data.
     this.connection?.markWorking()
+    // The stream now keeps the flag values current, so the fallback stops.
+    // Done here, not in onOpen: see the onOpen callback.
+    this.stopFallback()
+    // The stream success is split in two, on purpose:
+    // 1. Here, before the save: the stream is marked as working. A server
+    //    error event can arrive while the values are being saved, and it must
+    //    come after this, so the stream ends as "not working" (the error came
+    //    last).
+    // 2. After the save: SYNCED is sent, like polling does, so a SYNCED
+    //    listener reads the new values.
+    // Tests: "a put sets SYNCED only after its values are saved" and "a
+    // server error event during the storage write of a put still marks the
+    // stream as not working".
+    this.syncReporter.markStreamWorking()
     // shouldNotify is re-checked after the awaited storage write: a stop()/
     // destroy racing that write must not fire update listeners into
     // torn-down app code (the write itself may land — unused cached data).
     await this.component
       .evaluationInteractor()
       .applyEvaluationsResponse(response, () => this.running)
+    // Like polling: a stop() or destroy during the save sends no SYNCED.
+    if (!this.running) return
+    this.syncReporter.reportSuccess()
   }
 
   private startFallback(): void {
@@ -309,9 +354,9 @@ export class StreamingTask implements ScheduledTask {
     this.recoveryTimer = setTimeout(() => {
       if (!this.running) return
       // No stopFallback() here: the poller keeps running until the reopened
-      // stream connects (onOpen), otherwise every 5-minute
+      // stream delivers flag values (handleData()), otherwise every 5-minute
       // recovery attempt would open a polling gap for as long as it takes to
-      // open or fail (see openStream()'s onOpen callback and its own
+      // open or fail (see handleData() and openStream()'s own
       // defensive clearTimeout(this.recoveryTimer) at entry).
       this.openStream()
     }, RECOVERY_INTERVAL_MILLIS)

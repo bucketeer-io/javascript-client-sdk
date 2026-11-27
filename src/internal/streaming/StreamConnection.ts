@@ -30,6 +30,13 @@ export interface StreamConnectionCallbacks {
   // status, or unhealthy for > UNHEALTHY_FALLBACK_TIMEOUT_MILLIS.
   // Brief transient drops self-heal internally and do NOT call this.
   onError: (info: StreamConnectionErrorInfo) => void
+  // Every failed attempt, also the ones retried here: an HTTP status, a
+  // network error, a watchdog timeout, a runtime that cannot stream, a
+  // constructor that throws. Not called for a normal end of the stream or an
+  // error with no details, and not for the give-up itself (onError).
+  onAttemptFailed: () => void
+  // Bytes arrived: data or a heartbeat.
+  onAlive: () => void
 }
 
 export interface StreamConnectionOptions {
@@ -53,8 +60,9 @@ export interface StreamConnectionOptions {
 // The stream is healthy only when it is both alive and working:
 //
 //   alive   = bytes are arriving (any chunk, a heartbeat, an event with
-//             data). markAlive() feeds only the watchdog: a connection with
-//             no bytes for WATCHDOG_TIMEOUT_MILLIS is retried.
+//             data). markAlive() feeds the watchdog (a connection with no
+//             bytes for WATCHDOG_TIMEOUT_MILLIS is retried) and calls
+//             onAlive.
 //   working = the stream delivers valid evaluations. Only the caller can tell
 //             (it checks the payload), so it calls markWorking(). Only that
 //             clears the give-up window: with no markWorking() for
@@ -123,6 +131,7 @@ export class StreamConnection {
       // Node process. Same give-up path as a runtime onerror: caller decides
       // (StreamingTask starts the polling fallback + schedules recovery).
       this.closeEventSource()
+      this.options.callbacks.onAttemptFailed()
       this.options.callbacks.onError({ terminal: false })
       return
     }
@@ -177,6 +186,11 @@ export class StreamConnection {
     es.onerror = (ev) => {
       if (this.es !== es) return // stale instance — already replaced
       const info = (ev ?? {}) as EventSourceErrorLike
+      // Reported first, before the retry or give-up decision below, so the
+      // caller sees the failure before any onError.
+      if (this.hasFailureDetails(ev, info)) {
+        this.options.callbacks.onAttemptFailed()
+      }
       if (info.terminal === true || isTerminalStatus(info.status)) {
         this.closeEventSource()
         this.options.callbacks.onError({ terminal: true })
@@ -225,9 +239,21 @@ export class StreamConnection {
     this.notWorkingSince = 0
   }
 
-  // Bytes arrived: the connection is alive. Feeds only the watchdog.
+  // Bytes arrived: the connection is alive. Feeds the watchdog and tells the
+  // caller (onAlive). Does not touch the give-up window.
   private markAlive(): void {
     this.resetWatchdog()
+    // Runs on every chunk, so stream heartbeats keep lastSyncedAt current.
+    this.options.callbacks.onAlive()
+  }
+
+  // false for an error with no details: a normal end of the stream ("{}"
+  // from FetchEventSource) or a native EventSource Event. Such an end alone
+  // does not show that the stream stopped working.
+  private hasFailureDetails(ev: unknown, info: EventSourceErrorLike): boolean {
+    return (
+      info.status !== undefined || info.terminal === true || ev instanceof Error
+    )
   }
 
   // Connection has been open — schedule forgiving prior failures once it's
@@ -243,6 +269,7 @@ export class StreamConnection {
   private resetWatchdog(): void {
     this.cancelWatchdog()
     this.watchdog = setTimeout(() => {
+      this.options.callbacks.onAttemptFailed()
       this.scheduleReconnect()
     }, WATCHDOG_TIMEOUT_MILLIS)
   }

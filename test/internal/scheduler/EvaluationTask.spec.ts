@@ -23,6 +23,10 @@ import { EvaluationTask } from '../../../src/internal/scheduler/EvaluationTask'
 import { GetEvaluationsRequest } from '../../../src/internal/model/request/GetEvaluationsRequest'
 import { GetEvaluationsResponse } from '../../../src/internal/model/response/GetEvaluationsResponse'
 import { requiredInternalConfig } from '../../../src/internal/InternalConfig'
+import {
+  IllegalStateException,
+  InternalServerErrorException,
+} from '../../../src/BKTExceptions'
 
 suite('internal/scheduler/EventTask', () => {
   let server: SetupServer
@@ -454,6 +458,259 @@ suite('internal/scheduler/EventTask', () => {
 
       await vi.runOnlyPendingTimersAsync()
       expect(requestCount).toBe(3) // Should continue fetching
+    })
+  })
+
+  suite('sync status', () => {
+    const respondWith500 = () => {
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () =>
+          HttpResponse.json(
+            { error: { code: 500, message: 'request failed' } },
+            { status: 500 },
+          ),
+        ),
+      )
+    }
+
+    // pollingInterval 60 s is not longer than the retry interval, so the task
+    // never retries: every failed poll ends its retries.
+    const noRetryComponent = async (): Promise<DefaultComponent> => {
+      const noRetryConfig = defineBKTConfig({
+        apiKey: 'api_key_value',
+        apiEndpoint: 'https://api.bucketeer.io',
+        featureTag: 'feature_tag_value',
+        appVersion: '1.2.3',
+        pollingInterval: 1_000 * 60,
+        fetch,
+      })
+      const noRetry = new DefaultComponent(
+        new TestPlatformModule(),
+        new DataModule(user1, requiredInternalConfig(noRetryConfig)),
+        new InteractorModule(),
+      )
+      await noRetry.evaluationInteractor().initialize()
+      return noRetry
+    }
+
+    const respondWith200 = () => {
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () =>
+          HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          }),
+        ),
+      )
+    }
+
+    test('a successful poll sets SYNCED with one listener call', async () => {
+      respondWith200()
+      const tracker = component.evaluationSyncStatusTracker()
+      const listener = vi.fn()
+      tracker.addListener(listener)
+      task = new EvaluationTask(component)
+      task.start(true)
+
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(listener).toHaveBeenCalledTimes(1)
+      expect(tracker.getStatus().state).toBe('SYNCED')
+      expect(tracker.getStatus().lastSyncedAt).not.toBeNull()
+    })
+
+    // The server answered: the values it sent are not newer than the cache,
+    // but the sync itself worked.
+    test('a successful poll whose storage write is skipped as stale still sets SYNCED', async () => {
+      respondWith200()
+      vi.spyOn(
+        component.dataModule.evaluationStorage(),
+        'update',
+      ).mockResolvedValue({ type: 'skippedStale' })
+      task = new EvaluationTask(component)
+      task.start(true)
+
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(component.evaluationSyncStatusTracker().getStatus().state).toBe(
+        'SYNCED',
+      )
+    })
+
+    // The success is reported only after the poll finishes, storage write
+    // included. A write that throws ends the poll as a failed try: with no
+    // retries left, it is reported as a polling failure.
+    test('a storage write error after a successful poll does not set SYNCED, and is reported as a polling failure', async () => {
+      respondWith200()
+      const noRetry = await noRetryComponent()
+      vi.spyOn(
+        noRetry.dataModule.evaluationStorage(),
+        'update',
+      ).mockRejectedValue(new Error('storage failed'))
+      task = new EvaluationTask(noRetry)
+      task.start(true)
+
+      await vi.advanceTimersByTimeAsync(0)
+
+      const status = noRetry.evaluationSyncStatusTracker().getStatus()
+      expect(status.state).toBe('FAILING')
+      expect(status.lastSyncedAt).toBeNull()
+      expect(status.lastError?.cause).toStrictEqual(
+        new IllegalStateException('failed when polling: storage failed'),
+      )
+    })
+
+    test('a failed poll is reported only when the retries are used up', async () => {
+      respondWith500()
+      const tracker = component.evaluationSyncStatusTracker()
+      const listener = vi.fn()
+      tracker.addListener(listener)
+      task = new EvaluationTask(component)
+      task.start()
+
+      // The first poll and the first 4 retries fail: a retry is still left.
+      for (let i = 0; i < 5; i++) {
+        await vi.runOnlyPendingTimersAsync()
+      }
+      expect(listener).not.toHaveBeenCalled()
+      expect(tracker.getStatus().lastError).toBeNull()
+
+      // The 5th retry fails: no retry is left.
+      await vi.runOnlyPendingTimersAsync()
+      expect(listener).toHaveBeenCalledTimes(1)
+      expect(tracker.getStatus().lastError?.cause).toBeInstanceOf(
+        InternalServerErrorException,
+      )
+    })
+
+    test('with no retries, every failed poll is reported', async () => {
+      respondWith500()
+      const noRetry = await noRetryComponent()
+      const listener = vi.fn()
+      noRetry.evaluationSyncStatusTracker().addListener(listener)
+      task = new EvaluationTask(noRetry)
+      task.start()
+
+      await vi.runOnlyPendingTimersAsync()
+      expect(listener).toHaveBeenCalledTimes(1)
+
+      await vi.runOnlyPendingTimersAsync()
+      expect(listener).toHaveBeenCalledTimes(2)
+    })
+
+    test('a failed poll with no retry left moves INITIALIZING to FAILING', async () => {
+      respondWith500()
+      const noRetry = await noRetryComponent()
+      const tracker = noRetry.evaluationSyncStatusTracker()
+      task = new EvaluationTask(noRetry)
+      task.start()
+
+      await vi.runOnlyPendingTimersAsync()
+
+      expect(tracker.getStatus().state).toBe('FAILING')
+    })
+
+    test('an error that is not an SDK exception is wrapped as IllegalStateException', async () => {
+      const noRetry = await noRetryComponent()
+      vi.spyOn(BKTClientImpl, 'fetchEvaluationsInternal').mockRejectedValue(
+        new Error('storage failed'),
+      )
+      task = new EvaluationTask(noRetry)
+      task.start(true)
+
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(
+        noRetry.evaluationSyncStatusTracker().getStatus().lastError?.cause,
+      ).toStrictEqual(
+        new IllegalStateException('failed when polling: storage failed'),
+      )
+    })
+
+    test('a listener that destroys the client on a failed poll leaves no next poll', async () => {
+      let requests = 0
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () => {
+          requests++
+          return HttpResponse.json(
+            { error: { code: 500, message: 'request failed' } },
+            { status: 500 },
+          )
+        }),
+      )
+      const noRetry = await noRetryComponent()
+      task = new EvaluationTask(noRetry)
+      // destroyBKTClient() stops the task in the same way.
+      noRetry.evaluationSyncStatusTracker().addListener(() => task?.stop())
+      task.start(true)
+      await vi.advanceTimersByTimeAsync(0)
+
+      await vi.advanceTimersByTimeAsync(60_000)
+
+      expect(requests).toBe(1)
+    })
+
+    test('a listener that destroys the client on a successful poll leaves no next poll', async () => {
+      let requests = 0
+      server.use(
+        http.post(`${config.apiEndpoint}/get_evaluations`, () => {
+          requests++
+          return HttpResponse.json({
+            evaluations: user1Evaluations,
+            userEvaluationsId: 'user_evaluation_id_value',
+          })
+        }),
+      )
+      task = new EvaluationTask(component)
+      // destroyBKTClient() stops the task in the same way.
+      component.evaluationSyncStatusTracker().addListener(() => task?.stop())
+      task.start(true)
+      await vi.advanceTimersByTimeAsync(0)
+
+      await vi.advanceTimersByTimeAsync(config.pollingInterval)
+
+      expect(requests).toBe(1)
+    })
+
+    test('a poll that fails after stop() reports nothing', async () => {
+      const noRetry = await noRetryComponent()
+      let rejectFetch: (error: unknown) => void = () => {}
+      vi.spyOn(BKTClientImpl, 'fetchEvaluationsInternal').mockImplementation(
+        () =>
+          new Promise((_, reject) => {
+            rejectFetch = reject
+          }),
+      )
+      const listener = vi.fn()
+      noRetry.evaluationSyncStatusTracker().addListener(listener)
+      task = new EvaluationTask(noRetry)
+      task.start(true)
+
+      task.stop()
+      rejectFetch(new InternalServerErrorException('Internal Server Error'))
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(listener).not.toHaveBeenCalled()
+    })
+
+    test('a poll that succeeds after stop() reports nothing', async () => {
+      let resolveFetch: () => void = () => {}
+      vi.spyOn(BKTClientImpl, 'fetchEvaluationsInternal').mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveFetch = resolve
+          }),
+      )
+      const listener = vi.fn()
+      component.evaluationSyncStatusTracker().addListener(listener)
+      task = new EvaluationTask(component)
+      task.start(true)
+
+      task.stop()
+      resolveFetch()
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(listener).not.toHaveBeenCalled()
     })
   })
 })

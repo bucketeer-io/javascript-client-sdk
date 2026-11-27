@@ -81,7 +81,12 @@ suite('internal/streaming/StreamConnection — backoff reset timer', () => {
       eventSource: FakeEventSource as unknown as EventSourceLike,
       requestBuilder: () => ({ url: 'https://example.test/sse' }),
       events: {},
-      callbacks: { onOpen: vi.fn(), onError: vi.fn() },
+      callbacks: {
+        onOpen: vi.fn(),
+        onError: vi.fn(),
+        onAttemptFailed: vi.fn(),
+        onAlive: vi.fn(),
+      },
     })
     conn.start()
     return conn
@@ -161,7 +166,12 @@ suite('internal/streaming/StreamConnection — health model', () => {
         evaluations: namedHandler,
       },
       onUnhandledMessage: messageHandler,
-      callbacks: { onOpen, onError },
+      callbacks: {
+        onOpen,
+        onError,
+        onAttemptFailed: vi.fn(),
+        onAlive: vi.fn(),
+      },
     })
     conn.start()
     return conn
@@ -224,7 +234,12 @@ suite('internal/streaming/StreamConnection — health model', () => {
       eventSource: FakeEventSource as unknown as EventSourceLike,
       requestBuilder: () => ({ url: 'https://example.test/sse' }),
       events: {},
-      callbacks: { onOpen, onError },
+      callbacks: {
+        onOpen,
+        onError,
+        onAttemptFailed: vi.fn(),
+        onAlive: vi.fn(),
+      },
     })
     conn.start()
     latest().onopen?.({})
@@ -531,10 +546,203 @@ suite('internal/streaming/StreamConnection — health model', () => {
       eventSource: ThrowingEventSource,
       requestBuilder: () => ({ url: 'https://example.test/sse' }),
       events: {},
-      callbacks: { onOpen, onError },
+      callbacks: {
+        onOpen,
+        onError,
+        onAttemptFailed: vi.fn(),
+        onAlive: vi.fn(),
+      },
     })
 
     expect(() => conn.start()).not.toThrow()
     expect(onError).toHaveBeenCalledWith({ terminal: false })
+  })
+})
+
+suite('internal/streaming/StreamConnection: failure reporting', () => {
+  const WATCHDOG_TIMEOUT_MILLIS = 70_000
+
+  let onOpen: ReturnType<typeof vi.fn>
+  let onError: ReturnType<typeof vi.fn>
+  let onAttemptFailed: ReturnType<typeof vi.fn>
+  let onAlive: ReturnType<typeof vi.fn>
+  let namedHandler: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    FakeEventSource.instances = []
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    onOpen = vi.fn()
+    onError = vi.fn()
+    onAttemptFailed = vi.fn()
+    onAlive = vi.fn()
+    namedHandler = vi.fn()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  function startConnection(
+    eventSource: EventSourceLike = FakeEventSource as unknown as EventSourceLike,
+  ): StreamConnection {
+    const conn = new StreamConnection({
+      eventSource,
+      requestBuilder: () => ({ url: 'https://example.test/sse' }),
+      events: { put: namedHandler },
+      callbacks: { onOpen, onError, onAttemptFailed, onAlive },
+    })
+    conn.start()
+    return conn
+  }
+
+  // Backoff delays with jitter mocked to 0. The last attempt happens 121 s after
+  // the first failure, which is past the 120 s limit, so it gives up.
+  function failUntilGiveUp(error: unknown): void {
+    latest().onerror?.(error)
+    for (const delaySeconds of [1, 2, 4, 8, 16, 30, 30, 30]) {
+      vi.advanceTimersByTime(delaySeconds * 1_000)
+      latest().onerror?.(error)
+    }
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenCalledWith({ terminal: false })
+  }
+
+  test.each([
+    { name: 'a retried 5xx', fail: () => latest().onerror?.({ status: 503 }) },
+    {
+      name: 'a 4xx that is not retried',
+      fail: () => latest().onerror?.({ status: 400 }),
+    },
+    { name: 'a terminal 401', fail: () => latest().onerror?.({ status: 401 }) },
+    {
+      name: 'a runtime that cannot stream',
+      fail: () => latest().onerror?.({ terminal: true }),
+    },
+    {
+      name: 'an Error from the event source',
+      fail: () => latest().onerror?.(new TypeError('failed to fetch')),
+    },
+    {
+      name: 'a watchdog timeout',
+      fail: () => vi.advanceTimersByTime(WATCHDOG_TIMEOUT_MILLIS),
+    },
+  ])('$name calls onAttemptFailed once', ({ fail }) => {
+    startConnection()
+
+    fail()
+
+    expect(onAttemptFailed).toHaveBeenCalledTimes(1)
+  })
+
+  test('a throwing event source constructor calls onAttemptFailed once, then onError', () => {
+    const ThrowingEventSource = function () {
+      throw new Error('constructor boom')
+    } as unknown as EventSourceLike
+
+    startConnection(ThrowingEventSource)
+
+    expect(onAttemptFailed).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenCalledWith({ terminal: false })
+  })
+
+  test.each([
+    { name: 'a normal end of the stream', error: {} },
+    { name: 'a native Event with no details', error: new Event('error') },
+  ])('$name does not call onAttemptFailed', ({ error }) => {
+    startConnection()
+
+    latest().onerror?.(error)
+
+    expect(onAttemptFailed).not.toHaveBeenCalled()
+  })
+
+  // The give-up itself calls only onError: the caller marks the stream as
+  // not working there. onAttemptFailed is called only for the failed tries.
+  test.each([
+    {
+      name: 'repeated 503 errors',
+      giveUp: () => failUntilGiveUp({ status: 503 }),
+      failedTries: 9,
+    },
+    {
+      name: 'errors with no details',
+      giveUp: () => failUntilGiveUp(new Event('error')),
+      failedTries: 0,
+    },
+    {
+      name: 'valid evaluations, then errors with no details',
+      giveUp: (conn: StreamConnection) => {
+        latest().onerror?.({ status: 503 })
+        vi.advanceTimersByTime(1_000)
+        latest().onopen?.({})
+        conn.markWorking()
+        onAttemptFailed.mockClear()
+        failUntilGiveUp(new Event('error'))
+      },
+      failedTries: 0,
+    },
+  ])('a give-up after $name calls onError, and onAttemptFailed only for the failed tries', ({ giveUp, failedTries }) => {
+    const conn = startConnection()
+
+    giveUp(conn)
+
+    expect(onAttemptFailed).toHaveBeenCalledTimes(failedTries)
+  })
+
+  test('a give-up after repeated watchdog timeouts calls onError, and onAttemptFailed only for the timeouts', () => {
+    startConnection()
+
+    // Each attempt waits for the watchdog, then a short backoff: the 3rd timeout
+    // is past the 120 s limit.
+    vi.advanceTimersByTime(3 * WATCHDOG_TIMEOUT_MILLIS + 10_000)
+
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onAttemptFailed).toHaveBeenCalledTimes(3)
+  })
+
+  // Only markWorking() clears the give-up window. Bytes alone must not, or
+  // a stream that sends only bytes (a server `error` event is a named event
+  // with data to this class) would never give up.
+  test.each([
+    {
+      name: 'a liveness tick',
+      sendBytes: () => latest().onmessage?.({ data: undefined }),
+    },
+    {
+      name: 'a named event with data',
+      sendBytes: () => latest().emit('put', { data: '{}' }),
+    },
+  ])('after $name with no valid evaluations, the stream still gives up 120 s after the first failure', ({ sendBytes }) => {
+    startConnection()
+    latest().onerror?.({ status: 503 }) // t=0: the give-up window starts
+    vi.advanceTimersByTime(1_000)
+    latest().onopen?.({})
+    sendBytes()
+
+    for (const delaySeconds of [0, 2, 4, 8, 16, 30, 30, 30]) {
+      vi.advanceTimersByTime(delaySeconds * 1_000)
+      latest().onerror?.({})
+    }
+
+    // t=121 s: past the window counted from t=0.
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenCalledWith({ terminal: false })
+  })
+
+  test('onAlive is called for a data event and a heartbeat tick, not for a named event with no data', () => {
+    startConnection()
+    latest().onopen?.({})
+    expect(onAlive).not.toHaveBeenCalled()
+
+    latest().emit('put', { data: '{}' })
+    expect(onAlive).toHaveBeenCalledTimes(1)
+
+    latest().onmessage?.({ data: undefined })
+    expect(onAlive).toHaveBeenCalledTimes(2)
+
+    latest().emit('put', { data: undefined })
+    expect(onAlive).toHaveBeenCalledTimes(2)
   })
 })
