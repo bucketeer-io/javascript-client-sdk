@@ -91,8 +91,8 @@ export class StreamingTask implements ScheduledTask {
     } else {
       // Currently on polling fallback (or idle after a terminal error) — jump
       // straight back to streaming. No stopFallback() here: the poller keeps
-      // running until the reopened stream connects (onOpen calls
-      // stopFallback() itself), otherwise there'd be a polling gap for
+      // running until the reopened stream delivers flag values (handleData()
+      // calls stopFallback() itself), otherwise there'd be a polling gap for
       // however long this attempt takes to open or fail.
       this.openStream()
     }
@@ -166,7 +166,11 @@ export class StreamingTask implements ScheduledTask {
       },
       callbacks: {
         onOpen: () => {
-          this.stopFallback()
+          // The fallback keeps running until the stream delivers flag values
+          // (see handleData()). The backend answers 200 before it evaluates,
+          // so a stream that opens can still fail right after. Stopping the
+          // fallback here would throw away its retry count on every recovery
+          // try, and its failures would never be reported.
           this.clearUserAttributesUpdated()
         },
         onError: (info) => this.handleError(info),
@@ -310,6 +314,9 @@ export class StreamingTask implements ScheduledTask {
     // first await, while this.connection is still the connection that
     // delivered the data.
     this.connection?.markWorking()
+    // The stream now keeps the flag values current, so the fallback stops.
+    // Done here, not in onOpen: see the onOpen callback.
+    this.stopFallback()
     // The stream success is split in two, on purpose:
     // 1. Here, before the save: the stream is marked as working. A server
     //    error event can arrive while the values are being saved, and it must
@@ -347,9 +354,9 @@ export class StreamingTask implements ScheduledTask {
     this.recoveryTimer = setTimeout(() => {
       if (!this.running) return
       // No stopFallback() here: the poller keeps running until the reopened
-      // stream connects (onOpen), otherwise every 5-minute
+      // stream delivers flag values (handleData()), otherwise every 5-minute
       // recovery attempt would open a polling gap for as long as it takes to
-      // open or fail (see openStream()'s onOpen callback and its own
+      // open or fail (see handleData() and openStream()'s own
       // defensive clearTimeout(this.recoveryTimer) at entry).
       this.openStream()
     }, RECOVERY_INTERVAL_MILLIS)

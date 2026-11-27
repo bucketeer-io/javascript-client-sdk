@@ -74,6 +74,16 @@ function latest(): FakeEventSource {
   return FakeEventSource.instances[FakeEventSource.instances.length - 1]
 }
 
+// The latest stream delivers flag values: a valid put.
+function sendPut(): void {
+  latest().emit('put', {
+    data: JSON.stringify({
+      evaluations: user1Evaluations,
+      userEvaluationsId: 'user_evaluation_id_value',
+    }),
+  })
+}
+
 suite('internal/streaming/StreamingTask', () => {
   let task: StreamingTask | undefined
   let evaluationTaskStart: ReturnType<typeof vi.spyOn>
@@ -457,10 +467,11 @@ suite('internal/streaming/StreamingTask', () => {
     expect(evaluationTaskStart).toHaveBeenCalledWith(true)
 
     // Recovery fires after 5 minutes: streaming reopens; fallback stops once
-    // onOpen proves the reopened stream actually works (no polling gap).
+    // a put proves the reopened stream actually works (no polling gap).
     vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
     expect(FakeEventSource.instances).toHaveLength(2)
     latest().onopen?.({})
+    sendPut()
     expect(evaluationTaskStop).toHaveBeenCalled()
   })
 
@@ -476,6 +487,7 @@ suite('internal/streaming/StreamingTask', () => {
       vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS)
       expect(FakeEventSource.instances).toHaveLength(2)
       latest().onopen?.({})
+      sendPut()
       expect(evaluationTaskStop).toHaveBeenCalled()
     },
   )
@@ -820,7 +832,7 @@ suite('internal/streaming/StreamingTask', () => {
     expect(warnSpy).not.toHaveBeenCalled()
   })
 
-  test('onOpen after recovery cancels fallback and leaves no recovery pending', async () => {
+  test('a put after recovery cancels fallback and leaves no recovery pending', async () => {
     await startTask(buildComponent())
 
     latest().onerror?.({ status: 402 }) // unclassified 4xx → fallback + recovery
@@ -828,13 +840,16 @@ suite('internal/streaming/StreamingTask', () => {
     expect(FakeEventSource.instances).toHaveLength(2)
 
     latest().onopen?.({})
+    sendPut()
     expect(evaluationTaskStop).toHaveBeenCalled()
     // Only the connection's own timers remain (watchdog + backoff-reset) —
     // no 5-minute recovery timer is pending anymore.
     expect(vi.getTimerCount()).toBe(2)
   })
 
-  test('recovery timer reopening the stream does not stop the fallback poller until onOpen succeeds (regression: no polling gap during the reconnect attempt)', async () => {
+  // The backend answers 200 before it evaluates, so a stream that opens can
+  // still fail right after. Only a put shows that it works.
+  test('recovery timer reopening the stream does not stop the fallback poller until the stream delivers a put (regression: no polling gap during the reconnect attempt)', async () => {
     await startTask(buildComponent())
 
     latest().onerror?.({ status: 402 }) // → fallback + recovery
@@ -842,14 +857,15 @@ suite('internal/streaming/StreamingTask', () => {
 
     vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS) // recovery timer reopens the stream
     expect(FakeEventSource.instances).toHaveLength(2)
-    // The new stream hasn't proven it opened yet — the poller must still be running.
+    // The new stream hasn't proven it works yet — the poller must still be running.
+    latest().onopen?.({})
     expect(evaluationTaskStop).not.toHaveBeenCalled()
 
-    latest().onopen?.({})
+    sendPut()
     expect(evaluationTaskStop).toHaveBeenCalled()
   })
 
-  test('reconnect() from fallback mode does not stop the fallback poller until onOpen succeeds (regression: no polling gap during the reconnect attempt)', async () => {
+  test('reconnect() from fallback mode does not stop the fallback poller until the stream delivers a put (regression: no polling gap during the reconnect attempt)', async () => {
     const t = await startTask(buildComponent())
 
     latest().onerror?.({ status: 402 }) // → fallback + recovery
@@ -857,9 +873,10 @@ suite('internal/streaming/StreamingTask', () => {
 
     t.reconnect()
     expect(FakeEventSource.instances).toHaveLength(2)
+    latest().onopen?.({})
     expect(evaluationTaskStop).not.toHaveBeenCalled()
 
-    latest().onopen?.({})
+    sendPut()
     expect(evaluationTaskStop).toHaveBeenCalled()
   })
 
@@ -1025,9 +1042,10 @@ suite('internal/streaming/StreamingTask', () => {
     // on the silent fake connection and self-heal reconnects would fire.)
     expect(vi.getTimerCount()).toBe(1)
 
-    // Fallback stops once onOpen proves the reopened stream actually works
+    // Fallback stops once a put proves the reopened stream actually works
     // (no polling gap in between).
     latest().onopen?.({})
+    sendPut()
     expect(evaluationTaskStop).toHaveBeenCalled()
   })
 
@@ -1048,6 +1066,7 @@ suite('internal/streaming/StreamingTask', () => {
     expect(body.user.data).toEqual({ plan: 'basic' })
 
     latest().onopen?.({})
+    sendPut()
     expect(evaluationTaskStop).toHaveBeenCalled()
   })
 
@@ -1285,6 +1304,81 @@ suite('internal/streaming/StreamingTask', () => {
       component.pollingSyncReporter().reportFailure(pollError)
       expect(tracker.getStatus().state).toBe('FAILING')
       expect(tracker.getStatus().lastError?.cause).toBe(pollError)
+    })
+
+    test('a reopened stream that fails before any put keeps the same polling fallback', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      await startTask(buildComponent())
+      latest().onerror?.({ status: 402 }) // give-up: fallback + recovery
+      vi.advanceTimersByTime(RECOVERY_INTERVAL_MILLIS) // recovery reopens
+
+      latest().onopen?.({})
+      failUntilGiveUp({ status: 503 })
+
+      expect(evaluationTaskStart).toHaveBeenCalledTimes(1)
+    })
+
+    // The backend answers each stream request with 200, then an error event,
+    // when evaluation fails. Polling fails in the same outage. The stream
+    // recovery (every 5 minutes) must not restart the fallback's retries, or
+    // its last retry never runs and FAILING never comes.
+    test('when every reopened stream fails before a put, the fallback still uses up its retries and sets FAILING', async () => {
+      // The real poller, not the spies from beforeEach.
+      evaluationTaskStart.mockRestore()
+      evaluationTaskStop.mockRestore()
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const errorOnlyStream = () => ({
+        ok: true,
+        status: 200,
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(
+              new TextEncoder().encode(
+                `event: error\ndata: ${serverErrorData('evaluation failed')}\n\n`,
+              ),
+            )
+            controller.close()
+          },
+        }),
+      })
+      const fetchImpl = vi.fn(() =>
+        Promise.resolve(errorOnlyStream()),
+      ) as unknown as FetchLike
+      const component = buildComponent({
+        eventSource: undefined,
+        fetch: fetchImpl,
+      })
+      await startTask(component)
+      await poll(component, pollSuccess)
+      // From now on every poll fails, and its answer takes 1 s.
+      vi.spyOn(
+        component.dataModule.apiClient(),
+        'getEvaluations',
+      ).mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  type: 'failure',
+                  featureTag: 'feature_tag_value',
+                  error: pollError,
+                }),
+              1_000,
+            ),
+          ),
+      )
+
+      // Timeline (backoff jitter mocked to 0):
+      //   121 s  give-up: the fallback polls, recovery set for 421 s.
+      //   182, 243, 304, 365 s  the 4 first retries fail.
+      //   421 s  recovery reopens the stream: 200, error event.
+      //   426 s  the 5th retry fails, with no retry left: FAILING.
+      await vi.advanceTimersByTimeAsync(8 * 60_000)
+
+      const status = component.evaluationSyncStatusTracker().getStatus()
+      expect(status.state).toBe('FAILING')
+      expect(status.lastError?.cause).toBe(pollError)
     })
 
     test('a server error event right after the stream opens changes nothing and calls no listener', async () => {
