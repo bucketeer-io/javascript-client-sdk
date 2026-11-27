@@ -1381,6 +1381,96 @@ suite('internal/streaming/StreamingTask', () => {
       expect(status.lastError?.cause).toBe(pollError)
     })
 
+    // The issue: the save of a put is async. If a fallback poll failed during
+    // the save, the status would become FAILING, and then the end of the save
+    // would set SYNCED. SYNCED would hide that newer failure.
+    //
+    // How this test tries to make it happen, with the worst real settings:
+    // - pollingInterval 60 s: no polling retries, so one failed poll sets
+    //   FAILING at once.
+    // - Every poll fails at once.
+    // - A fallback is already running when the put arrives (steps 1 and 2).
+    // - During the save, the stream fails the way the backend does in an
+    //   outage, to try to start a new fallback (step 4).
+    // - The save is held open for 90 s (a real save takes less than 0.01 s).
+    //
+    // What proves it cannot happen (the checks after step 4): no poll runs
+    // during the save, and the status keeps the error from before the put.
+    // So no failure is newer than the put, and SYNCED at the end (step 5) is
+    // the right result. The two reasons:
+    // - The put stops the running fallback before the save starts.
+    // - A new fallback starts only after a give-up, and the backend's outage
+    //   answers (500, 503, or an error event then close) are retried, not a
+    //   give-up.
+    test('the save of a put never ends with SYNCED over a newer fallback failure, because no fallback poll runs during the save', async () => {
+      // The real poller, not the spies from beforeEach.
+      evaluationTaskStart.mockRestore()
+      evaluationTaskStop.mockRestore()
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const component = buildComponent({ pollingInterval: 60_000 })
+      await startTask(component)
+      const tracker = component.evaluationSyncStatusTracker()
+      // Every poll fails at once: the fastest possible failure.
+      const getEvaluations = vi
+        .spyOn(component.dataModule.apiClient(), 'getEvaluations')
+        .mockResolvedValue({
+          type: 'failure',
+          featureTag: 'feature_tag_value',
+          error: pollError,
+        })
+
+      // 1. The stream gives up (500 for 121 s), the fallback starts, and its
+      //    first poll fails: FAILING.
+      failUntilGiveUp({ status: 500 })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(tracker.getStatus().state).toBe('FAILING')
+
+      // 2. The stream recovery (5 min later) opens a new stream. The fallback
+      //    keeps polling and failing until then.
+      await vi.advanceTimersByTimeAsync(5 * 60_000)
+      const streamsBeforePut = FakeEventSource.instances.length
+      const failingStatus = tracker.getStatus()
+      const pollsBeforePut = getEvaluations.mock.calls.length
+
+      // 3. The new stream delivers a put, and its save stays open.
+      let finishSave: () => void = () => {}
+      vi.spyOn(
+        component.evaluationInteractor(),
+        'applyEvaluationsResponse',
+      ).mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            finishSave = resolve
+          }),
+      )
+      latest().onopen?.({})
+      latest().emit('put', { data: putData })
+
+      // 4. During the save, the backend ends the stream (an error event, then
+      //    it closes), and answers the reconnect 1 s later with 503.
+      //    The 503 is the backend's outage answer to the reconnect: it is
+      //    retried, so no new fallback starts.
+      latest().emit('error', { data: serverErrorData('evaluation failed') })
+      latest().onerror?.({})
+      await vi.advanceTimersByTimeAsync(1_000)
+      expect(FakeEventSource.instances.length).toBe(streamsBeforePut + 1)
+      latest().onerror?.({ status: 503 })
+      await vi.advanceTimersByTimeAsync(89_000)
+
+      // The proof: no poll ran during the save, so no failure is newer than
+      // the put. Only state and lastError are compared: the error event's
+      // bytes move lastSyncedAt, because the stream counts as working from
+      // the put on.
+      expect(getEvaluations.mock.calls.length).toBe(pollsBeforePut)
+      expect(tracker.getStatus().state).toBe('FAILING')
+      expect(tracker.getStatus().lastError).toEqual(failingStatus.lastError)
+
+      // 5. The save ends: SYNCED is right, the put is the newest result.
+      finishSave()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(tracker.getStatus().state).toBe('SYNCED')
+    })
+
     test('a server error event right after the stream opens changes nothing and calls no listener', async () => {
       const component = await startAfterSuccessfulInit()
       const tracker = component.evaluationSyncStatusTracker()
